@@ -1,0 +1,149 @@
+.accountPage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.accountHero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+  padding: var(--space-xl);
+  border-radius: var(--radius-xl);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+.accountGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-xl);
+}
+
+.accountBadge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+}
+
+.accountAvatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.accountBadgeInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.accountBadgeTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.accountBadgeSub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.accountFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+}
+
+.accountField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.accountField label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  padding: var(--space-lg) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settingRow:last-child {
+  border-bottom: none;
+}
+
+.settingMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settingTitle {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.settingDescription {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.settingCheckbox {
+  appearance: none;
+  width: 44px;
+  height: 24px;
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settingCheckbox::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+}
+
+.settingCheckbox:checked {
+  background: var(--primary);
+}
+
+.settingCheckbox:checked::before {
+  left: 23px;
+}
+
+@media (max-width: 900px) {
+  .accountGrid,
+  .accountFormGrid {
+    grid-template-columns: 1fr;
+  }
+}

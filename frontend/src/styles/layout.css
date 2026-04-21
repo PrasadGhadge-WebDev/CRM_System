@@ -1,0 +1,341 @@
+.crmShell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  height: 100vh;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding-top: 0;
+}
+
+.crmShell.sidebar-collapsed {
+  grid-template-columns: 80px 1fr;
+}
+
+.crmContent {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  background: var(--bg-mesh);
+  position: relative;
+}
+
+.crmContent::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--bg-orb-1), var(--bg-orb-2);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.crmContent::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--noise);
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.route-motion-shell {
+  position: relative;
+  z-index: 2;
+}
+
+.crmMain {
+  flex: 1 0 auto;
+  padding: var(--space-md) var(--space-lg);
+  max-width: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.crmPanel {
+  flex: 1;
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-lg);
+  transition: all 0.3s ease;
+}
+
+.public-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.public-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.route-motion-shell {
+  width: 100%;
+  min-width: 0;
+  animation: routePageEnter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: center top;
+  will-change: transform, opacity, filter;
+}
+
+.public-route-motion {
+  flex: 1 1 auto;
+}
+
+.crm-route-motion {
+  min-height: 100%;
+}
+
+.crmFooter {
+  flex-shrink: 0;
+  padding: var(--space-lg) var(--space-xl);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  background: var(--bg-elevated);
+}
+
+.crmFooterInner {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.crmFooterLinks {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.crmFooterLinks a {
+  text-decoration: none;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+.crmFooterLinks a:hover {
+  color: var(--primary);
+}
+
+.bullet {
+  opacity: 0.3;
+  user-select: none;
+}
+
+.crmFooterCopy {
+  color: var(--text-muted);
+}
+
+.stack {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.text-small {
+  font-size: 13px;
+}
+
+.tiny-gap {
+  gap: 8px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.border-bottom {
+  border-bottom: 1px solid var(--border);
+}
+
+.iconBtn {
+  background: none;
+  border: 1px solid transparent;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.iconBtn:hover {
+  background: var(--bg-surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.accessDenied {
+  min-height: calc(100vh - 128px);
+  display: grid;
+  place-items: center;
+  padding: var(--space-xl) var(--space-lg);
+}
+
+.accessDeniedCard {
+  width: min(100%, 560px);
+  padding: var(--space-2xl) var(--space-xl);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-xl);
+  text-align: center;
+}
+
+.accessDeniedCode {
+  color: var(--primary);
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  margin-bottom: var(--space-md);
+}
+
+.accessDeniedCard h1 {
+  margin: 0 0 var(--space-sm);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.accessDeniedCard p {
+  max-width: 42ch;
+  margin: 0 auto;
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+.accessDeniedActions {
+  margin-top: var(--space-xl);
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 980px) {
+  .crmShell,
+  .crmShell.sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+  .crmSidebar {
+    grid-column: auto;
+  }
+  .crmContent {
+    grid-column: 1;
+  }
+  .grid2,
+  .grid3 {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+}
+
+@media (max-width: 760px) {
+  .crmMain {
+    padding: var(--space-md);
+  }
+  .crmPanel {
+    padding: var(--space-lg);
+    border-radius: var(--radius-lg);
+  }
+  .crmFooter {
+    padding: var(--space-md);
+  }
+  .crmFooterInner {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@keyframes routePageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+    filter: blur(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-motion-shell {
+    animation: none;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Mobile Sidebar Backdrop Fix */
+@media (max-width: 980px) {
+  .crmShell {
+    grid-template-columns: 1fr;
+    display: block;
+    position: relative;
+  }
+  
+  .crmContent {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .sidebarBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 998;
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}

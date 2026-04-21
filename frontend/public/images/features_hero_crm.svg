@@ -1,0 +1,150 @@
+<svg width="2048" height="1024" viewBox="0 0 2048 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1460 300) rotate(90) scale(980 1180)">
+      <stop offset="0" stop-color="#163f7d"/>
+      <stop offset="0.45" stop-color="#07142a"/>
+      <stop offset="1" stop-color="#03060c"/>
+    </radialGradient>
+    <radialGradient id="blueBurst" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1040 640) rotate(90) scale(380 620)">
+      <stop offset="0" stop-color="#4fd6ff" stop-opacity="0.95"/>
+      <stop offset="0.45" stop-color="#1f87ff" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#1f87ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ringGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1280 390) rotate(90) scale(340 340)">
+      <stop offset="0" stop-color="#7fe8ff" stop-opacity="0.22"/>
+      <stop offset="0.65" stop-color="#54cfff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#54cfff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="crmText" x1="830" y1="432" x2="1450" y2="606" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d5fbff"/>
+      <stop offset="0.35" stop-color="#84e7ff"/>
+      <stop offset="1" stop-color="#4bc8ff"/>
+    </linearGradient>
+    <linearGradient id="armMetal" x1="780" y1="690" x2="1160" y2="960" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.35" stop-color="#edf5ff"/>
+      <stop offset="0.7" stop-color="#9fb0c5"/>
+      <stop offset="1" stop-color="#f7fbff"/>
+    </linearGradient>
+    <linearGradient id="armDark" x1="850" y1="745" x2="1100" y2="930" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#171f2f"/>
+      <stop offset="1" stop-color="#435060"/>
+    </linearGradient>
+    <filter id="blurBig" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
+    <filter id="blurSoft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <filter id="crmShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#46cfff" flood-opacity="0.36"/>
+    </filter>
+    <filter id="glowStroke" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#5bdcff" flood-opacity="0.9"/>
+    </filter>
+  </defs>
+
+  <rect width="2048" height="1024" fill="url(#bgGlow)"/>
+
+  <g opacity="0.92">
+    <ellipse cx="1460" cy="360" rx="380" ry="380" fill="url(#ringGlow)" filter="url(#blurBig)"/>
+    <ellipse cx="1000" cy="720" rx="240" ry="180" fill="url(#blueBurst)" filter="url(#blurBig)"/>
+    <ellipse cx="158" cy="270" rx="160" ry="120" fill="#7cb2ff" opacity="0.08" filter="url(#blurBig)"/>
+    <ellipse cx="1860" cy="330" rx="180" ry="130" fill="#7cb2ff" opacity="0.08" filter="url(#blurBig)"/>
+  </g>
+
+  <g opacity="0.18">
+    <path d="M0 860 C200 780, 360 920, 620 840 S1100 760, 1360 860 S1740 960, 2048 840" stroke="#5ddcff" stroke-width="3" fill="none"/>
+    <path d="M0 180 C260 80, 560 260, 840 130 S1320 40, 1700 170 S1880 240, 2048 120" stroke="#5ddcff" stroke-width="3" fill="none"/>
+  </g>
+
+  <g filter="url(#glowStroke)">
+    <circle cx="1370" cy="360" r="270" stroke="#5cdcff" stroke-width="8" opacity="0.95"/>
+    <circle cx="1370" cy="360" r="240" stroke="#c0f5ff" stroke-width="3" opacity="0.72" stroke-dasharray="4 10"/>
+    <circle cx="1370" cy="360" r="205" stroke="#84e7ff" stroke-width="2" opacity="0.4"/>
+    <circle cx="1370" cy="360" r="310" stroke="#5cdcff" stroke-width="6" opacity="0.45" stroke-dasharray="52 34"/>
+  </g>
+
+  <g opacity="0.26" stroke="#9eeeff" stroke-width="1.5">
+    <circle cx="1370" cy="360" r="190" fill="none" stroke-dasharray="2 10"/>
+    <circle cx="1370" cy="360" r="220" fill="none" stroke-dasharray="2 11"/>
+  </g>
+
+  <g filter="url(#crmShadow)">
+    <text x="1370" y="426" text-anchor="middle" fill="url(#crmText)" font-size="210" font-family="Arial, Helvetica, sans-serif" font-weight="800" letter-spacing="6">CRM</text>
+  </g>
+
+  <g opacity="0.38">
+    <circle cx="1370" cy="360" r="120" fill="#ffffff" fill-opacity="0.06"/>
+    <circle cx="1370" cy="360" r="150" fill="none" stroke="#7fe8ff" stroke-width="2" stroke-dasharray="8 8"/>
+  </g>
+
+  <g opacity="0.95" filter="url(#glowStroke)" stroke="#58d4ff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M510 172 h168 l38 34"/>
+    <path d="M445 326 h258"/>
+    <path d="M454 502 h305"/>
+    <path d="M615 690 h212 l44 -34"/>
+    <circle cx="678" cy="174" r="28"/>
+    <circle cx="594" cy="326" r="28"/>
+    <circle cx="556" cy="502" r="28"/>
+    <circle cx="676" cy="690" r="28"/>
+  </g>
+
+  <g filter="url(#glowStroke)" opacity="0.95">
+    <g transform="translate(678 174)">
+      <circle cx="0" cy="0" r="56" stroke="#55d4ff" stroke-width="4" fill="none" opacity="0.95"/>
+      <circle cx="0" cy="0" r="44" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.85" stroke-dasharray="3 8"/>
+      <path d="M-16 10 V-8 M0 16 V-18 M16 10 V-2" stroke="#8beeff" stroke-width="8" stroke-linecap="round"/>
+      <path d="M-18 18 H18" stroke="#8beeff" stroke-width="5" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(594 326)">
+      <circle cx="0" cy="0" r="56" stroke="#55d4ff" stroke-width="4" fill="none" opacity="0.95"/>
+      <circle cx="0" cy="0" r="42" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.82"/>
+      <path d="M0 -18 V18" stroke="#8beeff" stroke-width="8" stroke-linecap="round"/>
+      <path d="M-12 -8 C-5 -16, 5 -16, 12 -8" stroke="#8beeff" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(556 502)">
+      <circle cx="0" cy="0" r="56" stroke="#55d4ff" stroke-width="4" fill="none" opacity="0.95"/>
+      <circle cx="0" cy="0" r="42" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.82"/>
+      <path d="M0 -18 C8 -18, 18 -10, 18 0 C18 10, 8 18, 0 18 C-8 18, -18 10, -18 0 C-18 -10, -8 -18, 0 -18 Z" fill="#8beeff"/>
+      <path d="M0 -18 V18" stroke="#0d2740" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(676 690)">
+      <circle cx="0" cy="0" r="56" stroke="#55d4ff" stroke-width="4" fill="none" opacity="0.95"/>
+      <circle cx="0" cy="0" r="42" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.82"/>
+      <path d="M-16 8 C-8 -10, 8 -10, 16 8" stroke="#8beeff" stroke-width="7" stroke-linecap="round"/>
+      <path d="M0 -16 V16" stroke="#8beeff" stroke-width="6" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <g filter="url(#glowStroke)" opacity="0.86">
+    <path d="M1010 760 C1070 720, 1140 690, 1218 656 C1260 638, 1310 618, 1360 632 C1396 642, 1450 678, 1472 708 C1494 738, 1488 770, 1470 790 C1445 816, 1410 812, 1382 802 C1338 786, 1300 768, 1260 758 C1216 748, 1176 754, 1132 778 C1108 792, 1088 806, 1068 820" fill="none" stroke="url(#armMetal)" stroke-width="78" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M1102 790 C1158 760, 1214 744, 1266 752 C1318 760, 1362 788, 1392 830" fill="none" stroke="url(#armDark)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M1450 742 C1488 728, 1520 706, 1544 680" fill="none" stroke="url(#armMetal)" stroke-width="44" stroke-linecap="round"/>
+    <path d="M1540 674 C1560 648, 1578 626, 1602 602" fill="none" stroke="url(#armMetal)" stroke-width="28" stroke-linecap="round"/>
+    <path d="M1600 602 C1626 580, 1650 570, 1670 564" fill="none" stroke="url(#armMetal)" stroke-width="16" stroke-linecap="round"/>
+    <g transform="translate(1384 764)">
+      <path d="M-14 -12 C-4 -26, 14 -26, 22 -10 C26 0, 22 16, 8 20 C0 22, -10 16, -16 8 C-22 0, -20 -6, -14 -12 Z" fill="#f7fbff" opacity="0.96"/>
+      <path d="M4 -18 L18 -14 L12 0 L-2 -2 Z" fill="#dce7f5"/>
+      <path d="M22 -10 L34 -20 L40 -8 L28 0 Z" fill="#c7d9ea"/>
+      <path d="M8 20 L18 34 L6 42 L-4 28 Z" fill="#aabfd6"/>
+      <path d="M-16 8 L-36 0 L-38 14 L-18 20 Z" fill="#b8cadd"/>
+      <path d="M0 -6 L20 -2 L16 12 L-2 10 Z" fill="#91b6d8"/>
+    </g>
+  </g>
+
+  <g opacity="0.4">
+    <circle cx="1680" cy="210" r="70" fill="#5cdcff" fill-opacity="0.08"/>
+    <circle cx="1760" cy="690" r="88" fill="#5cdcff" fill-opacity="0.06"/>
+    <circle cx="980" cy="250" r="110" fill="#5cdcff" fill-opacity="0.06"/>
+  </g>
+
+  <g opacity="0.18" stroke="#c4efff" stroke-width="2">
+    <path d="M1280 150 h160"/>
+    <path d="M1236 210 h260"/>
+    <path d="M1202 770 h236"/>
+    <path d="M1510 760 h194"/>
+  </g>
+
+  <rect width="2048" height="1024" fill="#000000" opacity="0.08"/>
+</svg>
