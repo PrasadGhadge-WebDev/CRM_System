@@ -266,15 +266,6 @@ export default function LeadsList() {
         </div>
       </section>
 
-      {/* Floating Action Button */}
-      <button 
-        className="lp-fab" 
-        onClick={() => navigate('/leads/new')} 
-        title="Quick Add Lead"
-      >
-        <Icon name="plus" size={24} />
-      </button>
-
       {/* Quick Actions & View Toggle */}
       <section className="lp-actions-bar">
         <div className="lp-view-switcher glass-sw" style={{ marginLeft: 'auto' }}>

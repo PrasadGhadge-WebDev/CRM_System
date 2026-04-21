@@ -511,10 +511,31 @@ export default function LeadDetail() {
         .ld-premium-page { background: #0f172a; color: #f8fafc; min-height: 100vh; padding-bottom: 60px; }
         .ld-topbar { height: 72px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); position: sticky; top: 0; z-index: 100; }
         .ld-topbar-left { display: flex; align-items: center; gap: 20px; }
-        .ld-btn-back { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 8px 16px; border-radius: 10px; color: #94a3b8; font-weight: 700; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.08); }
+        .ld-topbar-right { display: flex; align-items: center; gap: 12px; }
+        .ld-btn-back { background: rgba(255, 255, 255, 0.03); padding: 8px 16px; border-radius: 10px; color: #94a3b8; font-weight: 700; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.08); display: inline-flex; align-items: center; gap: 8px; }
+        
+        .ld-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 0.85rem; border: none; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); text-decoration: none; }
+        .ld-btn.primary { background: linear-gradient(135deg, #3b82f6, #6366f1); color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); }
+        .ld-btn.primary:hover { font-weight: 700; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4); }
+        .ld-btn.secondary { background: rgba(255, 255, 255, 0.05); color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .ld-btn.secondary:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
+        .ld-btn.danger { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+        .ld-btn.danger:hover { background: #ef4444; color: white; border-color: #ef4444; }
+
         .ld-hero-card { background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7)); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 32px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .ld-hero-main { display: flex; align-items: center; gap: 24px; }
         .ld-avatar { width: 80px; height: 80px; border-radius: 20px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 900; }
+        
+        .ld-id-badge { display: inline-block; background: rgba(59, 130, 246, 0.15); color: #60a5fa; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; margin-bottom: 8px; }
+        .ld-name { font-size: 1.8rem; font-weight: 800; margin: 0 0 8px 0; color: white; }
+        .ld-subtitle { font-size: 0.9rem; color: #94a3b8; display: flex; align-items: center; gap: 8px; }
+
+        .ld-hero-stats { display: flex; align-items: center; gap: 32px; background: rgba(0,0,0,0.2); padding: 16px 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
+        .ld-stat-group { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+        .ld-stat-group label { font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
+        .ld-value-text { font-size: 1.25rem; font-weight: 800; color: #f8fafc; }
+        .ld-v-divider { width: 1px; height: 32px; background: rgba(255, 255, 255, 0.1); margin: 0 8px; }
+
         .ld-grid { display: grid; grid-template-columns: 1fr 400px; gap: 24px; }
         .ld-panel { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 20px; }
         .ld-panel-header { padding: 16px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; align-items: center; gap: 12px; }
@@ -522,6 +543,8 @@ export default function LeadDetail() {
         .ld-info-row { display: flex; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.03); }
         .ld-info-label { font-size: 0.8rem; color: #64748b; }
         .ld-info-val { font-weight: 700; font-size: 0.9rem; }
+        
+        .tag-s { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; background: rgba(255,255,255,0.1); padding: 3px 8px; border-radius: 6px; }
         
         /* 🎯 Next Step Card Styles */
         .ld-focus-card { border-radius: 24px; padding: 28px; border: 1px solid rgba(255,255,255,0.05); position: relative; transition: 0.3s; }
@@ -542,7 +565,7 @@ export default function LeadDetail() {
         .fu-btn-action { flex: 1; padding: 12px; border-radius: 12px; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: 0.2s; }
         .fu-btn-action.primary { background: #3b82f6; color: white; border: none; }
         .fu-btn-action.secondary { background: rgba(255,255,255,0.05); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); }
-        .fu-focus-empty { text-align: center; padding: 20px 0; color: #64748b; }
+        .fu-focus-empty { text-align: center; padding: 20px 0; color: #64748b; display: flex; flex-direction: column; gap: 16px; align-items: center; }
         
         .ld-mode-cell { display: flex; align-items: center; gap: 10px; font-weight: 600; }
         .pill-s { font-size: 0.6rem; padding: 2px 10px; border-radius: 50px; font-weight: 800; text-transform: uppercase; }
@@ -555,8 +578,15 @@ export default function LeadDetail() {
         .mt-20 { margin-top: 20px; }
         .mt-32 { margin-top: 32px; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 20px; }
-        .ld-op-btn { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
-        .ld-op-btn span { font-size: 0.8rem; font-weight: 700; color: #94a3b8; }
+        
+        .op-ico { font-size: 1.8rem; margin-bottom: 8px; display: block; transition: transform 0.2s; }
+        .ld-op-btn { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; cursor: pointer; transition: 0.2s; }
+        .ld-op-btn:hover { background: rgba(255,255,255,0.05); transform: translateY(-2px); border-color: rgba(255,255,255,0.1); }
+        .ld-op-btn:hover .op-ico { transform: scale(1.1); }
+        .ld-op-btn span:last-child { font-size: 0.8rem; font-weight: 700; color: #94a3b8; }
+        .ld-op-btn.full { grid-column: 1 / -1; flex-direction: row; gap: 12px; padding: 14px; }
+        .ld-op-btn.full .op-ico { font-size: 1.4rem; margin-bottom: 0; }
+        
         .ld-table-wrapper { background: rgba(30, 41, 59, 0.2); border-radius: 20px; overflow: hidden; }
         .ld-table { width: 100%; border-collapse: collapse; }
         .ld-table th { text-align: left; padding: 16px 20px; background: rgba(0,0,0,0.1); color: #64748b; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
