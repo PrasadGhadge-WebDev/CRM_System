@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const DemoUser = require('../models/DemoUser');
 const Company = require('../models/Company');
 const Role = require('../models/Role');
 const { asyncHandler } = require('../middleware/asyncHandler');
@@ -19,6 +20,44 @@ const ROLE_ALIASES = {
   accountant: 'Accountant',
   employee: 'Employee',
 };
+
+async function seedDefaultRoles(companyId) {
+  if (!companyId) return;
+  const defaultRoles = [
+    {
+      name: 'Admin',
+      description: 'Full system access',
+      permissions: ['leads', 'customers', 'deals', 'tickets', 'users', 'reports', 'tasks', 'followups', 'billing', 'trash', 'settings', 'notifications'],
+      is_system_role: true,
+    },
+    {
+      name: 'Manager',
+      description: 'Management access',
+      permissions: ['leads', 'customers', 'deals', 'reports', 'tasks', 'followups'],
+      is_system_role: true,
+    },
+    {
+      name: 'Accountant',
+      description: 'Financial access',
+      permissions: ['customers', 'deals', 'billing', 'reports'],
+      is_system_role: true,
+    },
+    {
+      name: 'Employee',
+      description: 'Standard staff access',
+      permissions: ['leads', 'tasks', 'followups'],
+      is_system_role: true,
+    },
+  ].map((role) => ({ ...role, company_id: companyId }));
+
+  try {
+    await Role.insertMany(defaultRoles, { ordered: false });
+  } catch (err) {
+    if (err?.code !== 11000) {
+      throw err;
+    }
+  }
+}
 
 function getDemoAccountConfig() {
   return {
@@ -60,7 +99,7 @@ async function resolveUniqueUsername(...candidates) {
   let username = baseUsername;
   let suffix = 1;
 
-  while (await User.exists({ username })) {
+  while ((await User.exists({ username })) || (await DemoUser.exists({ username }))) {
     suffix += 1;
     username = `${baseUsername}${suffix}`;
   }
@@ -193,7 +232,7 @@ function serializeUser(user, permissions = []) {
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
-exports.register = asyncHandler(async (req, res) => {
+exports.register = asyncHandler(async (req, res, next) => {
   const { errors, values } = validateRegisterPayload(req.body);
 
   if (errors.length > 0) {
@@ -205,8 +244,12 @@ exports.register = asyncHandler(async (req, res) => {
   console.log('[Registration] Processed values:', JSON.stringify(values, null, 2));
 
   try {
-    const existingUser = await User.findOne({ email: values.email });
-    if (existingUser) {
+    const [existingUser, existingDemoUser] = await Promise.all([
+      User.findOne({ email: values.email }),
+      DemoUser.findOne({ email: values.email })
+    ]);
+
+    if (existingUser || existingDemoUser) {
       return res.fail('Email already registered', 400);
     }
 
@@ -228,9 +271,9 @@ exports.register = asyncHandler(async (req, res) => {
       status: 'active',
     });
 
-    // 2. Create the User linked to this company
-    console.log('[Registration] Creating user linked to company:', company._id);
-    const user = await User.create({
+    // 2. Create the Demo User linked to this company
+    console.log('[Registration] Creating demo user linked to company:', company._id);
+    const user = await DemoUser.create({
       username,
       name: values.name,
       email: values.email,
@@ -240,23 +283,17 @@ exports.register = asyncHandler(async (req, res) => {
       status: 'active',
       password: values.password,
       is_trial: true,
+      is_demo: true,
       trial_ends_at: trialEndsAt,
     });
 
     // 3. Create Default System Roles for the company
     console.log('[Registration] Seeding default roles...');
-    const defaultRoles = [
-      { name: 'Admin', description: 'Full system access', permissions: ['leads', 'customers', 'deals', 'tickets', 'users', 'reports', 'tasks', 'followups', 'billing', 'trash', 'settings', 'notifications'], is_system_role: true },
-      { name: 'Manager', description: 'Management access', permissions: ['leads', 'customers', 'deals', 'reports', 'tasks', 'followups'], is_system_role: true },
-      { name: 'Accountant', description: 'Financial access', permissions: ['customers', 'deals', 'billing', 'reports'], is_system_role: true },
-      { name: 'Employee', description: 'Standard staff access', permissions: ['leads', 'tasks', 'followups'], is_system_role: true },
-    ].map(r => ({ ...r, company_id: company._id }));
-    
-    await Role.insertMany(defaultRoles);
+    await seedDefaultRoles(company._id);
 
     // 4. Seed the workspace with Demo Entries
     console.log('[Registration] Seeding demo data for company:', company._id);
-    await seedDemoData(company._id, user._id);
+    await seedDemoData(company._id, user._id, 'DemoUser');
 
     // 4. Return token for direct login
     console.log('[Registration] Success for user:', user.email);
@@ -279,14 +316,17 @@ exports.register = asyncHandler(async (req, res) => {
       return res.fail(firstError, 400, { validationErrors: error.errors });
     }
     // Clean up if something failed?
-    return res.fail(error.message || 'Server error during registration', 500, { error });
+    return res.fail(error.message || 'Server error during registration', 500, { 
+      error: error.message,
+      stack: error.stack 
+    });
   }
 });
 
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
-exports.login = asyncHandler(async (req, res) => {
+exports.login = asyncHandler(async (req, res, next) => {
   const { errors, values } = validateLoginPayload(req.body);
 
   if (errors.length > 0) {
@@ -299,6 +339,15 @@ exports.login = asyncHandler(async (req, res) => {
       { username: values.identifier }
     ]
   }).select('+password');
+
+  if (!user) {
+    user = await DemoUser.findOne({
+      $or: [
+        { email: values.identifier.toLowerCase() },
+        { username: values.identifier }
+      ]
+    }).select('+password');
+  }
 
   if (!user && values.identifier === getDefaultAdminEmail()) {
     await ensureDefaultAdmin();
@@ -350,7 +399,7 @@ exports.login = asyncHandler(async (req, res) => {
 // @desc    Login to demo workspace with a unique Guest account
 // @route   POST /api/auth/demo-login
 // @access  Public
-exports.demoLogin = asyncHandler(async (req, res) => {
+exports.demoLogin = asyncHandler(async (req, res, next) => {
   // 1. Create a unique Company for the guest
   const guestId = Math.random().toString(36).substring(2, 7).toUpperCase();
   const company = await Company.create({
@@ -363,6 +412,7 @@ exports.demoLogin = asyncHandler(async (req, res) => {
   const guestEmail = `guest_${guestId}_${Date.now()}@decrm.io`;
   const guestName = `Guest User (${guestId})`;
   const guestPassword = `Guest!${guestId}${Date.now()}`;
+  const guestUsername = `guest_${guestId}_${Date.now()}`;
 
   const roleInput = String(req.body.role || req.query.role || 'Manager').trim().toLowerCase();
   const demoRole = ROLE_ALIASES[roleInput] || 'Manager';
@@ -373,8 +423,8 @@ exports.demoLogin = asyncHandler(async (req, res) => {
   const trialEndsAt = new Date();
   trialEndsAt.setDate(trialEndsAt.getDate() + 5);
 
-  const user = await User.create({
-    username: `guest_${guestId}`,
+  const user = await DemoUser.create({
+    username: guestUsername,
     name: guestName,
     email: guestEmail,
     password: guestPassword,
@@ -388,8 +438,9 @@ exports.demoLogin = asyncHandler(async (req, res) => {
   });
 
   try {
+    await seedDefaultRoles(company._id);
     // 3. Seed the unique sandbox with Demo Entries
-    await seedDemoData(company._id, user._id);
+    await seedDemoData(company._id, user._id, 'DemoUser');
 
     const loginAt = new Date();
     user.last_login = loginAt;
@@ -454,7 +505,7 @@ const sendTokenResponse = (user, statusCode, res, permissions = []) => {
 // @desc    Get current logged in user
 // @route   GET /api/auth/me
 // @access  Private
-exports.getMe = asyncHandler(async (req, res) => {
+exports.getMe = asyncHandler(async (req, res, next) => {
   const roleData = await Role.findOne({ company_id: req.user.company_id, name: req.user.role });
   const permissions = roleData ? roleData.permissions : [];
   res.ok({ user: serializeUser(req.user, permissions) });
@@ -463,7 +514,7 @@ exports.getMe = asyncHandler(async (req, res) => {
 // @desc    Update current logged in user
 // @route   PUT /api/auth/me
 // @access  Private
-exports.updateMe = asyncHandler(async (req, res) => {
+exports.updateMe = asyncHandler(async (req, res, next) => {
   const { username, name, email, profile_photo } = req.body;
 
   const nextName = name?.trim() || username?.trim();
@@ -471,12 +522,18 @@ exports.updateMe = asyncHandler(async (req, res) => {
     return res.fail('Name and email are required', 400);
   }
 
-  const emailInUse = await User.findOne({
-    email: email.trim().toLowerCase(),
-    _id: { $ne: req.user._id },
-  });
+  const [emailInUse, demoEmailInUse] = await Promise.all([
+    User.findOne({
+      email: email.trim().toLowerCase(),
+      _id: { $ne: req.user._id },
+    }),
+    DemoUser.findOne({
+      email: email.trim().toLowerCase(),
+      _id: { $ne: req.user._id },
+    })
+  ]);
 
-  if (emailInUse) {
+  if (emailInUse || demoEmailInUse) {
     return res.fail('Email already in use', 400);
   }
 
@@ -492,7 +549,7 @@ exports.updateMe = asyncHandler(async (req, res) => {
 // @desc    Update current user password
 // @route   PUT /api/auth/password
 // @access  Private
-exports.updatePassword = asyncHandler(async (req, res) => {
+exports.updatePassword = asyncHandler(async (req, res, next) => {
   const { currentPassword, newPassword } = req.body;
 
   if (!currentPassword || !newPassword) {
@@ -503,7 +560,8 @@ exports.updatePassword = asyncHandler(async (req, res) => {
     return res.fail('New password must be at least 6 characters', 400);
   }
 
-  const user = await User.findById(req.user._id).select('+password');
+  const model = req.user.is_demo ? DemoUser : User;
+  const user = await model.findById(req.user._id).select('+password');
   const isMatch = await user.matchPassword(currentPassword);
 
   if (!isMatch) {
@@ -519,7 +577,7 @@ exports.updatePassword = asyncHandler(async (req, res) => {
 // @desc    Update current user settings
 // @route   PUT /api/auth/settings
 // @access  Private
-exports.updateSettings = asyncHandler(async (req, res) => {
+exports.updateSettings = asyncHandler(async (req, res, next) => {
   if (req.user?.is_demo) {
     return res.fail('Demo users cannot change settings', 403);
   }
@@ -542,7 +600,7 @@ exports.updateSettings = asyncHandler(async (req, res) => {
 // @desc    Verify user for onboarding
 // @route   POST /api/auth/onboarding/verify
 // @access  Public
-exports.verifyOnboarding = asyncHandler(async (req, res) => {
+exports.verifyOnboarding = asyncHandler(async (req, res, next) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -573,7 +631,7 @@ exports.verifyOnboarding = asyncHandler(async (req, res) => {
 // @desc    Complete profile for onboarding
 // @route   POST /api/auth/onboarding/complete
 // @access  Public
-exports.completeOnboarding = asyncHandler(async (req, res) => {
+exports.completeOnboarding = asyncHandler(async (req, res, next) => {
   const { userId, name, email, phone } = req.body;
 
   if (!userId || !name || !email || !phone) {
@@ -622,7 +680,7 @@ exports.completeOnboarding = asyncHandler(async (req, res) => {
 // @desc    Log user out / clear cookie
 // @route   GET /api/auth/logout
 // @access  Private
-exports.logout = asyncHandler(async (req, res) => {
+exports.logout = asyncHandler(async (req, res, next) => {
   res.cookie('token', 'none', {
     expires: new Date(Date.now() + 10 * 1000),
     httpOnly: true,

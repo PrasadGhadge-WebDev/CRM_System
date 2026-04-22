@@ -31,8 +31,9 @@ const trashEntrySchema = new mongoose.Schema(
     },
     deleted_by: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      refPath: 'deleted_by_model',
     },
+    deleted_by_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
     deleted_at: {
       type: Date,
       default: Date.now,

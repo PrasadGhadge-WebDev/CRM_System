@@ -1,12 +1,31 @@
 const Lead = require('../models/Lead');
 const LeadNote = require('../models/LeadNote');
 const User = require('../models/User');
+const DemoUser = require('../models/DemoUser');
 const Counter = require('../models/Counter');
 const mongoose = require('mongoose');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { moveDocumentToTrash } = require('../utils/trash');
 const { notifyRoleUsers } = require('../utils/notifier');
 const ExcelJS = require('exceljs');
+
+function getAuthUserModelName(req) {
+  return req?.user?.constructor?.modelName === 'DemoUser' ? 'DemoUser' : 'User';
+}
+
+async function findActiveCompanyUserById(companyId, userId) {
+  const normalizedId = normalizeObjectId(userId);
+  if (!normalizedId || !mongoose.Types.ObjectId.isValid(normalizedId)) return null;
+
+  const query = { _id: normalizedId, company_id: companyId, status: 'active' };
+  const user = await User.findOne(query).select('_id');
+  if (user) return { model: 'User', user };
+
+  const demoUser = await DemoUser.findOne(query).select('_id');
+  if (demoUser) return { model: 'DemoUser', user: demoUser };
+
+  return null;
+}
 
 function buildSearchQuery(q) {
   if (!q) return null;
@@ -67,15 +86,15 @@ async function notifyAccountantsOfConversion(companyId, lead) {
   });
 }
 
+exports.listLeads = asyncHandler(async (req, res, next) => {
 
-
-exports.listLeads = asyncHandler(async (req, res) => {
   const {
     status,
     source,
     assignedTo,
     startDate,
     endDate,
+    followupDate,
     q,
     page = 1,
     limit = 20,
@@ -97,13 +116,13 @@ exports.listLeads = asyncHandler(async (req, res) => {
     company_id: new mongoose.Types.ObjectId(req.user.company_id),
     isDeleted: { $ne: true }
   };
-  
+
   if (req.user?.role === 'Employee') {
     filter.assignedTo = new mongoose.Types.ObjectId(req.user.id);
   } else if (assignedTo) {
     filter.assignedTo = new mongoose.Types.ObjectId(assignedTo);
   }
-  
+
   if (status) filter.status = status;
   if (source) filter.source = source;
 
@@ -117,11 +136,21 @@ exports.listLeads = asyncHandler(async (req, res) => {
     }
   }
 
+  if (followupDate) {
+    const start = new Date(followupDate);
+    if (!Number.isNaN(start.getTime())) {
+      const end = new Date(start);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      filter.nextFollowupDate = { $gte: start, $lte: end };
+    }
+  }
+
   if (search) filter.$or = [{ name: search }, { email: search }, { phone: search }, { source: search }, { company: search }];
 
   const now = new Date();
-  const startOfToday = new Date(new Date().setHours(0,0,0,0));
-  const endOfToday = new Date(new Date().setHours(23,59,59,999));
+  const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
+  const endOfToday = new Date(new Date().setHours(23, 59, 59, 999));
 
   // Main Items Aggregation
   const itemsPipeline = [
@@ -132,29 +161,29 @@ exports.listLeads = asyncHandler(async (req, res) => {
           $switch: {
             branches: [
               // 1. Overdue: nextFollowupDate is before today
-              { 
-                case: { 
+              {
+                case: {
                   $and: [
                     { $ifNull: ["$nextFollowupDate", false] },
                     { $lt: ["$nextFollowupDate", startOfToday] }
                   ]
-                }, 
-                then: 1 
+                },
+                then: 1
               },
               // 2. Due Today: nextFollowupDate is within today
-              { 
-                case: { 
+              {
+                case: {
                   $and: [
                     { $gte: ["$nextFollowupDate", startOfToday] },
                     { $lte: ["$nextFollowupDate", endOfToday] }
                   ]
-                }, 
-                then: 2 
+                },
+                then: 2
               },
               // 3. Upcoming: nextFollowupDate is in future
-              { 
-                case: { $gt: ["$nextFollowupDate", endOfToday] }, 
-                then: 3 
+              {
+                case: { $gt: ["$nextFollowupDate", endOfToday] },
+                then: 3
               }
             ],
             default: 4 // No planned follow-up
@@ -173,14 +202,10 @@ exports.listLeads = asyncHandler(async (req, res) => {
     { $skip: (pageNum - 1) * limitNum },
     { $limit: limitNum },
     {
-      $lookup: {
-        from: 'users',
-        localField: 'assignedTo',
-        foreignField: '_id',
-        as: 'assignedTo'
+      $addFields: {
+        assignedToModel: { $ifNull: ['$assignedToModel', 'User'] },
       }
     },
-    { $unwind: { path: '$assignedTo', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
         from: 'customers',
@@ -194,12 +219,6 @@ exports.listLeads = asyncHandler(async (req, res) => {
       $addFields: {
         id: '$_id'
       }
-    },
-    {
-      $project: {
-        'assignedTo.password': 0,
-        'assignedTo.__v': 0
-      }
     }
   ];
 
@@ -212,17 +231,19 @@ exports.listLeads = asyncHandler(async (req, res) => {
         total: { $sum: 1 },
         converted: { $sum: { $cond: [{ $eq: ['$status', 'Converted'] }, 1, 0] } },
         pending: { $sum: { $cond: [{ $and: [{ $ne: ['$status', 'Converted'] }, { $ne: ['$status', 'Lost'] }] }, 1, 0] } },
-        overdue: { 
-          $sum: { 
+        overdue: {
+          $sum: {
             $cond: [
-              { $and: [
-                { $lt: ['$nextFollowupDate', startOfToday] },
-                { $ne: ['$status', 'Converted'] },
-                { $ne: ['$status', 'Lost'] }
-              ]}, 
+              {
+                $and: [
+                  { $lt: ['$nextFollowupDate', startOfToday] },
+                  { $ne: ['$status', 'Converted'] },
+                  { $ne: ['$status', 'Lost'] }
+                ]
+              },
               1, 0
-            ] 
-          } 
+            ]
+          }
         }
       }
     }
@@ -234,6 +255,8 @@ exports.listLeads = asyncHandler(async (req, res) => {
     Lead.aggregate(summaryPipeline)
   ]);
 
+  await Lead.populate(items, { path: 'assignedTo', select: 'name email role' });
+
   const stats = summary[0] || { total: 0, converted: 0, pending: 0, overdue: 0 };
   if (summary[0]) delete stats._id;
 
@@ -242,7 +265,8 @@ exports.listLeads = asyncHandler(async (req, res) => {
 
 
 
-exports.exportLeadsExcel = asyncHandler(async (req, res) => {
+exports.exportLeadsExcel = asyncHandler(async (req, res, next) => {
+
   if (req.user?.role === 'Accountant') {
     return res.fail('Accountants do not have access to the Leads module', 403);
   }
@@ -280,7 +304,7 @@ exports.exportLeadsExcel = asyncHandler(async (req, res) => {
   const leads = await Lead.find(filter)
     .populate('assignedTo', 'name email')
     .sort({ created_at: -1 })
-    .lean();
+    ;
 
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Leads');
@@ -339,6 +363,7 @@ exports.createLead = asyncHandler(async (req, res, next) => {
       delete payload.assigned_to;
       if (req.user?.role === 'Employee') {
         payload.assignedTo = req.user.id;
+        payload.assignedToModel = getAuthUserModelName(req);
       } else {
         payload.autoAssign = true;
       }
@@ -348,9 +373,10 @@ exports.createLead = asyncHandler(async (req, res, next) => {
     if (validationErrors.length > 0) {
       return res.fail(validationErrors.join(', '), 400);
     }
-    
+
     payload.company_id = req.user.company_id;
     payload.createdBy = req.user.id;
+    payload.createdByModel = getAuthUserModelName(req);
 
     payload.firstName = String(payload.firstName || payload.first_name || '').trim();
     payload.lastName = String(payload.lastName || payload.last_name || '').trim();
@@ -389,10 +415,11 @@ exports.createLead = asyncHandler(async (req, res, next) => {
         await logActivity({
           company_id: req.user.company_id,
           user_id: req.user.id,
+          user_model: getAuthUserModelName(req),
           description: `Duplicate lead blocked — matched by ${matchedFields.join(' & ')} for "${payload.name}"`,
           related_to: existing._id,
           related_type: 'Lead',
-        }).catch(() => {});
+        }).catch(() => { });
 
         return res.status(409).json({
           success: false,
@@ -411,11 +438,13 @@ exports.createLead = asyncHandler(async (req, res, next) => {
     // ── Assign user ──────────────────────────────────────────────────────────
     if (req.user.role === 'Employee') {
       payload.assignedTo = req.user.id;
+      payload.assignedToModel = getAuthUserModelName(req);
     } else if (payload.assignedTo) {
-      const targetUser = await User.findOne({ _id: payload.assignedTo, company_id: req.user.company_id, status: 'active' });
-      if (!targetUser) {
+      const resolved = await findActiveCompanyUserById(req.user.company_id, payload.assignedTo);
+      if (!resolved) {
         return res.fail('Assigned user not found or inactive', 404);
       }
+      payload.assignedToModel = resolved.model;
     }
 
     if (!payload.assignedTo) {
@@ -423,6 +452,7 @@ exports.createLead = asyncHandler(async (req, res, next) => {
       const autoAssigneeId = await getNextRoundRobinUser(req.user.company_id);
       if (autoAssigneeId) {
         payload.assignedTo = autoAssigneeId;
+        payload.assignedToModel = 'User';
       }
     }
 
@@ -440,6 +470,7 @@ exports.createLead = asyncHandler(async (req, res, next) => {
     await logActivity({
       company_id: req.user.company_id,
       user_id: req.user.id,
+      user_model: getAuthUserModelName(req),
       description: `New lead created: ${created.name}`,
       related_to: created._id,
       related_type: 'Lead'
@@ -461,7 +492,8 @@ exports.createLead = asyncHandler(async (req, res, next) => {
 });
 
 
-exports.getLead = asyncHandler(async (req, res) => {
+exports.getLead = asyncHandler(async (req, res, next) => {
+
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.fail('Invalid lead ID format', 400);
@@ -479,7 +511,7 @@ exports.getLead = asyncHandler(async (req, res) => {
 exports.updateLead = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const payload = req.body || {};
-  
+
   if (req.user?.role === 'Accountant') {
     return res.fail('Accountants do not have access to the Leads module', 403);
   }
@@ -497,7 +529,7 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
     if (payload.follow_up_date && !payload.followUpDate) payload.followUpDate = payload.follow_up_date;
 
     const { status } = payload;
-    
+
     // 1. Role-based security for Employees
     if (req.user?.role === 'Employee') {
       const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id }).select('assignedTo');
@@ -505,70 +537,11 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       if (!lead.assignedTo || String(lead.assignedTo) !== String(req.user.id)) {
         return res.fail('You can only update leads assigned to you', 403);
       }
-      
+
       // Employees can only update specific fields
       const allowed = ['status', 'followUpDate', 'notes', 'city', 'state', 'pincode', 'priority'];
       for (const key of Object.keys(payload)) {
         if (!allowed.includes(key)) delete payload[key];
-      }
-    }
-
-    // Prevent duplicates on update (email/phone unique per company)
-    if (payload.email !== undefined) {
-      const normalizedEmail = payload.email ? String(payload.email).trim().toLowerCase() : '';
-      if (!normalizedEmail) {
-        delete payload.email;
-      } else {
-        payload.email = normalizedEmail;
-        const existingByEmail = await Lead.findOne({
-          company_id: req.user.company_id,
-          _id: { $ne: id },
-          email: normalizedEmail,
-          isDeleted: { $ne: true },
-        }).select('_id leadId name status');
-        if (existingByEmail) {
-          return res.status(409).json({
-            success: false,
-            duplicate: true,
-            message: 'A lead with this email already exists',
-            matchedBy: ['email'],
-            existing: {
-              id: existingByEmail.id || existingByEmail._id,
-              leadId: existingByEmail.leadId,
-              name: existingByEmail.name,
-              status: existingByEmail.status,
-            },
-          });
-        }
-      }
-    }
-
-    if (payload.phone !== undefined) {
-      const normalizedPhone = payload.phone ? String(payload.phone).replace(/\D/g, '') : '';
-      if (!normalizedPhone) {
-        delete payload.phone;
-      } else {
-        payload.phone = normalizedPhone;
-        const existingByPhone = await Lead.findOne({
-          company_id: req.user.company_id,
-          _id: { $ne: id },
-          phone: normalizedPhone,
-          isDeleted: { $ne: true },
-        }).select('_id leadId name status');
-        if (existingByPhone) {
-          return res.status(409).json({
-            success: false,
-            duplicate: true,
-            message: 'A lead with this phone already exists',
-            matchedBy: ['phone'],
-            existing: {
-              id: existingByPhone.id || existingByPhone._id,
-              leadId: existingByPhone.leadId,
-              name: existingByPhone.name,
-              status: existingByPhone.status,
-            },
-          });
-        }
       }
     }
 
@@ -578,19 +551,17 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       if (!normalizedAssignedTo) {
         delete payload.assignedTo;
         delete payload.assigned_to;
+        delete payload.assignedToModel;
       } else {
         if (!mongoose.Types.ObjectId.isValid(normalizedAssignedTo)) {
           return res.fail('Invalid assignee user id', 400);
         }
-        const targetUser = await User.findOne({
-          _id: normalizedAssignedTo,
-          company_id: req.user.company_id,
-          status: 'active',
-        });
-        if (!targetUser) {
+        const resolved = await findActiveCompanyUserById(req.user.company_id, normalizedAssignedTo);
+        if (!resolved) {
           return res.fail('Assigned user not found or inactive', 404);
         }
         payload.assignedTo = normalizedAssignedTo;
+        payload.assignedToModel = resolved.model;
         delete payload.assigned_to;
       }
     }
@@ -598,8 +569,8 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
     // 2. Conversion Logic
     if (payload.status === 'Converted') {
       const { performLeadConversion } = require('../utils/leadConversion');
-      await performLeadConversion(id, req.user.company_id, req.user.id);
-      
+      await performLeadConversion(id, req.user.company_id, req.user.id, getAuthUserModelName(req));
+
       const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id })
         .populate('assignedTo', 'name email')
         .populate('convertedCustomerId', 'customer_id name phone status created_at total_purchase_amount');
@@ -637,6 +608,7 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       await logActivity({
         company_id: req.user.company_id,
         user_id: req.user.id,
+        user_model: getAuthUserModelName(req),
         description: `Status updated from ${oldLead.status} to ${status}`,
         related_to: updated._id,
         related_type: 'Lead'
@@ -654,56 +626,58 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
   }
 });
 
-exports.updateLeadStatus = asyncHandler(async (req, res) => {
+exports.updateLeadStatus = asyncHandler(async (req, res, next) => {
+
   const { id } = req.params;
-  const { status } = req.body || {};
+  const { status } = req.body;
 
-  if (!status) return res.fail('Status is required', 400);
-  if (req.user?.role === 'Accountant') {
-    return res.fail('Accountants do not have access to the Leads module', 403);
+  if (!status) {
+    return res.fail('Status is required', 400);
   }
 
-  const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id });
-  if (!lead) return res.fail('Lead not found', 404);
-
-  if (req.user?.role === 'Employee') {
-    if (!lead.assignedTo || String(lead.assignedTo) !== String(req.user.id)) {
-      return res.fail('You can only update leads assigned to you', 403);
-    }
+  const oldLead = await Lead.findOne({ _id: id, company_id: req.user.company_id });
+  if (!oldLead) {
+    return res.fail('Lead not found', 404);
   }
 
-  if (status === 'Converted') {
+  if (status === oldLead.status) {
+    return res.ok(oldLead, 'Status is already set to ' + status);
+  }
+
+  // Handle conversion if status is changed to Converted
+  if (status === 'Converted' && oldLead.status !== 'Converted') {
     const { performLeadConversion } = require('../utils/leadConversion');
-    await performLeadConversion(id, req.user.company_id, req.user.id);
-    const converted = await Lead.findOne({ _id: id, company_id: req.user.company_id })
+    await performLeadConversion(id, req.user.company_id, req.user.id, getAuthUserModelName(req));
+    
+    const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id })
       .populate('assignedTo', 'name email')
       .populate('convertedCustomerId', 'customer_id name phone status created_at total_purchase_amount');
 
-    await notifyAccountantsOfConversion(req.user.company_id, converted);
-    return res.ok(converted, 'Lead converted to Customer profile successfully');
+    await notifyAccountantsOfConversion(req.user.company_id, lead);
+    return res.ok(lead, 'Lead converted to Customer profile successfully');
   }
 
-  const oldStatus = lead.status;
-  lead.status = status;
-  lead.lastActivityAt = new Date();
-  await lead.save();
+  const updated = await Lead.findOneAndUpdate(
+    { _id: id, company_id: req.user.company_id },
+    { status, lastActivityAt: new Date() },
+    { new: true, runValidators: true }
+  ).populate('assignedTo', 'name email');
 
-  if (status !== oldStatus) {
-    const { logActivity } = require('../utils/activityLogger');
-    await logActivity({
-      company_id: req.user.company_id,
-      user_id: req.user.id,
-      description: `Status updated from ${oldStatus} to ${status}`,
-      related_to: lead._id,
-      related_type: 'Lead',
-    });
-  }
+  const { logActivity } = require('../utils/activityLogger');
+  await logActivity({
+    company_id: req.user.company_id,
+    user_id: req.user.id,
+    user_model: getAuthUserModelName(req),
+    description: `Status updated from ${oldLead.status} to ${status}`,
+    related_to: id,
+    related_type: 'Lead'
+  });
 
-  const populated = await Lead.findById(lead._id).populate('assignedTo', 'name email');
-  return res.ok(populated, 'Lead status updated');
+  res.ok(updated);
 });
 
-exports.deleteLead = asyncHandler(async (req, res) => {
+exports.deleteLead = asyncHandler(async (req, res, next) => {
+
   if (req.user?.role !== 'Admin') {
     return res.fail('Only Administrators can delete lead records', 403);
   }
@@ -738,6 +712,7 @@ exports.deleteLead = asyncHandler(async (req, res) => {
     await logActivity({
       company_id: companyId,
       user_id: userId,
+      user_model: getAuthUserModelName(req),
       description: `Lead moved to trash: ${leadName}`,
       related_to: id,
       related_type: 'Lead'
@@ -758,7 +733,8 @@ exports.deleteLead = asyncHandler(async (req, res) => {
 
 
 
-exports.listLeadNotes = asyncHandler(async (req, res) => {
+exports.listLeadNotes = asyncHandler(async (req, res, next) => {
+
   const { page = 1, limit = 20 } = req.query;
   const leadId = req.params.id;
 
@@ -776,7 +752,8 @@ exports.listLeadNotes = asyncHandler(async (req, res) => {
   res.ok({ items, total, page: pageNum, limit: limitNum });
 });
 
-exports.addLeadNote = asyncHandler(async (req, res) => {
+exports.addLeadNote = asyncHandler(async (req, res, next) => {
+
   const leadId = req.params.id;
   const lead = await Lead.findById(leadId);
   if (!lead) {
@@ -784,15 +761,22 @@ exports.addLeadNote = asyncHandler(async (req, res) => {
   }
 
   const payload = req.body || {};
+  const noteText = String(payload.note ?? '').trim();
+  if (!noteText) {
+    return res.fail('Note is required', 400);
+  }
   const created = await LeadNote.create({
     lead_id: leadId,
-    user_id: payload.user_id,
-    note: payload.note,
+    company_id: req.user.company_id,
+    user_id: req.user.id,
+    user_id_model: getAuthUserModelName(req),
+    note: noteText,
   });
   res.created(created);
 });
 
-exports.deleteLeadNote = asyncHandler(async (req, res) => {
+exports.deleteLeadNote = asyncHandler(async (req, res, next) => {
+
   const { id, noteId } = req.params;
   const note = await LeadNote.findOne({ _id: noteId, lead_id: id });
   if (!note) {
@@ -802,7 +786,8 @@ exports.deleteLeadNote = asyncHandler(async (req, res) => {
   res.ok(null, 'Lead note moved to trash');
 });
 
-exports.bulkUpdateLeads = asyncHandler(async (req, res) => {
+exports.bulkUpdateLeads = asyncHandler(async (req, res, next) => {
+
   const { ids, update } = req.body || {};
   if (!ids || !Array.isArray(ids) || ids.length === 0) {
     return res.fail('No lead IDs provided', 400);
@@ -829,6 +814,7 @@ exports.bulkUpdateLeads = asyncHandler(async (req, res) => {
       await logActivity({
         company_id: req.user.company_id,
         user_id: req.user.id,
+        user_model: getAuthUserModelName(req),
         description: desc,
         related_to: id,
         related_type: 'Lead'
@@ -840,7 +826,8 @@ exports.bulkUpdateLeads = asyncHandler(async (req, res) => {
   res.ok({ updatedCount: results.length, ids: results });
 });
 
-exports.bulkDeleteLeads = asyncHandler(async (req, res) => {
+exports.bulkDeleteLeads = asyncHandler(async (req, res, next) => {
+
   const { ids } = req.body || {};
   if (req.user?.role !== 'Admin') {
     return res.fail('Only Administrators can bulk delete records', 403);
@@ -874,6 +861,7 @@ exports.bulkDeleteLeads = asyncHandler(async (req, res) => {
       await logActivity({
         company_id: req.user.company_id,
         user_id: req.user.id,
+        user_model: getAuthUserModelName(req),
         description: `Lead moved to trash (Bulk): ${leadName}`,
         related_to: id,
         related_type: 'Lead'
@@ -889,7 +877,8 @@ exports.bulkDeleteLeads = asyncHandler(async (req, res) => {
   res.ok({ deletedCount, errorCount }, `${deletedCount} records moved to Trash successfully. ${errorCount ? `${errorCount} failed.` : ''}`);
 });
 
-exports.updateFollowup = asyncHandler(async (req, res) => {
+exports.updateFollowup = asyncHandler(async (req, res, next) => {
+
   const { id } = req.params;
   const { mode, status, nextFollowupDate, note, requestId } = req.body;
 
@@ -965,7 +954,7 @@ exports.updateFollowup = asyncHandler(async (req, res) => {
       lead.lastContactDate = now;
       lead.status = 'Contacted'; // Advance status if completed
     }
-    
+
     // Release Lock
     lead.followupLock = false;
     await lead.save({ session });

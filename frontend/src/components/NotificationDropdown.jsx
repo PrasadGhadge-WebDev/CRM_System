@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { notificationsApi } from '../services/notifications'
 import { Icon } from '../layouts/icons.jsx'
@@ -10,10 +10,16 @@ export default function NotificationDropdown() {
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    loadNotifications()
-    const interval = setInterval(loadNotifications, 60000) // Poll every minute
-    return () => clearInterval(interval)
+  const loadNotifications = useCallback(async () => {
+    try {
+      const data = await notificationsApi.list()
+      const items = data.items || []
+      setNotifications(items)
+      setUnseenCount(items.filter((n) => !n.is_read).length)
+    } catch {
+      // Suppress console noise when API/proxy is down (e.g. 502 from Vite proxy).
+      // UI stays quiet; it will auto-recover on next successful poll.
+    }
   }, [])
 
   useEffect(() => {
@@ -26,16 +32,11 @@ export default function NotificationDropdown() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  async function loadNotifications() {
-    try {
-      const data = await notificationsApi.list()
-      const items = data.items || []
-      setNotifications(items)
-      setUnseenCount(items.filter((n) => !n.is_read).length)
-    } catch (err) {
-      console.error('Failed to load notifications', err)
-    }
-  }
+  useEffect(() => {
+    loadNotifications()
+    const interval = setInterval(loadNotifications, 60000) // Poll every minute
+    return () => clearInterval(interval)
+  }, [loadNotifications])
 
   async function handleMarkRead(id) {
     try {
@@ -44,8 +45,8 @@ export default function NotificationDropdown() {
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
       )
       setUnseenCount((prev) => Math.max(0, prev - 1))
-    } catch (err) {
-      console.error('Failed to mark read')
+    } catch {
+      // no-op
     }
   }
 
@@ -54,8 +55,8 @@ export default function NotificationDropdown() {
       await notificationsApi.markAllAsRead()
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
       setUnseenCount(0)
-    } catch (err) {
-      console.error('Failed to mark all read')
+    } catch {
+      // no-op
     }
   }
 

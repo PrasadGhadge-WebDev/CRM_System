@@ -6,6 +6,7 @@ const Activity = require('../models/Activity');
 async function logActivity({
   company_id,
   user_id,
+  user_model = 'User',
   type = 'task',
   description,
   related_to,
@@ -19,6 +20,7 @@ async function logActivity({
       related_type,
       company_id,
       created_by: user_id,
+      created_by_model: user_model === 'DemoUser' ? 'DemoUser' : 'User',
       status: 'completed',
       activity_date: new Date()
     });

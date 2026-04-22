@@ -19,9 +19,12 @@ const ActivitySchema = new mongoose.Schema(
     reminder_required: { type: Boolean, default: false },
     reminder_sent: { type: Boolean, default: false },
     company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', index: true },
-    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    assigned_to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
-    completed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    created_by: { type: mongoose.Schema.Types.ObjectId, refPath: 'created_by_model' },
+    created_by_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
+    assigned_to: { type: mongoose.Schema.Types.ObjectId, refPath: 'assigned_to_model', index: true },
+    assigned_to_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
+    completed_by: { type: mongoose.Schema.Types.ObjectId, refPath: 'completed_by_model' },
+    completed_by_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
     status: { type: String, default: 'completed' }, // completed, planned
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }

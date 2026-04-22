@@ -12,11 +12,23 @@ function errorHandler(err, req, res, next) {
 
   // Handle Mongoose errors
   if (err.name === 'CastError') {
-    statusCode = 404;
-    message = 'Resource not found with invalid ID';
+    statusCode = 400;
+    message = `Invalid ${err.path || 'value'}`;
   } else if (err.name === 'ValidationError') {
     statusCode = 400;
     message = Object.values(err.errors).map((val) => val.message).join(', ');
+  } else if (err && (err.code === 11000 || err.code === 11001)) {
+    // Mongo duplicate key error (e.g. unique indexes on username/employee_id)
+    statusCode = 400;
+    const keys = err.keyValue ? Object.keys(err.keyValue) : [];
+    if (keys.length === 1) {
+      const field = keys[0];
+      message = `${field.replace(/_/g, ' ')} already in use`;
+    } else if (keys.length > 1) {
+      message = `Duplicate value for: ${keys.map((k) => k.replace(/_/g, ' ')).join(', ')}`;
+    } else {
+      message = 'Duplicate value already in use';
+    }
   }
   
   logger.error(`API Error: ${message}`, {

@@ -10,7 +10,8 @@ const AttachmentSchema = new mongoose.Schema(
     path: { type: String, required: true },
     related_to: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
     related_type: { type: String, required: true, enum: ['Lead', 'Customer', 'Deal'], index: true },
-    uploaded_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    uploaded_by: { type: mongoose.Schema.Types.ObjectId, refPath: 'uploaded_by_model' },
+    uploaded_by_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );

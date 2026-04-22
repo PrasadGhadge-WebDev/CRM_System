@@ -181,7 +181,7 @@ export default function TaskFormModal({ isOpen, onClose, onSave, task = null, is
 
             <div className="crm-form-grid-2" style={{ gap: '18px' }}>
               <div className="crm-field">
-                <label style={{ fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '8px', display: 'block' }}>Next Follow-up Date</label>
+                <label style={{ fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '8px', display: 'block' }}>Next Follow-up</label>
                 <div className="crm-input-shell" style={{ borderRadius: '18px', padding: '14px 18px', background: '#111b34', border: '1px solid rgba(148,163,184,0.14)', display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <Icon name="calendar" />
                   <input

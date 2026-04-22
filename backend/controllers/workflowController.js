@@ -6,6 +6,10 @@ const User = require('../models/User');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { notifyRoleUsers } = require('../utils/notifier');
 
+function getAuthUserModelName(req) {
+  return req?.user?.constructor?.modelName === 'DemoUser' ? 'DemoUser' : 'User';
+}
+
 const LEAD_STATUS = {
   NEW: 'New',
   ASSIGNED: 'Assigned',
@@ -88,6 +92,7 @@ exports.convertToCustomer = asyncHandler(async (req, res) => {
     if (!customerData.phone) customerData.phone = lead.phone;
     if (!customerData.source) customerData.source = lead.source;
     if (!customerData.assigned_to) customerData.assigned_to = lead.assignedTo;
+    if (!customerData.assigned_to_model) customerData.assigned_to_model = lead.assignedToModel || 'User';
     if (!customerData.notes) customerData.notes = lead.notes;
 
     // Duplicate guard: look for existing customer with same email or phone
@@ -141,6 +146,7 @@ exports.convertToCustomer = asyncHandler(async (req, res) => {
     
     if (!customerData.name) customerData.name = deal.name;
     if (!customerData.assigned_to) customerData.assigned_to = deal.assigned_to;
+    if (!customerData.assigned_to_model) customerData.assigned_to_model = deal.assigned_to_model || 'User';
   } else {
     return res.fail('Unsupported sourceType', 400);
   }
@@ -223,7 +229,7 @@ exports.assignLead = asyncHandler(async (req, res) => {
 
   const lead = await Lead.findOneAndUpdate(
     { _id: leadId, company_id: req.user.company_id },
-    { assignedTo: userId, status: LEAD_STATUS.ASSIGNED, lastActivityAt: new Date() },
+    { assignedTo: userId, assignedToModel: 'User', status: LEAD_STATUS.ASSIGNED, lastActivityAt: new Date() },
     { new: true },
   ).populate('assignedTo', 'name email');
 
@@ -233,6 +239,7 @@ exports.assignLead = asyncHandler(async (req, res) => {
   await logActivity({
     company_id: req.user.company_id,
     user_id: req.user.id,
+    user_model: getAuthUserModelName(req),
     description: `Lead assigned to ${lead.assignedTo?.name || 'teammate'}`,
     related_to: leadId,
     related_type: 'Lead'
@@ -247,7 +254,7 @@ exports.updateLeadStatus = asyncHandler(async (req, res) => {
   const userId = req.user.id;
 
   if (status === 'Converted') {
-    await performLeadConversion(leadId, companyId, userId);
+    await performLeadConversion(leadId, companyId, userId, getAuthUserModelName(req));
     const updatedLead = await Lead.findOne({ _id: leadId, company_id: companyId })
         .populate('assignedTo', 'name email')
         .populate('convertedCustomerId', 'customer_id name phone status created_at total_purchase_amount');
@@ -269,6 +276,7 @@ exports.updateLeadStatus = asyncHandler(async (req, res) => {
     await logActivity({
       company_id: req.user.company_id,
       user_id: req.user.id,
+      user_model: getAuthUserModelName(req),
       description: `Status updated to ${status}`,
       related_to: leadId,
       related_type: 'Lead'

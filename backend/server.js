@@ -35,6 +35,7 @@ app.get('/health', (_req, res) => res.ok({ status: 'UP' }));
 app.use('/api', requireDb);
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/demo-users', require('./routes/demoUsers'));
 app.use('/api/metrics', require('./routes/metrics'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/leads', require('./routes/leads'));
@@ -77,10 +78,12 @@ async function connectWithRetry() {
     setTimeout(() => {
       dbConnecting = false;
       connectWithRetry();
-    }, 50000);
+    }, 5000);
     return;
   }
   dbConnecting = false;
 }
 
 connectWithRetry();
+
+// force reload

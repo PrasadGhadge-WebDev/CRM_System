@@ -11,11 +11,13 @@ const SupportTicketSchema = new mongoose.Schema(
     description: { type: String, required: true, trim: true },
     status: { type: String, default: 'open', index: true }, // open, in-progress, resolved, closed
     priority: { type: String, default: 'medium', index: true }, // low, medium, high, urgent
-    assigned_to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+    assigned_to: { type: mongoose.Schema.Types.ObjectId, refPath: 'assigned_to_model', index: true },
+    assigned_to_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
     category: { type: String, trim: true },
     is_escalated: { type: Boolean, default: false },
     escalation_reason: { type: String, trim: true },
-    escalated_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    escalated_by: { type: mongoose.Schema.Types.ObjectId, refPath: 'escalated_by_model' },
+    escalated_by_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
     escalated_at: { type: Date },
     solution: { type: String, trim: true },
     notes: [

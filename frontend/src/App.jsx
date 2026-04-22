@@ -23,6 +23,7 @@ import TicketForm from './modules/crm/pages/TicketForm.jsx'
 import UserForm from './modules/admin/pages/UserForm.jsx'
 import UsersList from './modules/admin/pages/UsersList.jsx'
 import UserDetail from './modules/admin/pages/UserDetail.jsx'
+import DemoUsersList from './modules/admin/pages/DemoUsersList.jsx'
 import Billing from './modules/admin/pages/Billing.jsx'
 import Settings from './modules/admin/pages/Settings.jsx'
 import Notifications from './modules/admin/pages/Notifications.jsx'
@@ -117,6 +118,7 @@ export default function App() {
             }
           >
             <Route path="/users" element={<UsersList />} />
+            <Route path="/demo-users" element={<DemoUsersList />} />
             <Route path="/users/new" element={<UserForm mode="create" />} />
             <Route path="/users/:id" element={<UserDetail />} />
             <Route path="/users/:id/edit" element={<UserForm mode="edit" />} />

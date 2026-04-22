@@ -50,6 +50,7 @@ function softDeletePlugin(schema) {
     }
   });
 
+
   // Soft Delete Instance Method
   schema.methods.softDelete = async function(userId) {
     this.isDeleted = true;

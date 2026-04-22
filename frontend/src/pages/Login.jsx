@@ -154,9 +154,9 @@ export default function Login() {
           <div className="auth-header auth-header-login">
             {entrySource ? <div className="auth-brand-chip">Arrived from {entrySource}</div> : null}
             <h2 className="auth-title">Welcome back</h2>
-            <p className="auth-subtitle">
-              Sign in to continue your workspace, or launch a demo account to explore the CRM safely.
-            </p>
+           <p className="auth-subtitle">
+  Sign in to continue to your workspace.
+</p>
           </div>
 
           {error && <div className="auth-error">{error}</div>}

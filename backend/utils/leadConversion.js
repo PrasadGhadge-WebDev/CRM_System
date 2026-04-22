@@ -7,12 +7,24 @@ const Customer = require('../models/Customer');
  * - Duplicate guard: reuses an existing customer with same email/phone in the company.
  */
 async function performLeadConversion(leadId, companyId, userId, customerData = null) {
+  let userModel = 'User';
+  let resolvedCustomerData = customerData;
+
+  if (customerData && typeof customerData === 'string') {
+    userModel = customerData;
+    resolvedCustomerData = null;
+  } else if (customerData && typeof customerData === 'object' && customerData.userModel) {
+    userModel = customerData.userModel;
+  }
+
   const lead = await Lead.findOne({ _id: leadId, company_id: companyId });
   if (!lead) throw new Error('Lead not found');
 
   if (lead.convertedCustomerId) {
     return { customerId: lead.convertedCustomerId };
   }
+
+  const normalizedUserModel = userModel === 'DemoUser' ? 'DemoUser' : 'User';
 
   const baseCustomer = {
     name: lead.name,
@@ -21,11 +33,12 @@ async function performLeadConversion(leadId, companyId, userId, customerData = n
     source: lead.source,
     notes: lead.notes,
     assigned_to: userId || lead.assignedTo,
+    assigned_to_model: userId ? normalizedUserModel : (lead.assignedToModel || 'User'),
     status: 'Prospect',
     converted_from_lead_id: lead._id,
   };
 
-  const payload = { ...baseCustomer, ...(customerData || {}) };
+  const payload = { ...baseCustomer, ...(resolvedCustomerData || {}) };
   payload.company_id = companyId;
   if (payload.email) payload.email = String(payload.email).trim().toLowerCase();
   if (payload.phone) payload.phone = String(payload.phone).trim();
@@ -56,4 +69,3 @@ async function performLeadConversion(leadId, companyId, userId, customerData = n
 }
 
 module.exports = { performLeadConversion };
-

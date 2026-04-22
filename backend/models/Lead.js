@@ -17,8 +17,10 @@ const LeadSchema = new mongoose.Schema(
     priority: { type: String, enum: ['Hot', 'Warm', 'Cold'], default: 'Warm', index: true },
     dealAmount: { type: Number, required: true, default: 0 },
     currency: { type: String, default: 'INR' },
-    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+    assignedTo: { type: mongoose.Schema.Types.ObjectId, refPath: 'assignedToModel', required: true, index: true },
+    assignedToModel: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, refPath: 'createdByModel', index: true },
+    createdByModel: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
     followUpDate: { type: Date },
     lastContactDate: { type: Date },
     nextFollowupDate: { type: Date },
@@ -47,6 +49,7 @@ const LeadSchema = new mongoose.Schema(
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } },
 );
+
 
 // Strict Enforcement: Only one planned follow-up per lead
 LeadSchema.pre('save', async function() {

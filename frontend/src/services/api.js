@@ -14,8 +14,41 @@ export const api = axios.create({
   baseURL: API_BASE_URL,
 })
 
+let apiDownUntil = 0
+let apiDownBackoffMs = 0
+
+function loadCircuitState() {
+  try {
+    if (typeof window === 'undefined') return
+    const until = Number(sessionStorage.getItem('crm_apiDownUntil') || 0) || 0
+    const backoff = Number(sessionStorage.getItem('crm_apiDownBackoffMs') || 0) || 0
+    apiDownUntil = until
+    apiDownBackoffMs = backoff
+  } catch {
+    // ignore
+  }
+}
+
+function persistCircuitState() {
+  try {
+    if (typeof window === 'undefined') return
+    sessionStorage.setItem('crm_apiDownUntil', String(apiDownUntil || 0))
+    sessionStorage.setItem('crm_apiDownBackoffMs', String(apiDownBackoffMs || 0))
+  } catch {
+    // ignore
+  }
+}
+
+loadCircuitState()
+
 api.interceptors.request.use(
   (config) => {
+    if (apiDownUntil && Date.now() < apiDownUntil) {
+      const err = new Error('API temporarily unavailable')
+      err.code = 'API_DOWN_SUPPRESSED'
+      return Promise.reject(err)
+    }
+
     // Sanitize any URLs that might have accidentally appended suffixes like :1
     if (config.url) {
       config.url = config.url.replace(/:\d+$/, '');
@@ -41,6 +74,20 @@ api.interceptors.response.use(
     return res
   },
   (err) => {
+    const status = err?.response?.status
+    const isGateway = status === 502 || status === 503 || status === 504
+    const isNetwork = err?.code === 'ERR_NETWORK' || String(err?.message || '').toLowerCase().includes('network')
+
+    if (isGateway || isNetwork) {
+      apiDownBackoffMs = apiDownBackoffMs ? Math.min(120000, apiDownBackoffMs * 2) : 15000
+      apiDownUntil = Date.now() + apiDownBackoffMs
+      persistCircuitState()
+    } else {
+      apiDownBackoffMs = 0
+      apiDownUntil = 0
+      persistCircuitState()
+    }
+
     if (err.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
@@ -58,6 +105,9 @@ api.interceptors.response.use(
     // status codes (e.g. 409 duplicate) and structured response data
     const enhancedError = new Error(message)
     enhancedError.response = err.response
+    enhancedError.code = err?.code || undefined
+    enhancedError.isGateway = Boolean(isGateway)
+    enhancedError.isNetwork = Boolean(isNetwork)
     return Promise.reject(enhancedError)
   },
 )

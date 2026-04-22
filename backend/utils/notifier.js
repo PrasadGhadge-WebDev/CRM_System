@@ -1,9 +1,11 @@
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const DemoUser = require('../models/DemoUser');
 const { sendEmail } = require('./emailService');
 
 exports.notify = async ({
   user_id,
+  user_model,
   title,
   message,
   type = 'info',
@@ -11,9 +13,23 @@ exports.notify = async ({
   linked_entity_type,
   send_email = false,
 }) => {
+  let resolvedModel = user_model === 'DemoUser' ? 'DemoUser' : 'User';
+  if (!user_model) {
+    const user = await User.findById(user_id).select('_id email');
+    if (user) {
+      resolvedModel = 'User';
+    } else {
+      const demoUser = await DemoUser.findById(user_id).select('_id email');
+      if (demoUser) {
+        resolvedModel = 'DemoUser';
+      }
+    }
+  }
+
   // 1. Create In-app Notification
   const notification = await Notification.create({
     user_id,
+    user_id_model: resolvedModel,
     title,
     message,
     type,
@@ -23,7 +39,10 @@ exports.notify = async ({
 
   // 2. Optional Email Notification
   if (send_email) {
-    const user = await User.findById(user_id);
+    const user = resolvedModel === 'DemoUser'
+      ? await DemoUser.findById(user_id)
+      : await User.findById(user_id);
+
     if (user?.email) {
       // Check user preference (assuming they have one in settings)
       // For now, respect the send_email flag

@@ -53,12 +53,23 @@ export default function Sidebar({ isOpen, onClose }) {
         </NavLink>
 
         {hasPermission(user, 'users') && (
-          <NavLink className="navItem" to="/users" onClick={handleNavClick} title="User">
-            <span className="navIcon">
-              <Icon name="user" size={20} />
-            </span>
-            <span className="navText">User</span>
-          </NavLink>
+          <>
+            <NavLink className="navItem" to="/users" onClick={handleNavClick} title="User">
+              <span className="navIcon">
+                <Icon name="user" size={20} />
+              </span>
+              <span className="navText">User</span>
+            </NavLink>
+            
+            {user?.role === 'Admin' && (
+              <NavLink className="navItem" to="/demo-users" onClick={handleNavClick} title="Demo Users">
+                <span className="navIcon">
+                  <Icon name="users" size={20} />
+                </span>
+                <span className="navText">Demo Users</span>
+              </NavLink>
+            )}
+          </>
         )}
 
         {hasPermission(user, 'leads') && (

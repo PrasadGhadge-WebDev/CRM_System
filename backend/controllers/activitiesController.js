@@ -3,6 +3,10 @@ const Activity = require('../models/Activity');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { moveDocumentToTrash } = require('../utils/trash');
 
+function getAuthUserModelName(req) {
+  return req?.user?.constructor?.modelName === 'DemoUser' ? 'DemoUser' : 'User';
+}
+
 function buildSearchQuery(q) {
   if (!q) return null;
   const safe = String(q).trim();
@@ -78,6 +82,7 @@ exports.createActivity = asyncHandler(async (req, res) => {
     ...req.body,
     company_id: req.user.company_id,
     created_by: req.user.id,
+    created_by_model: getAuthUserModelName(req),
   });
   res.created(activity);
 });
@@ -98,6 +103,7 @@ exports.updateActivity = asyncHandler(async (req, res) => {
     await logActivity({
       company_id: req.user.company_id,
       user_id: req.user.id,
+      user_model: getAuthUserModelName(req),
       type: activity.activity_type,
       description: `${typeLabel} done`,
       related_to: activity.related_to,

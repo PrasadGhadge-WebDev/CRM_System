@@ -3,8 +3,24 @@ const DealHistory = require('../models/DealHistory');
 const Notification = require('../models/Notification');
 const Customer = require('../models/Customer');
 const SupportTicket = require('../models/SupportTicket');
+const User = require('../models/User');
+const DemoUser = require('../models/DemoUser');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { moveDocumentToTrash } = require('../utils/trash');
+
+function getAuthUserModelName(req) {
+  return req?.user?.constructor?.modelName === 'DemoUser' ? 'DemoUser' : 'User';
+}
+
+async function resolveAssigneeModel(companyId, userId) {
+  if (!userId) return null;
+  const query = { _id: userId, company_id: companyId, status: 'active' };
+  const user = await User.findOne(query).select('_id');
+  if (user) return 'User';
+  const demoUser = await DemoUser.findOne(query).select('_id');
+  if (demoUser) return 'DemoUser';
+  return null;
+}
 
 async function getNextDealId(companyId) {
   const count = await Deal.countDocuments({ company_id: companyId });
@@ -18,13 +34,14 @@ function buildSearchQuery(q) {
   return { $regex: safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
 }
 
-async function createAssignmentNotification(deal, userId, companyId) {
+async function createAssignmentNotification(deal, userId, companyId, userModel = 'User') {
   if (!userId) return;
   
   try {
     await Notification.create({
       company_id: companyId,
       user_id: userId,
+      user_id_model: userModel === 'DemoUser' ? 'DemoUser' : 'User',
       title: 'New Deal Assigned',
       message: `You have been assigned to the deal: ${deal.name}`,
       type: 'deal',
@@ -99,6 +116,13 @@ exports.createDeal = asyncHandler(async (req, res) => {
   const payload = req.body || {};
   payload.company_id = req.user.company_id;
 
+  if (!payload.assigned_to) {
+    payload.assigned_to = req.user.id;
+    payload.assigned_to_model = getAuthUserModelName(req);
+  } else if (!payload.assigned_to_model) {
+    payload.assigned_to_model = (await resolveAssigneeModel(req.user.company_id, payload.assigned_to)) || 'User';
+  }
+
   if (!payload.readable_id) {
     payload.readable_id = await getNextDealId(req.user.company_id);
   }
@@ -108,18 +132,20 @@ exports.createDeal = asyncHandler(async (req, res) => {
   await DealHistory.create({
     deal_id: deal._id,
     user_id: req.user.id,
+    user_id_model: getAuthUserModelName(req),
     action: 'created',
     new_value: deal.toObject()
   });
 
   if (payload.assigned_to) {
-    await createAssignmentNotification(deal, payload.assigned_to, req.user.company_id);
+    await createAssignmentNotification(deal, payload.assigned_to, req.user.company_id, payload.assigned_to_model);
   }
 
   const { logActivity } = require('../utils/activityLogger');
   await logActivity({
     company_id: req.user.company_id,
     user_id: req.user.id,
+    user_model: getAuthUserModelName(req),
     type: 'Deal Created',
     description: `New deal created: ${deal.name}`,
     related_to: deal._id,
@@ -153,9 +179,14 @@ exports.updateDeal = asyncHandler(async (req, res) => {
     return res.fail('Unauthorized: Only managers or the assigned employee can update this deal', 403);
   }
 
+  const updates = { ...(req.body || {}) };
+  if (updates.assigned_to && !updates.assigned_to_model) {
+    updates.assigned_to_model = (await resolveAssigneeModel(req.user.company_id, updates.assigned_to)) || 'User';
+  }
+
   const deal = await Deal.findOneAndUpdate(
     { _id: req.params.id, company_id: req.user.company_id },
-    req.body,
+    updates,
     { new: true }
   );
 
@@ -183,6 +214,7 @@ exports.updateDeal = asyncHandler(async (req, res) => {
       await logActivity({
         company_id: req.user.company_id,
         user_id: req.user.id,
+        user_model: getAuthUserModelName(req),
         type: 'Deal Won',
         description: `Deal WON: ${deal.name}`,
         related_to: deal._id,
@@ -207,6 +239,7 @@ exports.updateDeal = asyncHandler(async (req, res) => {
     await DealHistory.create({
       deal_id: deal._id,
       user_id: req.user.id,
+      user_id_model: getAuthUserModelName(req),
       action: 'updated',
       field: change.field,
       old_value: change.old,
@@ -217,7 +250,8 @@ exports.updateDeal = asyncHandler(async (req, res) => {
 
   // Handle reassignment notification
   if (req.body.assigned_to && req.body.assigned_to.toString() !== (oldDeal.assigned_to?.toString())) {
-    await createAssignmentNotification(deal, req.body.assigned_to, req.user.company_id);
+    const nextModel = updates.assigned_to_model || (await resolveAssigneeModel(req.user.company_id, req.body.assigned_to)) || 'User';
+    await createAssignmentNotification(deal, req.body.assigned_to, req.user.company_id, nextModel);
   }
 
   const populated = await Deal.findById(deal._id).populate('customer_id', 'name email').populate('assigned_to', 'name email');

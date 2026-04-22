@@ -10,7 +10,8 @@ const SystemSettingsSchema = new mongoose.Schema(
         isActive: { type: Boolean, default: true },
         isDeleted: { type: Boolean, default: false },
         deletedAt: { type: Date },
-        deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+        deletedBy: { type: mongoose.Schema.Types.ObjectId, refPath: 'deletedByModel' },
+        deletedByModel: { type: String, enum: ['User', 'DemoUser'], default: 'User' }
       }
     ],
     leadStatuses: [
@@ -23,7 +24,8 @@ const SystemSettingsSchema = new mongoose.Schema(
         isSystem: { type: Boolean, default: false },
         isDeleted: { type: Boolean, default: false },
         deletedAt: { type: Date },
-        deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+        deletedBy: { type: mongoose.Schema.Types.ObjectId, refPath: 'deletedByModel' },
+        deletedByModel: { type: String, enum: ['User', 'DemoUser'], default: 'User' }
       }
     ]
   },

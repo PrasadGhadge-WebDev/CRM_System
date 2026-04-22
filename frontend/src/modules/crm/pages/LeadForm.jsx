@@ -539,7 +539,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                 onChange={e => handleChange('lastContactDate', e.target.value)}
               />
             </Field>
-            <Field label="Next Follow-up Date" error={fieldErrors.followUpDate}>
+            <Field label="Next Follow-up" error={fieldErrors.followUpDate}>
               <input
                 className={`lf-input ${fieldErrors.followUpDate ? 'lf-input-error' : ''}`}
                 type="date"

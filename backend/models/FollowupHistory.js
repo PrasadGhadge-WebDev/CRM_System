@@ -13,7 +13,8 @@ const FollowupHistorySchema = new mongoose.Schema(
     reminder: { type: Boolean, default: false },
     reminderTime: { type: String, trim: true },
     isDone: { type: Boolean, default: false },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, refPath: 'createdByModel', index: true },
+    createdByModel: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
   },
   { timestamps: { createdAt: 'createdAt', updatedAt: false } },
 );
@@ -21,4 +22,3 @@ const FollowupHistorySchema = new mongoose.Schema(
 withIdTransform(FollowupHistorySchema);
 
 module.exports = mongoose.model('FollowupHistory', FollowupHistorySchema);
-

@@ -16,7 +16,8 @@ const DealSchema = new mongoose.Schema(
       index: true 
     },
     expected_close_date: { type: Date, index: true },
-    assigned_to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+    assigned_to: { type: mongoose.Schema.Types.ObjectId, refPath: 'assigned_to_model', index: true },
+    assigned_to_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
     description: { type: String, trim: true },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
