@@ -1,20 +1,20 @@
-import { api } from './api'
+import { api } from './api.js'
 
 export const demoUsersApi = {
-  list: async (params) => {
-    const { data } = await api.get('/api/demo-users', { params })
-    return data.data
+  async list(params = {}) {
+    const data = await api.get('/api/demo/users', { params })
+    return data
   },
-  get: async (id) => {
-    const { data } = await api.get(`/api/demo-users/${id}`)
-    return data.data
+  async get(id) {
+    const data = await api.get(`/api/demo-users/${id}`)
+    return data
   },
-  remove: async (id) => {
-    const { data } = await api.delete(`/api/demo-users/${id}`)
-    return data.data
+  async remove(id) {
+    const data = await api.delete(`/api/demo-users/${id}`)
+    return data
   },
-  convert: async (id) => {
-    const { data } = await api.post(`/api/demo-users/${id}/convert`)
-    return data.data
-  }
+  async convert(id) {
+    const data = await api.post(`/api/demo-users/${id}/convert`)
+    return data
+  },
 }

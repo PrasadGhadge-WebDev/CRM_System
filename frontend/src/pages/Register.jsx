@@ -85,15 +85,8 @@ export default function Register() {
       const result = await register(formData)
 
       if (result.success) {
-        const successMessage = 'Workspace ready! Redirecting to dashboard...'
-        setSuccess(successMessage)
-        setFormData({
-          fullName: '',
-          email: '',
-          phone: '',
-          password: '',
-        })
-        setTimeout(() => navigate('/dashboard'), 1000)
+        toast.success('Registration successful! Redirecting to dashboard...')
+        setTimeout(() => navigate('/dashboard'), 1500)
       } else {
         setError(result.message || 'Failed to register')
       }

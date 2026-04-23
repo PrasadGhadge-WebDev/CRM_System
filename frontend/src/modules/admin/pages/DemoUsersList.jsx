@@ -72,6 +72,8 @@ export default function DemoUsersList() {
         ...(debouncedQ.trim() ? { q: debouncedQ.trim() } : null),
         page,
         limit,
+        sortField: 'created_at',
+        sortOrder: 'desc',
       })
       .then((res) => {
         if (canceled) return
@@ -197,7 +199,7 @@ export default function DemoUsersList() {
                       <td>
                         <div className={`badge-modern success`}>
                           <span className="badge-dot"></span>
-                          Active
+                          Approved
                         </div>
                       </td>
                       <td className="tablet-hide">

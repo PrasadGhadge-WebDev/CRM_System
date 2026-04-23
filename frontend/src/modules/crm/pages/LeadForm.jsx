@@ -246,17 +246,15 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
       errors.pincode = 'Must be exactly 6 digits'
     }
  
-    // dealAmount: Required, Must be positive
-    if (!model.dealAmount) {
-      errors.dealAmount = 'Deal Amount is required'
-    } else if (Number(model.dealAmount) < 0) {
+    // dealAmount: Optional, must be positive if provided
+    if (model.dealAmount && Number(model.dealAmount) < 0) {
       errors.dealAmount = 'Deal Amount cannot be negative'
     }
  
     if (!model.source) errors.source = 'Lead Source is required'
     if (!model.status) errors.status = 'Lead Status is required'
     // Assignee is optional for Admin/Manager (server can auto-assign); hidden for Employees
-    if (!model.notes || !model.notes.trim()) errors.notes = 'Notes are required'
+    // Notes are now optional
  
     // Follow-up date >= today
     if (model.followUpDate) {
@@ -483,7 +481,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                 <option value="Cold">❄️ Cold</option>
               </select>
             </Field>
-            <Field label="Deal Amount (₹)" required error={fieldErrors.dealAmount}>
+            <Field label="Deal Amount (₹)" error={fieldErrors.dealAmount}>
                <input
                  className={`lf-input ${fieldErrors.dealAmount ? 'lf-input-error' : ''}`}
                  type="number"
@@ -509,7 +507,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                   </select>
                 </Field>
               )}
-             <Field label="Notes" required error={fieldErrors.notes} span2>
+             <Field label="Notes" error={fieldErrors.notes} span2>
                <textarea
                  className={`lf-textarea ${fieldErrors.notes ? 'lf-input-error' : ''}`}
                  rows={3}

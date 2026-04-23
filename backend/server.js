@@ -34,8 +34,10 @@ app.get('/health', (_req, res) => res.ok({ status: 'UP' }));
 
 app.use('/api', requireDb);
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/demo', require('./routes/demo'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/demo-users', require('./routes/demoUsers'));
+app.use('/api/admin-actions', require('./routes/adminActions'));
 app.use('/api/metrics', require('./routes/metrics'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/leads', require('./routes/leads'));
@@ -59,8 +61,13 @@ app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
+const server = require('http').createServer(app);
 
-app.listen(PORT, () => {
+// Initialize Socket.io
+const socketUtil = require('./utils/socket');
+socketUtil.init(server);
+
+server.listen(PORT, () => {
   logger.info(`API listening on http://localhost:${PORT}`);
 });
 
@@ -87,3 +94,4 @@ async function connectWithRetry() {
 connectWithRetry();
 
 // force reload
+// force reload 2

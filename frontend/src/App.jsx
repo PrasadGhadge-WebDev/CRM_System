@@ -41,6 +41,7 @@ import Onboarding from './pages/Onboarding.jsx'
 import Profile from './pages/Profile.jsx'
 
 import { AuthProvider } from './context/AuthContext'
+import { NotificationProvider } from './context/NotificationContext'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import { ROLE_GROUPS, NAV_ACCESS } from './utils/accessControl'
 import LandingPage from './pages/LandingPage.jsx'
@@ -60,9 +61,10 @@ const Home = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <ScrollToTop />
-      <EnterToNextField />
-      <Routes>
+      <NotificationProvider>
+        <ScrollToTop />
+        <EnterToNextField />
+        <Routes>
         {/* Public & Auth Routes (Centralized Header) */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
@@ -183,19 +185,20 @@ export default function App() {
           <Route path="/trash" element={<TrashList />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="colored"
-      />
+        </Routes>
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="colored"
+        />
+      </NotificationProvider>
     </AuthProvider>
   )
 }

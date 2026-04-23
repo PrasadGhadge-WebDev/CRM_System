@@ -171,6 +171,7 @@ export default function FollowupsModule() {
                   <option value="Call">Call</option>
                   <option value="Meeting">Meeting</option>
                   <option value="Email">Email</option>
+                  <option value="Demo">Demo</option>
                   <option value="WhatsApp">WhatsApp</option>
                 </select>
                 <select className="glass-select-mini" value={fuStatus} onChange={e => { setFuStatus(e.target.value); setFuPage(1); }}>

@@ -9,7 +9,7 @@ import { leadsApi } from '../../../services/leads.js'
 import { statusesApi } from '../../../services/statuses.js'
 import { confirmToast } from '../../../utils/confirmToast.jsx'
 import { useToastFeedback } from '../../../utils/useToastFeedback.js'
-import QuickLeadFollowupModal from '../components/QuickLeadFollowupModal.jsx'
+import FollowupModal from '../../../components/FollowupModal.jsx'
 
 function displayValue(value, fallback = '—') {
   const text = String(value ?? '').trim()
@@ -63,6 +63,7 @@ export default function LeadDetail() {
 
   const [isFollowupOpen, setIsFollowupOpen] = useState(false)
   const [followupLead, setFollowupLead] = useState(null)
+  const [converting, setConverting] = useState(false)
 
   useToastFeedback({ error })
 
@@ -161,6 +162,38 @@ export default function LeadDetail() {
     setIsFollowupOpen(true)
   }
 
+  async function onConvert() {
+    if (!lead) return
+    if (!canEdit) return toast.error('You do not have permission to convert this lead')
+
+    const confirmed = await confirmToast('Convert this lead to a Customer profile?', {
+      confirmLabel: 'Convert',
+      type: 'primary',
+    })
+    if (!confirmed) return
+
+    setConverting(true)
+    try {
+      const updated = await leadsApi.updateStatus(id, 'Converted')
+      setLead(updated)
+      toast.success('Lead converted successfully')
+
+      const customerId =
+        updated?.convertedCustomerId?.id ||
+        updated?.convertedCustomerId?._id ||
+        updated?.convertedCustomerId
+
+      // Employees often don't have Customers permission, so avoid hard navigation for them.
+      if (customerId && currentUser?.role !== 'Employee') {
+        navigate(`/customers/${customerId}`)
+      }
+    } catch (e) {
+      setError(e.message || 'Conversion failed')
+    } finally {
+      setConverting(false)
+    }
+  }
+
   const handleFollowupSaved = (updatedLead) => {
     if (!updatedLead) return
     setLead((prev) => {
@@ -191,6 +224,8 @@ export default function LeadDetail() {
 
   if (!lead) return <div className="muted center padding40">Lead not found.</div>
 
+  const isConverted = String(lead?.status || '').toLowerCase() === 'converted'
+
   return (
     <div className="stack gap-32 lead-profile-container">
       <PageHeader
@@ -202,6 +237,12 @@ export default function LeadDetail() {
               <Icon name="phone" />
               <span>Follow-up</span>
             </button>
+            {canEdit && !isConverted ? (
+              <button className="btn-premium action-info" type="button" onClick={onConvert} disabled={converting}>
+                <Icon name="check" />
+                <span>{converting ? 'Converting...' : 'Convert'}</span>
+              </button>
+            ) : null}
             {canEdit ? (
               <Link className="btn-premium action-secondary" to={`/leads/${lead.id || lead._id}/edit`}>
                 <Icon name="edit" />
@@ -468,15 +509,14 @@ export default function LeadDetail() {
         </aside>
       </div>
 
-      <QuickLeadFollowupModal
+      <FollowupModal
         isOpen={isFollowupOpen}
         lead={followupLead}
-        initialLastContactDate={new Date().toISOString().split('T')[0]}
         onClose={() => {
           setIsFollowupOpen(false)
           setFollowupLead(null)
         }}
-        onSaved={handleFollowupSaved}
+        onSave={handleFollowupSaved}
       />
 
       <style>{`

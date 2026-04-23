@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const DemoUser = require('../models/DemoUser');
@@ -6,6 +7,7 @@ const Role = require('../models/Role');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { ensureDefaultAdmin, getDefaultAdminEmail } = require('../utils/defaultAdmin');
 const { seedDemoData } = require('../utils/demoDataSeeder');
+const notifier = require('../utils/notifier');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\d{10}$/;
@@ -273,6 +275,11 @@ exports.register = asyncHandler(async (req, res, next) => {
 
     // 2. Create the Demo User linked to this company
     console.log('[Registration] Creating demo user linked to company:', company._id);
+    
+    // Generate secure approval token
+    const approvalToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+
     const user = await DemoUser.create({
       username,
       name: values.name,
@@ -285,6 +292,8 @@ exports.register = asyncHandler(async (req, res, next) => {
       is_trial: true,
       is_demo: true,
       trial_ends_at: trialEndsAt,
+      approval_token: approvalToken,
+      approval_token_expires: tokenExpires,
     });
 
     // 3. Create Default System Roles for the company
@@ -295,11 +304,21 @@ exports.register = asyncHandler(async (req, res, next) => {
     console.log('[Registration] Seeding demo data for company:', company._id);
     await seedDemoData(company._id, user._id, 'DemoUser');
 
-    // 4. Return token for direct login
-    console.log('[Registration] Success for user:', user.email);
-    const roleData = await Role.findOne({ company_id: company._id, name: values.role });
-    const permissions = roleData ? roleData.permissions : [];
-    sendTokenResponse(user, 201, res, permissions);
+    // 5. Notify System Admin with Instant Alert
+    try {
+      console.log('[Registration] Sending instant admin alert...');
+      await notifier.sendInstantRegistrationAlert(user, company.company_name);
+
+      const title = 'New Instant Demo Registration';
+      const message = `A new demo user ${user.name} (${user.email}) has registered and received auto-approval.`;
+      await notifier.notifyAdmin({ title, message });
+    } catch (notifErr) {
+      console.error('[Registration] Failed to send admin notifications:', notifErr);
+    }
+
+    // 6. Return success with token (Log them in immediately)
+    console.log('[Registration] Auto-approved and logging in:', user.email);
+    return sendTokenResponse(user, 201, res);
   } catch (error) {
     console.error('[Registration] Critical error:', error);
     

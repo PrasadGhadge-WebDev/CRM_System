@@ -3,6 +3,21 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const Lead = require('../models/Lead');
 const FollowupHistory = require('../models/FollowupHistory');
 const Activity = require('../models/Activity');
+const User = require('../models/User');
+const DemoUser = require('../models/DemoUser');
+
+async function findActiveCompanyUserById(companyId, userId) {
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) return null;
+
+  const query = { _id: userId, company_id: companyId, status: 'active' };
+  const user = await User.findOne(query).select('_id');
+  if (user) return { model: 'User', user };
+
+  const demoUser = await DemoUser.findOne(query).select('_id');
+  if (demoUser) return { model: 'DemoUser', user: demoUser };
+
+  return null;
+}
 
 exports.createFollowup = asyncHandler(async (req, res) => {
   const { 
@@ -12,8 +27,12 @@ exports.createFollowup = asyncHandler(async (req, res) => {
     note,
     status,
     followupType,
+    assignedTo,
+    priority,
+    statusAfterCall,
     reminder,
     reminderTime,
+    reminderOffsets,
     isDone
   } = req.body || {};
 
@@ -58,6 +77,18 @@ exports.createFollowup = asyncHandler(async (req, res) => {
   if (!lead) {
     return res.fail('Lead not found', 404);
   }
+  const requestedAssignee = assignedTo || lead.assignedTo || req.user._id;
+  const resolvedAssignee = await findActiveCompanyUserById(req.user.company_id, requestedAssignee);
+  if (!resolvedAssignee) {
+    return res.fail('Assigned user not found or inactive', 404);
+  }
+
+  const validOutcomes = ['Converted', 'Not Interested', 'Call Later', 'Wrong Number', 'Demo Scheduled', 'Negotiation'];
+  const resolvedStatusAfterCall = validOutcomes.includes(statusAfterCall) ? statusAfterCall : 'Call Later';
+  const validReminderOffsets = ['15m', '1h'];
+  const resolvedReminderOffsets = Array.isArray(reminderOffsets)
+    ? reminderOffsets.filter((item) => validReminderOffsets.includes(item))
+    : [];
 
   const updatedLead = await Lead.findOneAndUpdate(
     { _id: leadId, company_id: req.user.company_id },
@@ -74,6 +105,13 @@ exports.createFollowup = asyncHandler(async (req, res) => {
           nextFollowupDate: nextDate,
           status,
           followupType,
+          assignedTo: resolvedAssignee.user._id,
+          assignedToModel: resolvedAssignee.model,
+          priority: priority || undefined,
+          statusAfterCall: resolvedStatusAfterCall,
+          reminder: !!reminder,
+          reminderTime: reminder ? reminderTime : '',
+          reminderOffsets: resolvedReminderOffsets,
           isDone: !!isDone
         },
       },
@@ -89,30 +127,37 @@ exports.createFollowup = asyncHandler(async (req, res) => {
     note: note || '',
     status,
     followupType,
+    assignedTo: resolvedAssignee.user._id,
+    assignedToModel: resolvedAssignee.model,
+    priority: priority || undefined,
+    statusAfterCall: resolvedStatusAfterCall,
     reminder: !!reminder,
     reminderTime,
+    reminderOffsets: resolvedReminderOffsets,
     isDone: !!isDone,
     createdBy: req.user._id,
   });
 
   // Create an Activity for notifications / reminders
-  const validModes = ['Call', 'Meeting', 'Email', 'WhatsApp'];
+  const validModes = ['Call', 'Meeting', 'Email', 'WhatsApp', 'Demo'];
   const resolvedFollowupMode = validModes.includes(followupType) ? followupType : 'Other';
 
   await Activity.create({
       activity_type: 'follow-up',
       description: note || `Follow-up for ${updatedLead.name}`,
       follow_up_mode: resolvedFollowupMode,
+      follow_up_priority: priority || undefined,
+      status_after_call: resolvedStatusAfterCall,
       related_to: leadId,
       related_type: 'Lead',
       due_date: nextDate,
       reminder_required: !!reminder,
       company_id: req.user.company_id,
       created_by: req.user._id,
-      assigned_to: lead.assignedTo || req.user._id,
+      assigned_to: resolvedAssignee.user._id,
+      assigned_to_model: resolvedAssignee.model,
       status: isDone ? 'completed' : 'planned'
   });
 
   return res.created({ lead: updatedLead, followup }, 'Follow-up saved successfully');
 });
-

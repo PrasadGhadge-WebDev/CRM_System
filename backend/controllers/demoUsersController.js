@@ -22,8 +22,10 @@ exports.listDemoUsers = asyncHandler(async (req, res) => {
   const sort = { [sortField]: sortOrder === 'desc' ? -1 : 1 };
 
   const filter = {};
-  filter.company_id = req.user.company_id;
   
+  // Note: We deliberately do NOT filter DemoUsers by company_id because DemoUsers
+  // are generated via the landing page, each creating an isolated company.
+  // The system admin needs to see ALL demo users across the platform.
   if (q) {
     const search = { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
     filter.$or = [{ name: search }, { username: search }, { email: search }];
@@ -38,6 +40,14 @@ exports.listDemoUsers = asyncHandler(async (req, res) => {
   ]);
 
   res.ok({ items, page: pageNum, limit: limitNum, total });
+});
+
+// @desc    Get total demo users count
+// @route   GET /api/demo-users/count
+// @access  Private/Admin
+exports.countDemoUsers = asyncHandler(async (req, res) => {
+  const total = await DemoUser.countDocuments({});
+  res.ok({ count: total });
 });
 
 // @desc    Get single demo user

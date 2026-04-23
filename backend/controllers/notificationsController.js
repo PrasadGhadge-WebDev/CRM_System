@@ -1,55 +1,66 @@
 const Notification = require('../models/Notification');
-const { moveDocumentToTrash } = require('../utils/trash');
 const { asyncHandler } = require('../middleware/asyncHandler');
+const mongoose = require('mongoose');
 
-exports.listNotifications = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 50 } = req.query;
+exports.listNotifications = asyncHandler(async (req, res, next) => {
+  const { page = 1, limit = 20, unreadOnly = false } = req.query;
+  
+  const query = { 
+    user_id: new mongoose.Types.ObjectId(req.user.id),
+    isDeleted: { $ne: true }
+  };
+  
+  if (unreadOnly === 'true') {
+    query.is_read = false;
+  }
 
-  const pageNum = Math.max(1, Number(page) || 1);
-  const limitNum = Math.min(100, Math.max(1, Number(limit) || 20));
+  const items = await Notification.find(query)
+    .sort({ created_at: -1 })
+    .skip((page - 1) * limit)
+    .limit(Number(limit));
 
-  const filter = { company_id: req.user.company_id, user_id: req.user.id };
+  const total = await Notification.countDocuments(query);
+  const unreadCount = await Notification.countDocuments({ ...query, is_read: false });
 
-  const [items, total] = await Promise.all([
-    Notification.find(filter)
-      .sort({ created_at: -1 })
-      .skip((pageNum - 1) * limitNum)
-      .limit(limitNum),
-    Notification.countDocuments(filter),
-  ]);
-
-  res.ok({ items, total, page: pageNum, limit: limitNum });
+  res.ok({
+    items,
+    total,
+    unreadCount,
+    page: Number(page),
+    limit: Number(limit)
+  });
 });
 
-exports.markAsRead = asyncHandler(async (req, res) => {
+exports.markAsRead = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
   const notification = await Notification.findOneAndUpdate(
-    { _id: req.params.id, company_id: req.user.company_id, user_id: req.user.id },
+    { _id: id, user_id: req.user.id },
     { is_read: true },
     { new: true }
   );
+
   if (!notification) {
     return res.fail('Notification not found', 404);
   }
+
   res.ok(notification);
 });
 
-exports.markAllAsRead = asyncHandler(async (req, res) => {
+exports.markAllAsRead = asyncHandler(async (req, res, next) => {
   await Notification.updateMany(
-    { company_id: req.user.company_id, user_id: req.user.id, is_read: false },
+    { user_id: req.user.id, is_read: false },
     { is_read: true }
   );
-  res.ok(null, 'All marked as read');
+
+  res.ok(null, 'All notifications marked as read');
 });
 
-exports.deleteNotification = asyncHandler(async (req, res) => {
-  const notification = await Notification.findOne({
-    _id: req.params.id,
-    company_id: req.user.company_id,
+exports.getUnreadCount = asyncHandler(async (req, res, next) => {
+  const count = await Notification.countDocuments({
     user_id: req.user.id,
+    is_read: false,
+    isDeleted: { $ne: true }
   });
-  if (!notification) {
-    return res.fail('Notification not found', 404);
-  }
-  await moveDocumentToTrash({ entityType: 'notification', document: notification, deletedBy: req.user?.id });
-  res.ok(null, 'Notification moved to trash');
+  res.ok({ count });
 });

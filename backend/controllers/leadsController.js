@@ -6,7 +6,7 @@ const Counter = require('../models/Counter');
 const mongoose = require('mongoose');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { moveDocumentToTrash } = require('../utils/trash');
-const { notifyRoleUsers } = require('../utils/notifier');
+const { notifyRoleUsers, sendLeadAssignmentNotification } = require('../utils/notifier');
 const ExcelJS = require('exceljs');
 
 function getAuthUserModelName(req) {
@@ -466,6 +466,16 @@ exports.createLead = asyncHandler(async (req, res, next) => {
 
     const created = await Lead.create(payload);
 
+    // Notify assignee
+    if (created.assignedTo) {
+      await sendLeadAssignmentNotification({
+        lead: created,
+        assignee_id: created.assignedTo,
+        assignee_model: created.assignedToModel,
+        assigner_name: req.user.name
+      }).catch(err => console.error('Failed to notify assignee:', err));
+    }
+
     const { logActivity } = require('../utils/activityLogger');
     await logActivity({
       company_id: req.user.company_id,
@@ -578,7 +588,6 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       await notifyAccountantsOfConversion(req.user.company_id, lead);
       return res.ok(lead, 'Lead converted to Customer profile successfully');
     }
-
     const oldLead = await Lead.findOne({ _id: id, company_id: req.user.company_id });
     if (!oldLead) return res.fail('Lead not found', 404);
 
@@ -602,6 +611,17 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       payload,
       { new: true, runValidators: true }
     );
+
+    // Notify if assignment changed
+    if (updated && payload.assignedTo && String(payload.assignedTo) !== String(oldLead.assignedTo)) {
+      await sendLeadAssignmentNotification({
+        lead: updated,
+        assignee_id: updated.assignedTo,
+        assignee_model: updated.assignedToModel,
+        assigner_name: req.user.name
+      }).catch(err => console.error('Failed to notify assignee:', err));
+    }
+
 
     if (updated && status && status !== oldLead.status) {
       const { logActivity } = require('../utils/activityLogger');
@@ -880,49 +900,114 @@ exports.bulkDeleteLeads = asyncHandler(async (req, res, next) => {
 exports.updateFollowup = asyncHandler(async (req, res, next) => {
 
   const { id } = req.params;
-  const { mode, status, nextFollowupDate, note, requestId } = req.body;
+  const {
+    mode,
+    status,
+    nextFollowupDate,
+    note,
+    requestId,
+    followupDate,
+    followupTime,
+    followupType,
+    assignedTo,
+    priority,
+    statusAfterCall,
+    reminder,
+    reminderTime,
+    reminderOffsets,
+    expectedClosingDate
+  } = req.body || {};
 
-  if (!nextFollowupDate && status === 'planned') {
+  const usesExtendedPayload =
+    followupDate !== undefined ||
+    followupTime !== undefined ||
+    followupType !== undefined ||
+    assignedTo !== undefined ||
+    statusAfterCall !== undefined ||
+    priority !== undefined ||
+    reminder !== undefined;
+
+  if (usesExtendedPayload) {
+    if (!followupDate) return res.fail('Follow-up date is required', 400);
+    if (!followupTime) return res.fail('Follow-up time is required', 400);
+    if (!followupType) return res.fail('Follow-up type is required', 400);
+    if (!assignedTo) return res.fail('Assigned To is required', 400);
+    if (!statusAfterCall) return res.fail('Status After Call is required', 400);
+  } else if (!nextFollowupDate && status === 'planned') {
     return res.fail('Next follow-up date is required for planned follow-ups', 400);
   }
 
-  // 1. Start MongoDB session for transaction
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     // 2. Fetch Lead with Idempotency & Concurrency Lock
-    const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id }).session(session);
+    const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id });
     if (!lead) {
-      await session.abortTransaction();
       return res.fail('Lead not found', 404);
     }
 
     // Idempotency Check
     if (requestId && lead.lastRequestId === requestId) {
-      await session.commitTransaction();
       return res.ok(lead, 'Request already processed (Idempotency)');
     }
 
     // Concurrency Lock Check (Simple flag-based lock for this demo)
     if (lead.followupLock) {
-      await session.abortTransaction();
       return res.fail('Another follow-up update is in progress for this lead', 409);
     }
 
     // Set Lock
     lead.followupLock = true;
     lead.lastRequestId = requestId;
-    await lead.save({ session });
+    await lead.save();
 
     // 3. Validation: No past dates for planned follow-ups
     const now = new Date();
-    const targetDate = new Date(nextFollowupDate);
-    if (status === 'planned' && targetDate < now) {
+    const requestedFollowupType = followupType || mode || 'Call';
+    const validFollowupTypes = ['Call', 'Meeting', 'Email', 'Task', 'Demo', 'WhatsApp'];
+    const resolvedFollowupType = validFollowupTypes.includes(requestedFollowupType) ? requestedFollowupType : 'Call';
+    const resolvedPriority = priority || null;
+    const requestedStatusAfterCall = statusAfterCall || 'Call Later';
+    const validStatusAfterCall = ['Converted', 'Interested', 'Not Interested', 'Call Later', 'Wrong Number', 'No Response', 'Demo Scheduled', 'Negotiation'];
+    const resolvedStatusAfterCall = validStatusAfterCall.includes(requestedStatusAfterCall) ? requestedStatusAfterCall : 'Call Later';
+    const resolvedReminder = Boolean(reminder);
+    const resolvedReminderTime = resolvedReminder ? String(reminderTime || '').trim() : '';
+    const validReminderOffsets = ['15m', '30m', '1h', '1d'];
+    const resolvedReminderOffsets = Array.isArray(reminderOffsets)
+      ? reminderOffsets.filter((item) => validReminderOffsets.includes(item))
+      : [];
+    const resolvedStatus = usesExtendedPayload ? 'planned' : (status || 'planned');
+    const rawTargetDate = followupDate && followupTime ? `${followupDate}T${followupTime}` : nextFollowupDate;
+    const targetDate = new Date(rawTargetDate);
+
+    if (Number.isNaN(targetDate.getTime())) {
       lead.followupLock = false;
-      await lead.save({ session });
-      await session.abortTransaction();
+      await lead.save();
+      return res.fail('Invalid follow-up date/time', 400);
+    }
+
+    if (targetDate < now) {
+      lead.followupLock = false;
+      await lead.save();
       return res.fail('Cannot schedule a planned follow-up in the past', 400);
+    }
+
+    const resolvedAssigneeId = normalizeObjectId(assignedTo) || normalizeObjectId(lead.assignedTo) || normalizeObjectId(req.user.id);
+    if (!resolvedAssigneeId || !mongoose.Types.ObjectId.isValid(resolvedAssigneeId)) {
+      lead.followupLock = false;
+      await lead.save();
+      return res.fail('Assigned To is invalid', 400);
+    }
+
+    const resolvedAssignee = await findActiveCompanyUserById(req.user.company_id, resolvedAssigneeId);
+    if (!resolvedAssignee) {
+      lead.followupLock = false;
+      await lead.save();
+      return res.fail('Assigned user not found or inactive', 404);
+    }
+
+    if (req.user?.role === 'Employee' && String(resolvedAssignee.user._id) !== String(req.user.id)) {
+      lead.followupLock = false;
+      await lead.save();
+      return res.fail('Employees can only assign follow-ups to themselves', 403);
     }
 
     // 4. Cleanup: Mark existing "planned" follow-ups as "skipped"
@@ -941,49 +1026,73 @@ exports.updateFollowup = asyncHandler(async (req, res, next) => {
       date: now,
       note: note || '',
       nextFollowupDate: targetDate,
-      status: status || 'planned',
-      followupType: mode || 'Call',
-      isDone: status !== 'planned'
+      status: resolvedStatus,
+      followupType: resolvedFollowupType,
+      assignedTo: resolvedAssignee.user._id,
+      assignedToModel: resolvedAssignee.model,
+      priority: resolvedPriority || undefined,
+      statusAfterCall: resolvedStatusAfterCall,
+      reminder: resolvedReminder,
+      reminderTime: resolvedReminderTime,
+      reminderOffsets: resolvedReminderOffsets,
+      isDone: resolvedStatus !== 'planned'
     };
     lead.followupHistory.push(newFollowup);
 
     // 6. Lead Level Sync
-    lead.nextFollowupDate = status === 'planned' ? targetDate : null;
+    lead.nextFollowupDate = resolvedStatus === 'planned' ? targetDate : null;
     lead.followupNote = note || '';
-    if (status === 'completed') {
-      lead.lastContactDate = now;
-      lead.status = 'Contacted'; // Advance status if completed
-    }
+    lead.lastContactDate = now;
+    if (expectedClosingDate) lead.expectedClosingDate = new Date(expectedClosingDate);
 
     // Release Lock
     lead.followupLock = false;
-    await lead.save({ session });
+    await lead.save();
 
     // 7. Sync Activity Log
     const Activity = require('../models/Activity');
-    await Activity.create([{
+    await Activity.create({
       company_id: req.user.company_id,
       activity_type: 'follow-up',
-      follow_up_mode: mode || 'Call',
-      description: `[Unified Follow-up] Status: ${status}. Note: ${note || 'No notes'}`,
+      follow_up_mode: resolvedFollowupType,
+      follow_up_priority: resolvedPriority || undefined,
+      status_after_call: resolvedStatusAfterCall,
+      description: `[Follow-up] Type: ${resolvedFollowupType}. Outcome: ${resolvedStatusAfterCall}. Note: ${note || 'No notes'}`,
       related_to: lead._id,
       related_type: 'Lead',
       activity_date: now,
       due_date: targetDate,
-      status: status === 'planned' ? 'planned' : 'completed',
-      assigned_to: lead.assignedTo,
-      created_by: req.user.id
-    }], { session });
+      status: resolvedStatus === 'planned' ? 'planned' : 'completed',
+      reminder_required: resolvedReminder,
+      assigned_to: resolvedAssignee.user._id,
+      assigned_to_model: resolvedAssignee.model,
+      created_by: req.user.id,
+      created_by_model: getAuthUserModelName(req)
+    });
 
-    // 8. Commit Transaction
-    await session.commitTransaction();
+    // 8. Sync Lead status with outcome (and convert to Customer when needed)
+    // This matches the expected flow: follow-up -> outcome -> lead status changes.
+    if (resolvedStatusAfterCall === 'Converted' && lead.status !== 'Converted') {
+      const { performLeadConversion } = require('../utils/leadConversion');
+      await performLeadConversion(id, req.user.company_id, req.user.id, getAuthUserModelName(req));
+
+      const updatedLead = await Lead.findOne({ _id: id, company_id: req.user.company_id })
+        .populate('assignedTo', 'name email')
+        .populate('convertedCustomerId', 'customer_id name phone status created_at total_purchase_amount');
+
+      return res.ok(updatedLead, 'Lead converted to Customer profile successfully');
+    }
+
+    if (lead.status !== 'Converted' && lead.status !== resolvedStatusAfterCall) {
+      lead.status = resolvedStatusAfterCall;
+      lead.lastActivityAt = now;
+      await lead.save();
+    }
+
     res.ok(lead, 'Follow-up saved successfully');
 
   } catch (error) {
-    await session.abortTransaction();
-    console.error('Follow-up Transaction Error:', error);
-    res.fail(error.message || 'Error processing follow-up transaction', 500);
-  } finally {
-    session.endSession();
+    console.error('Follow-up Update Error:', error);
+    res.fail(error.message || 'Error processing follow-up update', 500);
   }
 });

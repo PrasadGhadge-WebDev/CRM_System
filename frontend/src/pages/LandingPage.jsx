@@ -37,6 +37,23 @@ const LandingPage = () => {
     <div className="landing-container">
       <LandingHero handleDemoLogin={handleDemoLogin} />
 
+      <section className="landing-demo-register">
+        <div className="landing-demo-register-inner">
+          <div className="landing-demo-register-copy">
+            <span className="feature-minititle">Live Demo Access</span>
+            <h2 className="section-title">Start Demo</h2>
+            <p className="text-muted">
+              Open the live demo in one click.
+            </p>
+          </div>
+          <div className="landing-demo-register-action">
+            <button className="btn-primary-landing" type="button" onClick={handleDemoLogin}>
+              Demo
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* <section id="stats" className="landing-stats">
         <div className="stats-container">
           <div className="stat-item">

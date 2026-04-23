@@ -53,6 +53,11 @@ const demoUserSchema = new mongoose.Schema(
       maxlength: [15, 'Phone number cannot exceed 15 digits'],
       match: [/^\+?\d{10,14}$/, 'Please add a valid phone number with optional country code'],
     },
+    company_name: {
+      type: String,
+      trim: true,
+      maxlength: [120, 'Company name cannot exceed 120 characters'],
+    },
     is_profile_complete: {
       type: Boolean,
       default: false,
@@ -116,6 +121,14 @@ const demoUserSchema = new mongoose.Schema(
     date_of_birth: {
       type: Date,
     },
+    approval_token: {
+      type: String,
+      select: false,
+    },
+    approval_token_expires: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
@@ -137,4 +150,3 @@ demoUserSchema.methods.matchPassword = async function (enteredPassword) {
 withIdTransform(demoUserSchema);
 
 module.exports = mongoose.model('DemoUser', demoUserSchema, 'demo_users');
-

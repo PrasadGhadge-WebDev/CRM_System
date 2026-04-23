@@ -8,6 +8,7 @@ const router = express.Router();
 router.use(protect);
 router.use(authorize('Admin'));
 
+router.get('/count', controller.countDemoUsers);
 router.get('/', controller.listDemoUsers);
 router.get('/:id', validateObjectId('id'), controller.getDemoUser);
 router.delete('/:id', validateObjectId('id'), controller.deleteDemoUser);

@@ -15,7 +15,7 @@ const LeadSchema = new mongoose.Schema(
     source: { type: String, required: true, trim: true, index: true }, // Can be name or ID from SystemSettings
     status: { type: String, required: true, trim: true, default: 'new', index: true }, // From SystemSettings
     priority: { type: String, enum: ['Hot', 'Warm', 'Cold'], default: 'Warm', index: true },
-    dealAmount: { type: Number, required: true, default: 0 },
+    dealAmount: { type: Number, default: 0 },
     currency: { type: String, default: 'INR' },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, refPath: 'assignedToModel', required: true, index: true },
     assignedToModel: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
@@ -25,13 +25,21 @@ const LeadSchema = new mongoose.Schema(
     lastContactDate: { type: Date },
     nextFollowupDate: { type: Date },
     followupNote: { type: String, trim: true },
+    expectedClosingDate: { type: Date },
     followupHistory: [{
       date: { type: Date, default: Date.now },
       note: { type: String, trim: true },
       lastContactDate: { type: Date },
       nextFollowupDate: { type: Date },
-      status: { type: String, enum: ['planned', 'completed', 'skipped'], default: 'planned' },
-      followupType: { type: String, enum: ['Call', 'Meeting', 'Email', 'Task'], default: 'Call' },
+      status: { type: String, enum: ['planned', 'completed', 'skipped', 'missed'], default: 'planned' },
+      followupType: { type: String, enum: ['Call', 'Meeting', 'Email', 'Task', 'Demo', 'WhatsApp'], default: 'Call' },
+      assignedTo: { type: mongoose.Schema.Types.ObjectId, refPath: 'assignedToModel' },
+      assignedToModel: { type: String, enum: ['User', 'DemoUser'], default: 'User' },
+      priority: { type: String, enum: ['High', 'Medium', 'Low'] },
+      statusAfterCall: { type: String, enum: ['Converted', 'Interested', 'Not Interested', 'Call Later', 'Wrong Number', 'No Response', 'Demo Scheduled', 'Negotiation'] },
+      reminder: { type: Boolean, default: false },
+      reminderTime: { type: String, trim: true },
+      reminderOffsets: [{ type: String, enum: ['15m', '30m', '1h', '1d'] }],
       isDone: { type: Boolean, default: false }
     }],
     followupLock: { type: Boolean, default: false }, // For transaction locking

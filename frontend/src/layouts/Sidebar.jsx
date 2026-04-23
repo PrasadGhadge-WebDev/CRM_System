@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { api } from '../services/api'
 import { Icon } from './icons.jsx'
 import { useAuth } from '../context/AuthContext'
 import { hasRequiredRole, hasPermission, NAV_ACCESS, ROLE_GROUPS } from '../utils/accessControl'
@@ -6,6 +8,26 @@ import { hasRequiredRole, hasPermission, NAV_ACCESS, ROLE_GROUPS } from '../util
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const [demoCount, setDemoCount] = useState(0)
+
+  useEffect(() => {
+    if (user?.role !== 'Admin') return;
+
+    const fetchDemoCount = async () => {
+      try {
+        const res = await api.get('/demo-users/count');
+        if (res.data?.success) {
+          setDemoCount(res.data.data.count || 0);
+        }
+      } catch (err) {
+        console.error('Failed to fetch demo users count:', err);
+      }
+    };
+
+    fetchDemoCount();
+    const interval = setInterval(fetchDemoCount, 30000); // Poll every 30s
+    return () => clearInterval(interval);
+  }, [user?.role]);
 
   function go(to) {
     navigate(to)
@@ -53,23 +75,12 @@ export default function Sidebar({ isOpen, onClose }) {
         </NavLink>
 
         {hasPermission(user, 'users') && (
-          <>
-            <NavLink className="navItem" to="/users" onClick={handleNavClick} title="User">
-              <span className="navIcon">
-                <Icon name="user" size={20} />
-              </span>
-              <span className="navText">User</span>
-            </NavLink>
-            
-            {user?.role === 'Admin' && (
-              <NavLink className="navItem" to="/demo-users" onClick={handleNavClick} title="Demo Users">
-                <span className="navIcon">
-                  <Icon name="users" size={20} />
-                </span>
-                <span className="navText">Demo Users</span>
-              </NavLink>
-            )}
-          </>
+          <NavLink className="navItem" to="/users" onClick={handleNavClick} title="Users">
+            <span className="navIcon">
+              <Icon name="user" size={20} />
+            </span>
+            <span className="navText">Users</span>
+          </NavLink>
         )}
 
         {hasPermission(user, 'leads') && (
@@ -108,14 +119,6 @@ export default function Sidebar({ isOpen, onClose }) {
           </NavLink>
         )}
 
-        {hasPermission(user, 'followups') && (
-          <NavLink className="navItem" to="/followups" onClick={handleNavClick} title="Follow-up">
-            <span className="navIcon">
-              <Icon name="activity" size={20} />
-            </span>
-            <span className="navText">Follow-up</span>
-          </NavLink>
-        )}
         {hasPermission(user, 'billing') && (
           <NavLink className="navItem" to="/billing" onClick={handleNavClick} title="Invoice">
             <span className="navIcon">
@@ -161,22 +164,29 @@ export default function Sidebar({ isOpen, onClose }) {
           </NavLink>
         )}
 
-        {hasRequiredRole(user?.role, ROLE_GROUPS.admins) && (
-          <>
-            <NavLink className="navItem" to="/filters" onClick={handleNavClick} title="Filters">
-              <span className="navIcon">
-                <Icon name="filter" size={20} />
-              </span>
-              <span className="navText">Filters</span>
-            </NavLink>
 
-            <NavLink className="navItem" to="/pagination" onClick={handleNavClick} title="Pagination">
-              <span className="navIcon">
-                <Icon name="reports" size={20} />
-              </span>
-              <span className="navText">Pagination</span>
-            </NavLink>
-          </>
+        {user?.role === 'Admin' && (
+          <NavLink className="navItem" to="/demo-users" onClick={handleNavClick} title="Demo Users">
+            <span className="navIcon">
+              <Icon name="users" size={20} />
+            </span>
+            <span className="navText">
+              Demo Users
+              {demoCount > 0 && (
+                <span style={{
+                  marginLeft: '8px',
+                  backgroundColor: 'var(--danger)',
+                  color: 'white',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  padding: '2px 6px',
+                  borderRadius: '10px'
+                }}>
+                  {demoCount}
+                </span>
+              )}
+            </span>
+          </NavLink>
         )}
 
       </div>

@@ -11,7 +11,9 @@ const ActivitySchema = new mongoose.Schema(
       index: true 
     },
     description: { type: String, trim: true },
-    follow_up_mode: { type: String, enum: ['Call', 'Meeting', 'Email', 'WhatsApp', 'Other'], index: true },
+    follow_up_mode: { type: String, enum: ['Call', 'Meeting', 'Email', 'WhatsApp', 'Demo', 'Other'], index: true },
+    follow_up_priority: { type: String, enum: ['High', 'Medium', 'Low'], index: true },
+    status_after_call: { type: String, enum: ['Converted', 'Not Interested', 'Call Later', 'Wrong Number', 'Demo Scheduled', 'Negotiation'], index: true },
     related_to: { type: mongoose.Schema.Types.ObjectId, required: false, index: true, refPath: 'related_type' },
     related_type: { type: String, required: false, enum: ['Lead', 'Customer', 'Deal', 'SupportTicket'], index: true },
     activity_date: { type: Date, default: Date.now },

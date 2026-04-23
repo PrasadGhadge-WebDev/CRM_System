@@ -2364,3 +2364,41 @@ body:not(.dark) .arch-card {
   gap: 0.25rem;
 }
 
+.landing-demo-register {
+  padding: 26px 20px 8px;
+}
+
+.landing-demo-register-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(8px);
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 18px;
+  padding: 22px;
+}
+
+.landing-demo-register-copy .section-title {
+  margin: 8px 0 8px;
+}
+
+.landing-demo-register-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+body:not(.dark) .landing-demo-register-inner {
+  border-color: #c7d7ea;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(241, 245, 249, 0.98));
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 900px) {
+  .landing-demo-register-inner {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,5 +1,6 @@
 const { moveDocumentToTrash } = require('../utils/trash');
 const { asyncHandler } = require('../middleware/asyncHandler');
+const Note = require('../models/Note');
 
 exports.listNotes = asyncHandler(async (req, res) => {
   const { related_to, related_type, page = 1, limit = 20 } = req.query;

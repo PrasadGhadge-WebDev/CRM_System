@@ -13,7 +13,7 @@ import { confirmToast } from '../../../utils/confirmToast.jsx'
 import { useAuth } from '../../../context/AuthContext'
 import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
 import { useToastFeedback } from '../../../utils/useToastFeedback.js'
-import QuickLeadFollowupModal from '../components/QuickLeadFollowupModal.jsx'
+import FollowupModal from '../../../components/FollowupModal.jsx'
 import '../../../styles/leadsList.css'
 
 function stopRowNavigation(event) {
@@ -512,15 +512,14 @@ export default function LeadsList() {
         </>
       )}
 
-      <QuickLeadFollowupModal
+      <FollowupModal
         isOpen={isFollowupOpen}
         lead={followupLead}
-        initialLastContactDate={toDateInput(new Date())}
         onClose={() => {
           setIsFollowupOpen(false)
           setFollowupLead(null)
         }}
-        onSaved={handleFollowupSaved}
+        onSave={handleFollowupSaved}
       />
     </div>
   )

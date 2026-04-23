@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
         identifier: String(email ?? '').trim(),
         password,
       })
-      const { user: nextUser, token } = response
+      const { user: nextUser, token } = response || {}
 
       storeSession(nextUser, token)
       setUser(nextUser)
@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }) => {
   const demoLogin = useCallback(async (role = 'Manager') => {
     try {
       const response = await api.post('/api/auth/demo-login', { role })
-      const { user: nextUser, token } = response
+      const { user: nextUser, token } = response || {}
 
       storeSession(nextUser, token)
       setUser(nextUser)
@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
   const switchDemoRole = useCallback(async (role = 'Manager') => {
     try {
       const response = await api.post('/api/auth/demo-switch', { role })
-      const { user: nextUser, token } = response
+      const { user: nextUser, token } = response || {}
 
       storeSession(nextUser, token)
       setUser(nextUser)
@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }) => {
         ...(role ? { role } : {}),
       })
 
-      const { user: nextUser, token } = response
+      const { user: nextUser, token } = response || {}
       if (nextUser && token) {
         storeSession(nextUser, token)
         setUser(nextUser)

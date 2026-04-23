@@ -1,26 +1,19 @@
-import { useCallback, useEffect, useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { notificationsApi } from '../services/notifications'
+import { useNotifications } from '../context/NotificationContext'
 import { Icon } from '../layouts/icons.jsx'
 
 export default function NotificationDropdown() {
-  const [notifications, setNotifications] = useState([])
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead 
+  } = useNotifications()
+  
   const [open, setOpen] = useState(false)
-  const [unseenCount, setUnseenCount] = useState(0)
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
-
-  const loadNotifications = useCallback(async () => {
-    try {
-      const data = await notificationsApi.list()
-      const items = data.items || []
-      setNotifications(items)
-      setUnseenCount(items.filter((n) => !n.is_read).length)
-    } catch {
-      // Suppress console noise when API/proxy is down (e.g. 502 from Vite proxy).
-      // UI stays quiet; it will auto-recover on next successful poll.
-    }
-  }, [])
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -32,31 +25,13 @@ export default function NotificationDropdown() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  useEffect(() => {
-    loadNotifications()
-    const interval = setInterval(loadNotifications, 60000) // Poll every minute
-    return () => clearInterval(interval)
-  }, [loadNotifications])
-
-  async function handleMarkRead(id) {
-    try {
-      await notificationsApi.markAsRead(id)
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-      )
-      setUnseenCount((prev) => Math.max(0, prev - 1))
-    } catch {
-      // no-op
+  const handleItemClick = async (n) => {
+    if (!n.read && !n.is_read) {
+      await markAsRead(n._id || n.id)
     }
-  }
-
-  async function handleMarkAllRead() {
-    try {
-      await notificationsApi.markAllAsRead()
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
-      setUnseenCount(0)
-    } catch {
-      // no-op
+    setOpen(false)
+    if (n.linked_entity_type === 'Lead' && n.linked_entity_id) {
+      navigate(`/leads/${n.linked_entity_id}`)
     }
   }
 
@@ -64,15 +39,15 @@ export default function NotificationDropdown() {
     <div className="notificationCenter" ref={dropdownRef}>
       <button className="iconBtn" onClick={() => setOpen(!open)}>
         <Icon name="bell" />
-        {unseenCount > 0 && <span className="badgeCount">{unseenCount}</span>}
+        {unreadCount > 0 && <span className="badgeCount">{unreadCount}</span>}
       </button>
 
       {open && (
         <div className="notificationDropdown">
           <div className="dropdownHeader">
             <h3>Notifications</h3>
-            {unseenCount > 0 && (
-              <button className="linkBtn" onClick={handleMarkAllRead}>
+            {unreadCount > 0 && (
+              <button className="linkBtn" onClick={markAllAsRead}>
                 Mark all read
               </button>
             )}
@@ -82,12 +57,12 @@ export default function NotificationDropdown() {
             {notifications.length ? (
               notifications.map((n) => (
                 <div
-                  key={n.id}
-                  className={`notificationItem ${n.is_read ? 'read' : 'unread'}`}
-                  onClick={() => handleMarkRead(n.id)}
+                  key={n._id || n.id}
+                  className={`notificationItem ${(n.read || n.is_read) ? 'read' : 'unread'}`}
+                  onClick={() => handleItemClick(n)}
                 >
                   <div className="notificationIcon">
-                    <Icon name={n.type === 'warning' ? 'alert' : 'info'} />
+                    <Icon name={n.type === 'lead_assigned' ? 'user' : 'info'} />
                   </div>
                   <div className="notificationBody">
                     <div className="notificationTitle">{n.title}</div>
@@ -99,12 +74,14 @@ export default function NotificationDropdown() {
                 </div>
               ))
             ) : (
-              <div className="muted padding center">No notifications yet.</div>
+              <div className="muted padding center" style={{ padding: '20px', textAlign: 'center' }}>
+                No notifications yet.
+              </div>
             )}
           </div>
 
           <div className="dropdownFooter">
-             <button className="btn fullWidth" onClick={() => { setOpen(false); navigate('/notifications'); }}>
+             <button className="btn fullWidth" style={{ width: '100%', padding: '10px' }} onClick={() => { setOpen(false); navigate('/notifications'); }}>
                 View All Notifications
              </button>
           </div>
@@ -119,24 +96,25 @@ export default function NotificationDropdown() {
           position: absolute;
           top: -2px;
           right: -2px;
-          background: #ff4757;
+          background: #ef4444;
           color: white;
           font-size: 10px;
-          padding: 2px 5px;
+          padding: 2px 6px;
           border-radius: 10px;
-          border: 2px solid var(--bg);
+          border: 2px solid var(--card-bg);
+          font-weight: bold;
         }
         .notificationDropdown {
           position: absolute;
           top: 100%;
           right: 0;
-          width: 350px;
+          width: 320px;
           background: var(--card-bg);
           border: 1px solid var(--border);
           border-radius: 12px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
           z-index: 1000;
-          margin-top: 8px;
+          margin-top: 12px;
           overflow: hidden;
         }
         .dropdownHeader {
@@ -146,9 +124,9 @@ export default function NotificationDropdown() {
           justify-content: space-between;
           align-items: center;
         }
-        .dropdownHeader h3 { margin: 0; font-size: 1rem; }
+        .dropdownHeader h3 { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text); }
         .notificationList {
-          max-height: 400px;
+          max-height: 380px;
           overflow-y: auto;
         }
         .notificationItem {
@@ -157,32 +135,33 @@ export default function NotificationDropdown() {
           gap: 12px;
           cursor: pointer;
           border-bottom: 1px solid var(--border);
-          transition: background 0.2s;
+          transition: all 0.2s;
         }
-        .notificationItem:hover { background: rgba(255,255,255,0.05); }
-        .notificationItem.unread { background: rgba(55, 125, 255, 0.05); }
+        .notificationItem:hover { background: rgba(55, 125, 255, 0.05); }
+        .notificationItem.unread { background: rgba(55, 125, 255, 0.1); border-left: 3px solid #2563eb; }
         .notificationIcon {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
           background: var(--border);
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
+          color: #64748b;
         }
-        .notificationItem.unread .notificationIcon { background: var(--primary); color: white; }
-        .notificationTitle { font-weight: 600; font-size: 0.9rem; }
-        .notificationMessage { font-size: 0.85rem; margin-top: 2px; }
-        .notificationTime { font-size: 0.75rem; margin-top: 4px; }
-        .dropdownFooter { padding: 8px; border-top: 1px solid var(--border); }
+        .notificationItem.unread .notificationIcon { background: #2563eb; color: white; }
+        .notificationTitle { font-weight: 700; font-size: 0.875rem; color: var(--text); }
+        .notificationMessage { font-size: 0.825rem; margin-top: 2px; color: var(--text-muted); }
+        .notificationTime { font-size: 0.7rem; margin-top: 6px; color: #94a3b8; }
+        .dropdownFooter { padding: 8px; background: rgba(0,0,0,0.05); }
         .linkBtn {
           background: none;
           border: none;
-          color: var(--primary);
+          color: #2563eb;
           cursor: pointer;
-          font-size: 0.85rem;
-          padding: 0;
+          font-size: 0.8rem;
+          font-weight: 600;
         }
         .linkBtn:hover { text-decoration: underline; }
       `}</style>
