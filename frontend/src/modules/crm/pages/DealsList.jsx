@@ -4,26 +4,25 @@ import { toast } from 'react-toastify'
 import { Icon } from '../../../layouts/icons.jsx'
 import { useAuth } from '../../../context/AuthContext'
 import Pagination from '../../../components/Pagination.jsx'
-import FilterBar from '../../../components/FilterBar.jsx'
-import SearchInput from '../../../components/SearchInput.jsx'
 import PageHeader from '../../../components/PageHeader.jsx'
 import { dealsApi } from '../../../services/deals'
 import { usersApi } from '../../../services/users'
-import { statusesApi } from '../../../services/statuses'
 import { confirmToast } from '../../../utils/confirmToast.jsx'
 import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
 import { useToastFeedback } from '../../../utils/useToastFeedback.js'
 import DealsKanban from './DealsKanban.jsx'
 
-const DEFAULT_STATUS_TYPES = ['New', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost']
+const STAGE_OPTIONS = [
+  { name: 'Pending', color: '#64748b' },
+  { name: 'New', color: '#3b82f6' },
+  { name: 'Contacted', color: '#eab308' },
+  { name: 'Negotiation', color: '#f97316' },
+  { name: 'Won', color: '#22c55e' },
+  { name: 'Lost', color: '#ef4444' }
+]
 
 function stopRowNavigation(event) {
   event.stopPropagation()
-}
-
-function getDealStatusOptions(currentStatus) {
-  if (!currentStatus) return STATUS_TYPES
-  return STATUS_TYPES.includes(currentStatus) ? STATUS_TYPES : [currentStatus, ...STATUS_TYPES]
 }
 
 export default function DealsList() {
@@ -39,14 +38,15 @@ export default function DealsList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [employees, setEmployees] = useState([])
-  const [statusOptions, setStatusOptions] = useState([])
   useToastFeedback({ error })
 
   // Filter & Sort State
   const [filters, setFilters] = useState({
     q: searchParams.get('q') || '',
-    status: searchParams.get('status') || '',
-    assigned_to: searchParams.get('assigned_to') || (user?.role === 'Employee' ? user.id : ''),
+    stage: searchParams.get('stage') || '',
+    priority: searchParams.get('priority') || '',
+    lifecycle_status: searchParams.get('lifecycle_status') || '',
+    assigned_to: searchParams.get('assigned_to') || '',
     startDate: searchParams.get('startDate') || '',
     endDate: searchParams.get('endDate') || '',
     sortField: searchParams.get('sortField') || 'created_at',
@@ -60,7 +60,9 @@ export default function DealsList() {
   useEffect(() => {
     const next = new URLSearchParams()
     if (debouncedQ.trim()) next.set('q', debouncedQ.trim())
-    if (filters.status) next.set('status', filters.status)
+    if (filters.stage) next.set('stage', filters.stage)
+    if (filters.priority) next.set('priority', filters.priority)
+    if (filters.lifecycle_status) next.set('lifecycle_status', filters.lifecycle_status)
     if (filters.assigned_to) next.set('assigned_to', filters.assigned_to)
     if (filters.startDate) next.set('startDate', filters.startDate)
     if (filters.endDate) next.set('endDate', filters.endDate)
@@ -79,8 +81,7 @@ export default function DealsList() {
     try {
       const res = await dealsApi.list({
         ...filters,
-        q: debouncedQ,
-        all: user?.role === 'Admin' ? true : undefined
+        q: debouncedQ
       })
       if (Array.isArray(res)) {
         setItems(res)
@@ -111,13 +112,6 @@ export default function DealsList() {
 
   useEffect(() => {
     loadEmployees()
-    statusesApi.list('deal').then(res => {
-      if (res && res.length > 0) {
-        setStatusOptions(res)
-      } else {
-        setStatusOptions(DEFAULT_STATUS_TYPES.map(s => ({ name: s, color: '#3b82f6' })))
-      }
-    })
   }, [loadEmployees])
 
   const handleFilterChange = (newFilters) => {
@@ -127,7 +121,9 @@ export default function DealsList() {
   const handleReset = () => {
     setFilters({
       q: '',
-      status: '',
+      stage: '',
+      priority: '',
+      lifecycle_status: '',
       assigned_to: '',
       startDate: '',
       endDate: '',
@@ -139,317 +135,238 @@ export default function DealsList() {
   }
 
   function getStatusClass(status) {
-    const name = (status || '').replace(/\s+/g, '-').toLowerCase()
-    return `dynamic-deal-status-${name}`
+    const name = (status || 'New').replace(/\s+/g, '-').toLowerCase()
+    return `dynamic-deal-stage-${name}`
   }
 
   async function onDelete(id) {
-    const confirmed = await confirmToast('Are you sure you want to move this deal to trash?', {
-      confirmLabel: 'Move to Trash',
-      type: 'danger',
-    })
+    const confirmed = await confirmToast('Move deal to trash?', { type: 'danger' })
     if (!confirmed) return
     try {
       await dealsApi.remove(id)
-      toast.success('Deal moved to trash')
+      toast.success('Deal archived')
       loadDeals()
     } catch {
       setError('Delete failed')
     }
   }
 
-  async function onUpdateStage(id, newStatus) {
+  async function onUpdateStage(id, newStage) {
     try {
-      await dealsApi.update(id, { status: newStatus })
-      
-      if (newStatus === 'Won') {
-        toast.success('Deal marked as WON!')
-      } else {
-        toast.success(`Deal stage updated to ${newStatus}`)
-      }
-      
+      await dealsApi.update(id, { stage: newStage })
+      toast.success(`Stage updated: ${newStage}`)
       loadDeals()
     } catch {
-      setError('Stage update failed')
+      setError('Update failed')
     }
   }
 
   return (
-    <div className="stack">
+    <div className="stack gap-24">
       <PageHeader
-        title="Deals"
-        description="Track all sales opportunities."
+        title="Revenue Pipeline"
+        description="Monitor and manage sales opportunities across the lifecycle."
         backTo="/"
         actions={
-          <div className="row gap-12">
+          <div className="control-bar-premium">
             <div className="view-switcher-premium">
               <button 
                 className={`view-btn ${viewMode === 'list' ? 'active' : ''}`} 
                 onClick={() => setViewMode('list')}
-                title="Table View"
               >
                 <Icon name="list" size={18} />
+                <span>Registry</span>
               </button>
               <button 
                 className={`view-btn ${viewMode === 'board' ? 'active' : ''}`} 
                 onClick={() => setViewMode('board')}
-                title="Pipeline Board"
               >
                 <Icon name="deals" size={18} />
+                <span>Pipeline</span>
               </button>
             </div>
             {canCreate && (
-              <button 
-                className="btn primary" 
-                onClick={() => navigate('/deals/new')}
-              >
-                + Create Deal
+              <button className="btn-premium action-vibrant" onClick={() => navigate('/deals/new')}>
+                <Icon name="plus" />
+                <span>Initiate Deal</span>
               </button>
             )}
           </div>
         }
       />
-      <div className="card noPadding stack glass-panel" style={{ border: 'none', background: 'transparent', boxShadow: 'none' }}>
-        <div className="padding" style={{ paddingBottom: 0 }}>
-          <div className="search-filter-row" style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
-            <div className="search-glass-wrap" style={{ flex: '1 1 240px', minWidth: '200px' }}>
-              <SearchInput
-                placeholder="Search deals..."
+
+      <section className="glass-panel filter-section-premium">
+        <div className="filter-grid-premium" style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1.5fr auto', alignItems: 'end' }}>
+          <div className="filter-cell">
+            <label className="filter-label">Search Opportunity</label>
+            <div className="search-input-premium">
+              <Icon name="search" className="search-icon" />
+              <input
+                type="text"
+                placeholder="ID, Name, Client..."
                 value={filters.q}
                 onChange={(e) => handleFilterChange({ q: e.target.value })}
-                style={{ border: 'none', background: 'transparent' }}
               />
             </div>
-            
-            <div className="filters-group" style={{ display: 'flex', gap: '10px', flex: '2 1 auto', flexWrap: 'wrap', alignItems: 'center' }}>
-              <div className="filter-select-wrap" style={{ minWidth: '150px' }}>
-                <select
-                  className="input"
-                  style={{ width: '100%', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange({ status: e.target.value })}
-                >
-                  <option value="">All Status</option>
-                  <option value="New">New</option>
-                  <option value="Qualified">Qualified</option>
-                  <option value="Proposal">Proposal</option>
-                  <option value="Negotiation">Negotiation</option>
-                  <option value="Won">Won</option>
-                  <option value="Lost">Lost</option>
-                </select>
-              </div>
+          </div>
 
-              <div className="filter-select-wrap" style={{ minWidth: '150px' }}>
-                <select
-                  className="input"
-                  style={{ width: '100%', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
-                  value={filters.assigned_to}
-                  onChange={(e) => handleFilterChange({ assigned_to: e.target.value })}
-                >
-                  <option value="">All Employees</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
-              </div>
+          <div className="filter-cell">
+            <label className="filter-label">Sales Stage</label>
+            <select className="input-premium" value={filters.stage} onChange={(e) => handleFilterChange({ stage: e.target.value })}>
+              <option value="">All Stages</option>
+              {STAGE_OPTIONS.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+            </select>
+          </div>
 
-              <div className="date-filter-wrap" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input 
-                  type="date" 
-                  className="input" 
-                  style={{ width: '140px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', fontSize: '13px' }}
-                  value={filters.startDate}
-                  onChange={(e) => handleFilterChange({ startDate: e.target.value })}
-                  title="From Date"
-                />
-                <span className="muted small">to</span>
-                <input 
-                  type="date" 
-                  className="input" 
-                  style={{ width: '140px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', fontSize: '13px' }}
-                  value={filters.endDate}
-                  onChange={(e) => handleFilterChange({ endDate: e.target.value })}
-                  title="To Date"
-                />
-              </div>
+          <div className="filter-cell">
+            <label className="filter-label">Priority</label>
+            <select className="input-premium" value={filters.priority} onChange={(e) => handleFilterChange({ priority: e.target.value })}>
+              <option value="">All Priorities</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
 
-              <button
-                className="btn-reset-minimal"
-                onClick={handleReset}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '0 16px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  background: 'rgba(239, 68, 68, 0.05)',
-                  border: '1px solid rgba(239, 68, 68, 0.1)',
-                  color: '#ef4444',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  transition: 'all 0.2s ease',
-                  marginLeft: 'auto'
-                }}
-              >
-                <Icon name="trash" />
-                <span>Reset</span>
-              </button>
+          <div className="filter-cell">
+            <label className="filter-label">Portfolio Owner</label>
+            <select className="input-premium" value={filters.assigned_to} onChange={(e) => handleFilterChange({ assigned_to: e.target.value })}>
+              <option value="">All Owners</option>
+              {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
+            </select>
+          </div>
+
+          <div className="filter-cell">
+            <label className="filter-label">Date Range</label>
+            <div className="range-input-group">
+              <input type="date" className="input-premium mini" value={filters.startDate} onChange={(e) => handleFilterChange({ startDate: e.target.value })} />
+              <input type="date" className="input-premium mini" value={filters.endDate} onChange={(e) => handleFilterChange({ endDate: e.target.value })} />
             </div>
           </div>
+
+          <div className="filter-cell" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+            <label className="filter-label" style={{ visibility: 'hidden' }}>Reset</label>
+            <button className="btn-reset-premium" onClick={handleReset} style={{ height: '42px', padding: '0 16px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-dimmed)', fontSize: '0.75rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', transition: 'all 0.2s' }}>
+              <Icon name="trash" size={14} />
+              <span>Clear Filters</span>
+            </button>
+          </div>
         </div>
-
-        <FilterBar
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          resetSort={{ field: 'created_at', order: 'desc' }}
-          sortFields={[
-            { key: 'name', label: 'Name' },
-            { key: 'created_at', label: 'Date Added' }
-          ]}
-          currentSort={{ field: filters.sortField, order: filters.sortOrder }}
-          options={{}}
-          hideReset={true}
-        />
-      </div>
-
-      {error && <div className="alert error">{error}</div>}
+      </section>
 
       {viewMode === 'board' ? (
         <DealsKanban deals={items} loading={loading} onStatusChange={onUpdateStage} />
       ) : (
-        <div className="premium-table-wrap">
-          <table className="table premium-table">
-            <thead>
-              <tr>
-                <th>Deal ID</th>
-                <th>Title</th>
-                <th>Customer</th>
-                <th>Value</th>
-                <th className="mobile-hide">Stage</th>
-                <th className="tablet-hide">Assigned To</th>
-                <th className="tablet-hide">Close Date</th>
-                <th className="text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr
-                  key={item.id}
-                  className="tableRowLink"
-                  onClick={() => navigate(`/deals/${item.id}`)}
-                >
-                  <td>
-                    <span className="id-badge-professional">{item.readable_id || 'DL-PENDING'}</span>
-                  </td>
-                  <td>{item.title}</td>
-                  <td>
-                    <Link
-                      to={`/deals/${item.id}`}
-                      className="tableLink"
-                      onClick={stopRowNavigation}
-                    >
-                      {item.customer_id?.name || '-'}
-                    </Link>
-                  </td>
-                  <td><strong className="small">{item.currency === 'INR' ? '₹' : item.currency} {item.value?.toLocaleString()}</strong></td>
-                  <td className="mobile-hide" onClick={stopRowNavigation}>
-                    <div className="status-badge-container">
-                      <select
-                        className={`status-badge-select ${getStatusClass(item.status)}`}
-                        value={item.status}
-                        onChange={(e) => onUpdateStage(item.id, e.target.value)}
-                        style={{ cursor: user?.role === 'Accountant' ? 'default' : 'pointer', border: 'none', appearance: 'none', padding: user?.role === 'Accountant' ? '4px 12px' : '4px 28px 4px 12px' }}
-                        disabled={user?.role === 'Accountant'}
-                      >
-                        {statusOptions.length > 0 
-                          ? statusOptions.map(s => <option key={s.id || s.name} value={s.name}>{s.name}</option>)
-                          : DEFAULT_STATUS_TYPES.map(s => <option key={s} value={s}>{s}</option>)
-                        }
-                      </select>
-                      {user?.role !== 'Accountant' && (
-                        <div className="status-badge-chevron">
-                          <Icon name="chevronDown" />
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="tablet-hide"><div className="small">{item.assigned_to?.name || '-'}</div></td>
-                  <td className="tablet-hide"><div className="small">{item.expected_close_date ? new Date(item.expected_close_date).toLocaleDateString('en-GB').replace(/\//g, '-') : '-'}</div></td>
-                  <td className="text-right">
-                    <div className="tableActions">
-                      <Link
-                        className="iconBtn success"
-                        to={`/deals/${item.id}`}
-                        title="View deal"
-                        onClick={stopRowNavigation}
-                        style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}
-                      >
-                        <Icon name="eye" />
-                      </Link>
-
-                       {user?.role !== 'Accountant' && (
-                        <button
-                          className="iconBtn success"
-                          onClick={(e) => {
-                            stopRowNavigation(e)
-                            navigate(`/deals/${item.id}/edit`)
-                          }}
-                          title="Edit deal"
-                          style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}
-                        >
-                          <Icon name="edit" />
-                        </button>
-                      )}
-                      {isManagement && (
-                        <button
-                          className="iconBtn text-danger"
-                          onClick={(e) => {
-                            stopRowNavigation(e)
-                            onDelete(item.id)
-                          }}
-                          title="Delete deal"
-                        >
-                          <Icon name="trash" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        <div className="table-container-premium">
+          <div className="table-scroll">
+            <table className="table-premium">
+              <thead>
+                <tr>
+                  <th className="text-center">DEAL STATUS</th>
+                  <th className="text-left">DEAL NAME</th>
+                  <th className="text-left">CUSTOMER</th>
+                  <th className="text-center">AMOUNT</th>
+                  <th className="text-left">ASSIGNED TO</th>
+                  <th className="text-center">STATUS</th>
+                  <th className="text-right">ACTIONS</th>
                 </tr>
-              ))}
-              {!items.length && !loading && (
-                <tr><td colSpan="6" className="center muted padding30">No deals found.</td></tr>
-              )}
-              {loading && (
-                <tr><td colSpan="7" className="center muted padding30">Loading deals...</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} className="tableRowInteractive" onClick={() => navigate(`/deals/${item.id}`)}>
+                    <td className="text-center" onClick={stopRowNavigation}>
+                      <select className={`stage-pill-select ${getStatusClass(item.stage)}`} value={item.stage} onChange={(e) => onUpdateStage(item.id, e.target.value)}>
+                        {STAGE_OPTIONS.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+                      </select>
+                    </td>
+                    <td className="text-left font-bold">
+                      {(item.name || item.title || '').replace(/Deal for\s+/i, '')}
+                    </td>
+                    <td className="text-left">{item.customer_id?.name || '—'}</td>
+                    <td className="text-center font-numeric-bold">₹{item.value?.toLocaleString()}</td>
+                    <td className="text-left">
+                      <div className="user-mention">
+                        <div className="user-dot" />
+                        <span>{item.assigned_to?.name || 'Unassigned'}</span>
+                      </div>
+                    </td>
+                    <td className="text-center">
+                      <span className={`status-pill-mini ${item.lifecycle_status?.toLowerCase() || 'active'}`}>{item.lifecycle_status || 'Active'}</span>
+                    </td>
+                    <td className="text-right" onClick={stopRowNavigation}>
+                      <div className="tableActions">
+                        <button className="action-btn-mini" onClick={() => navigate(`/deals/${item.id}/edit`)}><Icon name="edit" /></button>
+                        {isManagement && <button className="action-btn-mini danger" onClick={() => onDelete(item.id)}><Icon name="trash" /></button>}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
-      {viewMode === 'list' && (
-        <Pagination
-          page={filters.page}
-          limit={filters.limit}
-          total={total}
-          onPageChange={(p) => setFilters(prev => ({ ...prev, page: p }))}
-          onLimitChange={(l) => setFilters(prev => ({ ...prev, limit: l, page: 1 }))}
-        />
-      )}
-      <style>{`
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .view-switcher-premium { background: rgba(255,255,255,0.05); padding: 4px; border-radius: 12px; display: flex; gap: 4px; border: 1px solid rgba(255,255,255,0.08); }
-        .view-btn { background: transparent; border: none; padding: 8px 12px; border-radius: 8px; color: var(--text-dimmed); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-        .view-btn:hover { background: rgba(255,255,255,0.03); color: white; }
-        .view-btn.active { background: white; color: var(--bg-dark); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .id-badge-professional { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; color: var(--primary); background: rgba(59, 130, 246, 0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.2); }
 
-        ${statusOptions.map(opt => `
-          .dynamic-deal-status-${opt.name.replace(/\s+/g, '-').toLowerCase()} { 
-            background: ${opt.color || '#3b82f6'}20 !important; 
-            color: ${opt.color || '#3b82f6'} !important; 
-            border: 1px solid ${opt.color || '#3b82f6'}40 !important; 
+      {viewMode === 'list' && total > filters.limit && (
+        <Pagination page={filters.page} limit={filters.limit} total={total} onPageChange={(p) => handleFilterChange({ page: p })} onLimitChange={(l) => handleFilterChange({ limit: l, page: 1 })} />
+      )}
+
+      <style>{`
+        .control-bar-premium { display: flex; align-items: center; gap: 16px; }
+        .view-switcher-premium { background: rgba(255,255,255,0.05); padding: 4px; border-radius: 12px; display: flex; gap: 4px; border: 1px solid rgba(255,255,255,0.08); }
+        .view-btn { background: transparent; border: none; padding: 8px 16px; border-radius: 10px; color: var(--text-dimmed); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700; }
+        .view-btn.active { background: white; color: var(--bg-dark); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        
+        .btn-premium { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 12px; font-weight: 800; font-size: 0.88rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid transparent; cursor: pointer; }
+        .action-vibrant { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3); }
+        
+        .view-btn.active span { color: var(--bg-dark); }
+        .view-btn:not(.active) span { color: var(--text-dimmed); }
+
+        .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 24px; }
+        .filter-section-premium { padding: 24px; margin-bottom: 8px; }
+        .filter-grid-premium { display: grid; gap: 16px; }
+        .filter-label { display: block; font-size: 0.65rem; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; margin-bottom: 8px; }
+        
+        .search-input-premium { position: relative; height: 42px; display: flex; align-items: center; }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-dimmed); font-size: 14px; z-index: 1; }
+        .search-input-premium input { width: 100%; height: 100%; padding: 0 12px 0 38px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 0.85rem; }
+        
+        .input-premium { width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 0.85rem; outline: none; }
+        .range-input-group { display: flex; gap: 4px; }
+        .input-premium.mini { padding: 8px; font-size: 0.75rem; }
+
+        .input-premium:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
+        .btn-reset-premium:hover { background: rgba(255,255,255,0.1) !important; color: white !important; }
+
+        .table-container-premium { background: rgba(15, 23, 42, 0.4); border-radius: 20px; border: 1px solid rgba(148, 163, 184, 0.1); overflow: hidden; margin-top: 16px; }
+        .table-premium { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .table-premium th { background: rgba(148, 163, 184, 0.08); padding: 16px 20px; font-size: 0.65rem; font-weight: 800; color: white; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid rgba(148, 163, 184, 0.2); vertical-align: middle; }
+        .table-premium td { padding: 16px 20px; border-bottom: 1px solid rgba(148, 163, 184, 0.05); font-size: 0.85rem; vertical-align: middle; }
+        
+        .tableRowInteractive:hover { background: rgba(255,255,255,0.03); }
+        .id-badge { background: rgba(59, 130, 246, 0.1); color: #3b82f6; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-family: monospace; font-weight: 700; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .font-numeric-bold { font-weight: 800; font-variant-numeric: tabular-nums; color: white; }
+        
+        .stage-pill-select { appearance: none; border: 1px solid transparent; border-radius: 99px; padding: 6px 16px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; cursor: pointer; text-align: center; min-width: 120px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .stage-pill-select:hover { transform: scale(1.05); filter: brightness(1.2); }
+        .priority-tag { font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
+        .priority-tag.high { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+        .priority-tag.medium { background: rgba(249, 115, 22, 0.1); color: #f97316; }
+        .priority-tag.low { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+        
+        .status-pill-mini { font-size: 0.6rem; font-weight: 900; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+        .status-pill-mini.active { background: #22c55e20; color: #22c55e; }
+        .status-pill-mini.closed { background: #64748b20; color: #64748b; }
+
+        .user-mention { display: flex; align-items: center; gap: 6px; }
+        .user-dot { width: 6px; height: 6px; border-radius: 50%; background: #3b82f6; }
+
+        ${STAGE_OPTIONS.map(opt => `
+          .dynamic-deal-stage-${opt.name.replace(/\s+/g, '-').toLowerCase()} { 
+            background: ${opt.color}15 !important; 
+            color: ${opt.color} !important; 
+            border: 1px solid ${opt.color}30 !important; 
           }
         `).join('')}
       `}</style>

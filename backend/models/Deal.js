@@ -10,15 +10,29 @@ const DealSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     value: { type: Number, default: 0 },
     currency: { type: String, default: 'INR' },
-    status: { 
+    stage: { 
       type: String, 
       default: 'New', 
       index: true 
     },
+    priority: {
+      type: String,
+      enum: ['High', 'Medium', 'Low'],
+      default: 'Medium',
+      index: true
+    },
+    lifecycle_status: {
+      type: String,
+      enum: ['Active', 'Closed'],
+      default: 'Active',
+      index: true
+    },
     expected_close_date: { type: Date, index: true },
+    actual_close_date: { type: Date },
     assigned_to: { type: mongoose.Schema.Types.ObjectId, refPath: 'assigned_to_model', index: true },
     assigned_to_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
     description: { type: String, trim: true },
+    notes: { type: String, trim: true },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );

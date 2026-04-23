@@ -40,6 +40,7 @@ app.use('/api/demo-users', require('./routes/demoUsers'));
 app.use('/api/admin-actions', require('./routes/adminActions'));
 app.use('/api/metrics', require('./routes/metrics'));
 app.use('/api/customers', require('./routes/customers'));
+app.use('/api/orders', require('./routes/orders'));
 app.use('/api/leads', require('./routes/leads'));
 app.use('/api/followups', require('./routes/followups'));
 app.use('/api/notes', require('./routes/notes'));

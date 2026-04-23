@@ -1,3 +1,4 @@
+const Attachment = require('../models/Attachment');
 const { moveDocumentToTrash } = require('../utils/trash');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const fs = require('fs');

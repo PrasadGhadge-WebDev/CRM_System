@@ -10,6 +10,7 @@ import { statusesApi } from '../../../services/statuses.js'
 import { confirmToast } from '../../../utils/confirmToast.jsx'
 import { useToastFeedback } from '../../../utils/useToastFeedback.js'
 import FollowupModal from '../../../components/FollowupModal.jsx'
+import LeadConversionModal from '../components/LeadConversionModal.jsx'
 
 function displayValue(value, fallback = '—') {
   const text = String(value ?? '').trim()
@@ -63,6 +64,7 @@ export default function LeadDetail() {
 
   const [isFollowupOpen, setIsFollowupOpen] = useState(false)
   const [followupLead, setFollowupLead] = useState(null)
+  const [isConversionOpen, setIsConversionOpen] = useState(false)
   const [converting, setConverting] = useState(false)
 
   useToastFeedback({ error })
@@ -162,35 +164,19 @@ export default function LeadDetail() {
     setIsFollowupOpen(true)
   }
 
-  async function onConvert() {
+  function onConvert() {
     if (!lead) return
     if (!canEdit) return toast.error('You do not have permission to convert this lead')
+    setIsConversionOpen(true)
+  }
 
-    const confirmed = await confirmToast('Convert this lead to a Customer profile?', {
-      confirmLabel: 'Convert',
-      type: 'primary',
-    })
-    if (!confirmed) return
-
-    setConverting(true)
-    try {
-      const updated = await leadsApi.updateStatus(id, 'Converted')
-      setLead(updated)
-      toast.success('Lead converted successfully')
-
-      const customerId =
-        updated?.convertedCustomerId?.id ||
-        updated?.convertedCustomerId?._id ||
-        updated?.convertedCustomerId
-
-      // Employees often don't have Customers permission, so avoid hard navigation for them.
-      if (customerId && currentUser?.role !== 'Employee') {
-        navigate(`/customers/${customerId}`)
-      }
-    } catch (e) {
-      setError(e.message || 'Conversion failed')
-    } finally {
-      setConverting(false)
+  const handleConverted = (customer) => {
+    const customerId = customer.id || customer._id
+    if (customerId && currentUser?.role !== 'Employee') {
+      navigate(`/customers/${customerId}`)
+    } else {
+      // Reload lead to show converted status
+      leadsApi.get(id).then(setLead)
     }
   }
 
@@ -517,6 +503,13 @@ export default function LeadDetail() {
           setFollowupLead(null)
         }}
         onSave={handleFollowupSaved}
+      />
+
+      <LeadConversionModal
+        isOpen={isConversionOpen}
+        lead={lead}
+        onClose={() => setIsConversionOpen(false)}
+        onConverted={handleConverted}
       />
 
       <style>{`

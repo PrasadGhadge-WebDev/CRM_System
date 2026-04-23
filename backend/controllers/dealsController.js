@@ -59,15 +59,16 @@ exports.listDeals = asyncHandler(async (req, res) => {
     company_id, 
     customer_id, 
     assigned_to,
-    status, 
+    stage, 
+    priority,
+    lifecycle_status,
     startDate,
     endDate,
     q, 
     page = 1, 
     limit = 20, 
     sortField = 'created_at', 
-    sortOrder = 'desc',
-    all
+    sortOrder = 'desc'
   } = req.query;
 
   const pageNum = Math.max(1, Number(page) || 1);
@@ -77,9 +78,13 @@ exports.listDeals = asyncHandler(async (req, res) => {
   const search = buildSearchQuery(q);
   const filter = {};
   filter.company_id = req.user.company_id;
+  
   if (customer_id) filter.customer_id = customer_id;
   if (assigned_to) filter.assigned_to = assigned_to;
-  if (status) filter.status = status;
+  if (stage) filter.stage = stage;
+  if (priority) filter.priority = priority;
+  if (lifecycle_status) filter.lifecycle_status = lifecycle_status;
+
   if (search) {
     filter.$or = [
       { name: search },
@@ -88,20 +93,20 @@ exports.listDeals = asyncHandler(async (req, res) => {
     ];
   }
 
-  // Date Range Filtering
+  // Date Range Filtering (Expected Close Date)
   if (startDate || endDate) {
-    filter.created_at = {};
-    if (startDate) filter.created_at.$gte = new Date(startDate);
+    filter.expected_close_date = {};
+    if (startDate) filter.expected_close_date.$gte = new Date(startDate);
     if (endDate) {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      filter.created_at.$lte = end;
+      filter.expected_close_date.$lte = end;
     }
   }
 
   const [items, total] = await Promise.all([
     Deal.find(filter)
-      .populate('customer_id', 'name email')
+      .populate('customer_id', 'name email phone')
       .populate('assigned_to', 'name email')
       .sort(sort)
       .skip((pageNum - 1) * limitNum)
@@ -127,8 +132,41 @@ exports.createDeal = asyncHandler(async (req, res) => {
     payload.readable_id = await getNextDealId(req.user.company_id);
   }
 
+  // Automations for Won/Lost on Creation
+  if (payload.stage === 'Won') {
+    payload.lifecycle_status = 'Closed';
+    payload.actual_close_date = new Date();
+    
+    // Upgrade Customer to Active
+    if (payload.customer_id) {
+      await Customer.findByIdAndUpdate(payload.customer_id, { status: 'Active' });
+      
+      // Spawn Billing Ticket after creation (need the deal object/ID)
+      // We will handle this after Deal.create
+    }
+  } else if (payload.stage === 'Lost') {
+    payload.lifecycle_status = 'Closed';
+    payload.actual_close_date = new Date();
+  }
+
   const deal = await Deal.create(payload);
   
+  // Post-creation automation
+  if (deal.stage === 'Won' && deal.customer_id) {
+    const count = await SupportTicket.countDocuments({ company_id: req.user.company_id });
+    await SupportTicket.create({
+      company_id: req.user.company_id,
+      ticket_id: `TKT-${1001 + count}`,
+      ticket_no: 1001 + count,
+      customer_id: deal.customer_id,
+      subject: `Billing Initiation - ${deal.name}`,
+      description: `Deal ${deal.readable_id} created as WON. Process payment of ₹${deal.value}.`,
+      status: 'open',
+      priority: 'high',
+      category: 'Billing'
+    });
+  }
+
   await DealHistory.create({
     deal_id: deal._id,
     user_id: req.user.id,
@@ -147,12 +185,12 @@ exports.createDeal = asyncHandler(async (req, res) => {
     user_id: req.user.id,
     user_model: getAuthUserModelName(req),
     type: 'Deal Created',
-    description: `New deal created: ${deal.name}`,
+    description: `New deal created: ${deal.name} (Stage: ${deal.stage})`,
     related_to: deal._id,
     related_type: 'Deal'
   });
 
-  const populated = await Deal.findById(deal._id).populate('customer_id', 'name email').populate('assigned_to', 'name email');
+  const populated = await Deal.findById(deal._id).populate('customer_id', 'name email phone').populate('assigned_to', 'name email');
   res.created(populated);
 });
 
@@ -184,55 +222,47 @@ exports.updateDeal = asyncHandler(async (req, res) => {
     updates.assigned_to_model = (await resolveAssigneeModel(req.user.company_id, updates.assigned_to)) || 'User';
   }
 
+  // Automations for Won/Lost
+  if (updates.stage === 'Won' && oldDeal.stage !== 'Won') {
+    updates.lifecycle_status = 'Closed';
+    updates.actual_close_date = new Date();
+    
+    // Upgrade Customer to Active
+    if (oldDeal.customer_id) {
+      await Customer.findByIdAndUpdate(oldDeal.customer_id, { status: 'Active' });
+      
+      // Spawn Billing Ticket
+      const count = await SupportTicket.countDocuments({ company_id: req.user.company_id });
+      await SupportTicket.create({
+        company_id: req.user.company_id,
+        ticket_id: `TKT-${1001 + count}`,
+        ticket_no: 1001 + count,
+        customer_id: oldDeal.customer_id,
+        subject: `Billing Initiation - ${oldDeal.name}`,
+        description: `Deal ${oldDeal.readable_id} WON. Process payment of ₹${oldDeal.value}.`,
+        status: 'open',
+        priority: 'high',
+        category: 'Billing'
+      });
+    }
+  } else if (updates.stage === 'Lost' && oldDeal.stage !== 'Lost') {
+    updates.lifecycle_status = 'Closed';
+    updates.actual_close_date = new Date();
+  }
+
   const deal = await Deal.findOneAndUpdate(
     { _id: req.params.id, company_id: req.user.company_id },
     updates,
     { new: true }
   );
 
-  // Automation: Deal -> Customer -> Ticket
-  if (req.body.status === 'Won' && oldDeal.status !== 'Won') {
-    // 1. Upgrade Prospect to Active Customer
-    if (deal.customer_id) {
-      await Customer.findByIdAndUpdate(deal.customer_id, { status: 'Active' });
-      
-      // 2. Spawn Onboarding / Billing Ticket
-      const count = await SupportTicket.countDocuments({ company_id: req.user.company_id });
-      await SupportTicket.create({
-        company_id: req.user.company_id,
-        ticket_id: `TKT-${1001 + count}`,
-        ticket_no: 1001 + count,
-        customer_id: deal.customer_id,
-        subject: `Onboarding & Billing - ${deal.name}`,
-        description: `Automated Ticket: Deal ${deal.readable_id || deal._id} has been Won. Please proceed with onboarding and invoice generation.`,
-        status: 'open',
-        priority: 'high',
-        category: 'Billing'
-      });
-
-      const { logActivity } = require('../utils/activityLogger');
-      await logActivity({
-        company_id: req.user.company_id,
-        user_id: req.user.id,
-        user_model: getAuthUserModelName(req),
-        type: 'Deal Won',
-        description: `Deal WON: ${deal.name}`,
-        related_to: deal._id,
-        related_type: 'Deal'
-      });
-    }
-  }
-  
-  // Basic history logging for status or value changes
+  // History logging
   const changes = [];
-  if (req.body.status && req.body.status !== oldDeal.status) {
-    changes.push({ field: 'status', old: oldDeal.status, new: req.body.status });
+  if (updates.stage && updates.stage !== oldDeal.stage) {
+    changes.push({ field: 'stage', old: oldDeal.stage, new: updates.stage });
   }
-  if (req.body.value && req.body.value !== oldDeal.value) {
-    changes.push({ field: 'value', old: oldDeal.value, new: req.body.value });
-  }
-  if (req.body.assigned_to && req.body.assigned_to.toString() !== (oldDeal.assigned_to?.toString())) {
-    changes.push({ field: 'assigned_to', old: oldDeal.assigned_to, new: req.body.assigned_to });
+  if (updates.value && updates.value !== oldDeal.value) {
+    changes.push({ field: 'value', old: oldDeal.value, new: updates.value });
   }
 
   for (const change of changes) {
@@ -243,20 +273,14 @@ exports.updateDeal = asyncHandler(async (req, res) => {
       action: 'updated',
       field: change.field,
       old_value: change.old,
-      new_value: change.new,
-      change_reason: req.body.change_reason || null
+      new_value: change.new
     });
   }
 
-  // Handle reassignment notification
-  if (req.body.assigned_to && req.body.assigned_to.toString() !== (oldDeal.assigned_to?.toString())) {
-    const nextModel = updates.assigned_to_model || (await resolveAssigneeModel(req.user.company_id, req.body.assigned_to)) || 'User';
-    await createAssignmentNotification(deal, req.body.assigned_to, req.user.company_id, nextModel);
-  }
-
-  const populated = await Deal.findById(deal._id).populate('customer_id', 'name email').populate('assigned_to', 'name email');
+  const populated = await Deal.findById(deal._id).populate('customer_id', 'name email phone').populate('assigned_to', 'name email');
   res.ok(populated);
 });
+
 
 exports.deleteDeal = asyncHandler(async (req, res) => {
   // RBAC: Only Admin or Manager can delete
@@ -281,19 +305,15 @@ exports.getDealHistory = asyncHandler(async (req, res) => {
 
 exports.getDealAnalytics = asyncHandler(async (req, res) => {
   const filter = { company_id: req.user.company_id };
-
   const deals = await Deal.find(filter);
-  const wonStatuses = new Set(['Converted', 'Closed Won']);
-  const lostStatuses = new Set(['Not Interested', 'Closed Lost']);
   
   const stats = {
     total: deals.length,
-    won: deals.filter(d => wonStatuses.has(d.status)).length,
-    lost: deals.filter(d => lostStatuses.has(d.status)).length,
-    revenue: deals.filter(d => wonStatuses.has(d.status)).reduce((sum, d) => sum + (d.value || 0), 0),
+    won: deals.filter(d => d.stage === 'Won').length,
+    lost: deals.filter(d => d.stage === 'Lost').length,
+    revenue: deals.filter(d => d.stage === 'Won').reduce((sum, d) => sum + (d.value || 0), 0),
   };
 
   stats.conversionRate = stats.total > 0 ? (stats.won / stats.total) * 100 : 0;
-
   res.ok(stats);
 });

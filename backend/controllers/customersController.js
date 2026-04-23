@@ -1,4 +1,6 @@
 const Customer = require('../models/Customer');
+const Lead = require('../models/Lead');
+const CustomerNote = require('../models/CustomerNote');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { parseCsv, rowsToObjects, toCsv } = require('../utils/csv');
 const { moveDocumentToTrash } = require('../utils/trash');
@@ -13,13 +15,16 @@ function buildSearchQuery(q) {
 exports.listCustomers = asyncHandler(async (req, res) => {
   const {
     customer_type,
+    status,
+    assigned_to: assignedToFilter,
+    startDate,
+    endDate,
     q,
     companyId,
     page = 1,
     limit = 20,
     sortField = 'created_at',
     sortOrder = 'desc',
-    all
   } = req.query;
 
   const pageNum = Math.max(1, Number(page) || 1);
@@ -36,18 +41,57 @@ exports.listCustomers = asyncHandler(async (req, res) => {
 
   if (req.user?.role === 'Employee') {
     filter.assigned_to = req.user.id;
+  } else if (assignedToFilter) {
+    filter.assigned_to = assignedToFilter;
   }
-  if (customer_type) filter.customer_type = customer_type;
-  if (search) filter.$or = [{ name: search }, { email: search }, { phone: search }, { city: search }];
 
-  const [items, total] = await Promise.all([
+  if (customer_type) filter.customer_type = customer_type;
+  if (status) filter.status = status;
+
+  if (startDate || endDate) {
+    filter.created_at = {};
+    if (startDate) filter.created_at.$gte = new Date(startDate);
+    if (endDate) {
+      const ed = new Date(endDate);
+      ed.setHours(23, 59, 59, 999);
+      filter.created_at.$lte = ed;
+    }
+  }
+
+  if (search) {
+    filter.$or = [
+      { name: search },
+      { email: search },
+      { phone: search },
+      { city: search },
+      { customer_id: search }
+    ];
+  }
+
+  const [customers, total] = await Promise.all([
     Customer.find(filter)
       .populate('assigned_to', 'name email')
       .sort(sort)
       .skip((pageNum - 1) * limitNum)
-      .limit(limitNum),
+      .limit(limitNum)
+      .lean(),
     Customer.countDocuments(filter),
   ]);
+
+  // Inject dynamic metrics
+  const Deal = require('../models/Deal');
+  const items = await Promise.all(customers.map(async (c) => {
+    const [dealCount, lastNote] = await Promise.all([
+      Deal.countDocuments({ customer_id: c._id }),
+      CustomerNote.findOne({ customer_id: c._id }).sort({ created_at: -1 }).select('created_at')
+    ]);
+    return {
+      ...c,
+      id: c._id,
+      total_deals: dealCount,
+      last_interaction: lastNote?.created_at || c.created_at
+    };
+  }));
 
   res.ok({ items, page: pageNum, limit: limitNum, total });
 });
@@ -301,14 +345,20 @@ exports.importCustomersCsv = asyncHandler(async (req, res) => {
 exports.getCustomerAnalytics = asyncHandler(async (req, res) => {
   const { company_id } = req.query;
   const filter = {};
-  if (company_id) filter.company_id = company_id;
+  if (req.user?.company_id) {
+    filter.company_id = req.user.company_id;
+  } else if (company_id) {
+    filter.company_id = company_id;
+  }
 
   const [total, active, inactive, topCustomers] = await Promise.all([
     Customer.countDocuments(filter),
     Customer.countDocuments({ ...filter, status: 'Active' }),
     Customer.countDocuments({ ...filter, status: 'Inactive' }),
-    // This is a placeholder for actual revenue logic which depends on Orders
-    Customer.find(filter).limit(5).select('name email created_at')
+    Customer.find(filter)
+      .sort({ total_purchase_amount: -1 })
+      .limit(5)
+      .select('name email total_purchase_amount status')
   ]);
 
   res.ok({
@@ -317,5 +367,73 @@ exports.getCustomerAnalytics = asyncHandler(async (req, res) => {
     inactive,
     topCustomers
   });
+});
+
+exports.convertLead = asyncHandler(async (req, res) => {
+  const { lead_id, assigned_to, source, initial_note } = req.body;
+
+  if (!lead_id) return res.fail('Lead ID is required for conversion', 400);
+  if (!assigned_to) return res.fail('Assigned employee is required', 400);
+  if (!source) return res.fail('Lead source is required', 400);
+
+  const lead = await Lead.findById(lead_id);
+  if (!lead) return res.fail('Lead not found', 404);
+  if (lead.convertedCustomerId) return res.fail('This lead is already converted', 400);
+
+  // Business Logic: Conversion
+  const customerPayload = {
+    name: lead.name,
+    email: lead.email,
+    phone: lead.phone,
+    company_name: lead.company,
+    company_id: lead.company_id || req.user?.company_id,
+    assigned_to: assigned_to,
+    source: source,
+    converted_from_lead_id: lead._id,
+    status: 'Active',
+    notes: initial_note || lead.notes
+  };
+
+  const customer = await Customer.create(customerPayload);
+
+  // Update lead status
+  lead.convertedCustomerId = customer._id;
+  lead.convertedAt = new Date();
+  lead.status = 'Converted';
+  await lead.save();
+
+  // Create initial discussion note if provided
+  if (initial_note) {
+    await CustomerNote.create({
+      customer_id: customer._id,
+      author_id: req.user.id,
+      content: initial_note
+    });
+  }
+
+  res.created(customer, 'Lead converted to customer successfully');
+});
+
+exports.addNote = asyncHandler(async (req, res) => {
+  const { content } = req.body;
+  const customer_id = req.params.id;
+
+  if (!content) return res.fail('Note content cannot be empty', 400);
+
+  const note = await CustomerNote.create({
+    customer_id,
+    author_id: req.user.id,
+    content
+  });
+
+  res.created(note, 'Discussion note added');
+});
+
+exports.listNotes = asyncHandler(async (req, res) => {
+  const notes = await CustomerNote.find({ customer_id: req.params.id })
+    .populate('author_id', 'name role')
+    .sort({ created_at: -1 });
+
+  res.ok(notes);
 });
 

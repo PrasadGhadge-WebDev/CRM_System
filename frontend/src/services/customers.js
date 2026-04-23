@@ -33,4 +33,20 @@ export const customersApi = {
     const data = await api.delete(`/api/customers/${id}`)
     return data
   },
+  async listNotes(id) {
+    const data = await api.get(`/api/customers/${id}/notes`)
+    return data
+  },
+  async addNote(id, payload) {
+    const data = await api.post(`/api/customers/${id}/notes`, payload)
+    return data
+  },
+  async convertLead(payload) {
+    const data = await api.post('/api/customers/convert', payload)
+    return data
+  },
+  async getAnalytics(params = {}) {
+    const data = await api.get('/api/customers/analytics', { params })
+    return data
+  },
 }

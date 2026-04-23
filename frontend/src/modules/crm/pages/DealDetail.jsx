@@ -12,6 +12,7 @@ import { useToastFeedback } from '../../../utils/useToastFeedback.js'
 
 export default function DealDetail() {
   const navigate = useNavigate()
+  const { id } = useParams()
   const { user } = useAuth()
   const [deal, setDeal] = useState(null)
   const isManagement = user?.role === 'Admin' || user?.role === 'Manager'
@@ -46,13 +47,13 @@ export default function DealDetail() {
     loadData()
   }, [loadData])
 
-  async function updateStatus(newStatus) {
+  async function updateStatus(newStage) {
     try {
-      await dealsApi.update(id, { status: newStatus })
-      toast.success(`Deal marked as ${newStatus}`)
+      await dealsApi.update(id, { stage: newStage })
+      toast.success(`Deal marked as ${newStage}`)
       loadData()
     } catch {
-      toast.error('Failed to update status')
+      toast.error('Failed to update stage')
     }
   }
 
@@ -85,59 +86,105 @@ export default function DealDetail() {
   if (!deal) return <div className="muted">Deal not found.</div>
 
   return (
-    <div className="stack">
+    <div className="stack gap-24">
       <PageHeader
-        title={deal.name}
+        title="Revenue Pipeline"
         backTo="/deals"
         actions={
-          <div className="row">
-
+          <div className="action-group">
             {canEdit && (
-              <Link className="btn" to={`/deals/${deal.id}/edit`}>
-                Edit
+              <Link className="btn-premium action-secondary" to={`/deals/${id}/edit`}>
+                <Icon name="edit" />
+                <span>Edit Opportunity</span>
               </Link>
             )}
-
             {canDelete && (
-              <button className="btn danger" onClick={handleDelete}>
-                Delete
+              <button className="btn-premium action-danger" onClick={handleDelete}>
+                <Icon name="trash" />
+                <span>Archive Deal</span>
               </button>
             )}
           </div>
         }
       />
 
-      <section className="pipeline-stepper card glass-panel padding20 margin-bottom-32">
-         <div className="row justify-between align-center margin-bottom-15">
-            <h4 className="muted uppercase tracking-widest small margin0">Sales Pipeline</h4>
-            <div className={`status-pill badge-${deal.status.toLowerCase()}`}>
-               {deal.status}
+      <section className="user-hero-shell">
+        <div className="hero-glow hero-glow-a" />
+        <div className="hero-glow hero-glow-b" />
+
+        <div className="hero-topline">
+          <span className={`status-pill badge-${(deal.stage || 'New').toLowerCase()}`}>
+            {deal.stage || 'New'}
+          </span>
+          <span className="hero-meta-chip">Deal ID: {id.slice(-6).toUpperCase()}</span>
+          <span className="hero-meta-chip">Priority: {deal.priority || 'Medium'}</span>
+        </div>
+
+        <div className="hero-main-row">
+          <div className="hero-avatar-modern" aria-hidden="true" style={{ background: 'linear-gradient(135deg, #f59e0b, #ea580c)' }}>
+            <Icon name="deals" size={32} />
+          </div>
+
+          <div className="hero-copy">
+            <h1 className="hero-name-modern">{deal.name || 'Unnamed Deal'}</h1>
+            <div className="hero-subline">
+              <div className="hero-subline-item">
+                <Icon name="user" />
+                <span style={{ cursor: 'pointer' }} onClick={() => navigate(`/customers/${deal.customer_id?._id || deal.customer_id?.id}`)}>
+                  {deal.customer_id?.name || 'Loading customer...'}
+                </span>
+              </div>
+              <div className="hero-divider" />
+              <div className="hero-subline-item">
+                <Icon name="calendar" />
+                <span>Exp. Close: {deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div className="hero-divider" />
+              <div className="hero-subline-item">
+                <Icon name="user" />
+                <span>Owner: {deal.assigned_to?.name || 'Unassigned'}</span>
+              </div>
             </div>
-         </div>
+          </div>
+
+          <div className="hero-side-stack">
+            <div className="hero-stat-card">
+              <span className="hero-stat-label">Deal Value</span>
+              <span className="hero-stat-value">₹{(deal.value || 0).toLocaleString()}</span>
+            </div>
+            <div className="hero-stat-card">
+              <span className="hero-stat-label">Lifecycle Status</span>
+              <span className="hero-stat-value uppercase">{deal.lifecycle_status || 'Active'}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="pipeline-stepper card glass-panel padding24" style={{ borderRadius: '24px' }}>
+        <div className="row justify-between align-center margin-bottom-20">
+          <h4 className="muted uppercase tracking-widest small margin0 font-bold">Sales Progress Path</h4>
+          <div className="extra-small muted">Click node to advance stage</div>
+        </div>
          <div className="stepper-track row justify-between gap-10">
-            {['New', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'].map((stage, idx) => {
-               const isActive = deal.status === stage;
-               const isCompleted = ['Won', 'Lost'].includes(deal.status) ? 
-                   (['Won','Lost'].indexOf(deal.status) >= idx || ['New','Qualified','Proposal','Negotiation'].includes(stage)) :
-                   (['New','Qualified','Proposal','Negotiation','Won','Lost'].indexOf(deal.status) >= idx);
+            {['New', 'Contacted', 'Negotiation', 'Won', 'Lost'].map((stageName, idx) => {
+               const isActive = deal.stage === stageName;
+               const isCompleted = ['Won', 'Lost'].includes(deal.stage) ? 
+                   (['Won','Lost'].indexOf(deal.stage) >= idx || ['New','Contacted','Negotiation'].includes(stageName)) :
+                   (['New','Contacted','Negotiation','Won','Lost'].indexOf(deal.stage) >= idx);
                
-               // Special handling for Won/Lost terminal states
-               const terminal = ['Won', 'Lost'].includes(stage);
-               if (terminal && deal.status !== stage && deal.status !== 'Negotiation') {
-                  // Don't highlight terminal stages unless we are there or at Negotiation
-               }
+               const terminal = ['Won', 'Lost'].includes(stageName);
 
                return (
                   <div 
-                    key={stage} 
+                    key={stageName} 
                     className={`stepper-item stack align-center flex-1 ${isActive ? 'active' : ''} ${isCompleted && !isActive ? 'completed' : ''}`}
-                    onClick={() => updateStatus(stage)}
+                    onClick={() => updateStatus(stageName)}
                     style={{ cursor: 'pointer' }}
                   >
                      <div className="stepper-node">
-                        {stage === 'Won' ? <Icon name="check" /> : stage === 'Lost' ? <Icon name="x" /> : idx + 1}
+                        {stageName === 'Won' ? <Icon name="check" /> : stageName === 'Lost' ? <Icon name="x" /> : idx + 1}
                      </div>
-                     <span className="stepper-label">{stage}</span>
+                     <span className="stepper-label">{stageName}</span>
                   </div>
                )
             })}
@@ -183,8 +230,8 @@ export default function DealDetail() {
         <div className="stat-panel primary">
           <div className="icon-wrap"><Icon name="check" /></div>
           <div className="stat-content">
-            <div className="label">Current Status</div>
-            <div className="value" style={{ fontSize: '20px' }}><span className={`status-badge ${deal.status.toLowerCase().replace(' ', '-')}`}>{deal.status}</span></div>
+            <div className="label">Current Stage</div>
+            <div className="value" style={{ fontSize: '20px' }}><span className={`status-badge ${(deal.stage || 'New').toLowerCase().replace(' ', '-')}`}>{deal.stage || 'New'}</span></div>
           </div>
         </div>
         <div className="stat-panel warning">
@@ -288,11 +335,10 @@ export default function DealDetail() {
         .stepper-item .stepper-node[name="x"] { background: #ef4444; border-color: #ef4444; }
 
         .badge-new { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
-        .badge-qualified { background: rgba(139, 92, 246, 0.1); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.2); }
-        .badge-proposal { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
-        .badge-negotiation { background: rgba(236, 72, 153, 0.1); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.2); }
-        .badge-won { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
-        .badge-lost { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+        .badge-contacted { background: rgba(234, 179, 8, 0.1); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.2); }
+        .badge-negotiation { background: rgba(249, 115, 22, 0.1); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.2); }
+        .badge-won { background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2); }
+        .badge-lost { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
       `}</style>
     </div>
   )

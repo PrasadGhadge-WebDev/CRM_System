@@ -13,6 +13,7 @@ const CustomerSchema = new mongoose.Schema(
     payment_status: { type: String, enum: ['Paid', 'Pending', 'Overdue'], default: 'Pending' },
     email: { type: String, trim: true, lowercase: true, index: true },
     phone: { type: String, trim: true },
+    alternate_phone: { type: String, trim: true },
     address: { type: String, trim: true },
     city: { type: String, trim: true },
     postal_code: { type: String, trim: true },
