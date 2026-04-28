@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom'
-import { FiClock, FiArrowRight, FiCheckCircle, FiCalendar, FiMail, FiPhone, FiPlusCircle, FiTrendingUp, FiAlertCircle } from 'react-icons/fi'
+import { FiClock, FiCheckCircle, FiCalendar, FiMail, FiPhone, FiPlusCircle, FiTrendingUp, FiAlertCircle } from 'react-icons/fi'
 
 function getActivityIcon(type) {
   const value = String(type || '').toLowerCase()
@@ -42,11 +41,8 @@ export default function RecentActivity({ activities, loading }) {
       <div className="card-header">
         <div className="header-info">
           <h3>Recent Activity</h3>
-          <p className="text-muted small">Latest calls, meetings, emails, and tasks</p>
+          <p className="text-muted small">Latest calls, meetings, emails, and follow-ups</p>
         </div>
-        <Link to="/tasks" className="view-all-link">
-          View All <FiArrowRight />
-        </Link>
       </div>
 
       <div className="recent-list">
@@ -60,10 +56,12 @@ export default function RecentActivity({ activities, loading }) {
               </div>
               <div className="lead-info">
                 <div className="lead-name-row">
-                  <span className="lead-name">{activity.description || 'Activity'}</span>
-                  <span className={`status-badge ${activity.status === 'completed' ? 'badge-success' : 'badge-info'}`}>
-                    {activity.activity_type.includes(' ') ? 'system' : (activity.status || 'planned')}
-                  </span>
+                  <span className="lead-name" style={{ marginRight: '12px' }}>{activity.description || 'Activity'}</span>
+                  {(!activity.activity_type?.includes(' ') && activity.status) && (
+                    <span className={`status-badge ${activity.status === 'completed' ? 'badge-success' : 'badge-info'}`} style={{ textTransform: 'capitalize' }}>
+                      {activity.status}
+                    </span>
+                  )}
                 </div>
                 <div className="lead-meta-row">
                   <span className="lead-source">{activity.activity_type || 'Activity'}</span>

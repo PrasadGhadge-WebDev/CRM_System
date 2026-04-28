@@ -34,10 +34,7 @@ app.get('/health', (_req, res) => res.ok({ status: 'UP' }));
 
 app.use('/api', requireDb);
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/demo', require('./routes/demo'));
 app.use('/api/users', require('./routes/users'));
-app.use('/api/demo-users', require('./routes/demoUsers'));
-app.use('/api/admin-actions', require('./routes/adminActions'));
 app.use('/api/metrics', require('./routes/metrics'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/orders', require('./routes/orders'));
@@ -56,6 +53,14 @@ app.use('/api/settings', require('./routes/settings'));
 app.use('/api/statuses', require('./routes/status'));
 app.use('/api/lead-sources', require('./routes/leadSource'));
 app.use('/api/workflow', require('./routes/workflow'));
+
+// Accountant Modules
+app.use('/api/invoices', require('./routes/invoices'));
+app.use('/api/payments', require('./routes/payments'));
+app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/accountant-dashboard', require('./routes/accountantDashboard'));
+app.use('/api/hr-dashboard', require('./routes/hrDashboard'));
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(notFound);

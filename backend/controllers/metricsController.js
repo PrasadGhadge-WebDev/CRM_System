@@ -36,9 +36,9 @@ exports.getMetrics = asyncHandler(async (req, res) => {
   // For global calculations like Revenue, we must also respect this scoping
   const companyQuery = queryCompanyId ? { _id: queryCompanyId } : { _id: null };
 
-  const leadFilter = { ...companyFilter };
-  const customerFilter = { ...companyFilter };
-  const dealFilter = { ...companyFilter };
+  const leadFilter = { ...companyFilter, isDeleted: { $ne: true } };
+  const customerFilter = { ...companyFilter, isDeleted: { $ne: true } };
+  const dealFilter = { ...companyFilter, isDeleted: { $ne: true } };
   const userFilter = {
     ...companyFilter,
     status: 'active',
@@ -130,6 +130,8 @@ exports.getMetrics = asyncHandler(async (req, res) => {
     topPerformersRaw,
     employeeTicketsTotal,
     overdueLeadsCount,
+    customersByStatus,
+    customersByType,
   ] = await Promise.all([
     Company.countDocuments(companyQuery),
     User.countDocuments(userFilter),
@@ -200,18 +202,18 @@ exports.getMetrics = asyncHandler(async (req, res) => {
       .sort({ created_at: -1 })
       .limit(5)
       .select('activity_type description status activity_date due_date created_at related_type'),
-    Deal.countDocuments({ ...dealFilter, status: { $in: ['Converted', 'Closed Won'] } }),
+    Deal.countDocuments({ ...dealFilter, stage: 'Won' }),
     Deal.aggregate([
-      { $match: { ...dealFilter, status: { $in: ['Converted', 'Closed Won'] } } },
+      { $match: { ...dealFilter, stage: 'Won' } },
       { $group: { _id: null, total: { $sum: '$value' } } }
     ]),
     Activity.countDocuments({ ...companyFilter, status: 'planned' }),
     isEmployee && employeeLeadFilter ? Lead.countDocuments(employeeLeadFilter) : 0,
     isEmployee && employeeLeadFilter
-      ? Lead.countDocuments({ ...employeeLeadFilter, follow_up_date: { $gte: startOfToday, $lt: startOfTomorrow } })
+      ? Lead.countDocuments({ ...employeeLeadFilter, nextFollowupDate: { $gte: startOfToday, $lt: startOfTomorrow } })
       : 0,
     isEmployee && employeeDealFilter
-      ? Deal.countDocuments({ ...employeeDealFilter, status: { $nin: dealTerminalStatuses } })
+      ? Deal.countDocuments({ ...employeeDealFilter, stage: 'Won', status: { $ne: 'Completed' } })
       : 0,
     isEmployee && employeeActivityFilter
       ? Activity.countDocuments({ ...employeeActivityFilter, status: 'planned', activity_type: 'task' })
@@ -236,18 +238,18 @@ exports.getMetrics = asyncHandler(async (req, res) => {
         .select('subject ticket_id priority status created_at')
       : [],
     isEmployee && employeeDealFilter
-      ? Deal.find({ ...employeeDealFilter, status: { $nin: dealTerminalStatuses } })
+      ? Deal.find({ ...employeeDealFilter, stage: 'Won', status: { $ne: 'Completed' } })
         .sort({ updated_at: -1 })
         .limit(5)
         .populate('customer_id', 'name')
       : [],
     SupportTicket.countDocuments({ ...companyFilter, category: 'Billing', status: { $ne: 'resolved' } }),
-    Deal.countDocuments({ ...dealFilter, status: { $in: ['Won', 'won', 'Converted', 'Closed Won'] }, is_paid: { $ne: true } }),
+    Deal.countDocuments({ ...dealFilter, stage: 'Won', status: { $ne: 'Completed' } }),
     Deal.aggregate([
-      { $match: { ...dealFilter, status: { $in: ['won', 'Won', 'Converted', 'Closed Won'] }, is_paid: { $ne: true } } },
+      { $match: { ...dealFilter, stage: 'Won', status: { $ne: 'Completed' } } },
       { $group: { _id: null, total: { $sum: '$value' } } }
     ]),
-    Deal.find({ ...dealFilter, status: { $in: ['won', 'Won', 'Converted', 'Closed Won'] }, is_paid: { $ne: true } })
+    Deal.find({ ...dealFilter, stage: 'Won', status: { $ne: 'Completed' } })
       .sort({ updated_at: -1 })
       .limit(5)
       .populate('customer_id', 'name'),
@@ -258,7 +260,7 @@ exports.getMetrics = asyncHandler(async (req, res) => {
       { $group: { _id: null, total: { $sum: '$total_amount' } } }
     ]),
     Deal.aggregate([
-      { $match: { ...dealFilter, status: { $in: ['Won', 'won', 'Converted', 'Closed Won'] }, created_at: { $gte: trendStartDate } } },
+      { $match: { ...dealFilter, stage: 'Won', created_at: { $gte: trendStartDate } } },
       {
         $group: {
           _id: { year: { $year: '$created_at' }, month: { $month: '$created_at' } },
@@ -268,7 +270,7 @@ exports.getMetrics = asyncHandler(async (req, res) => {
       { $sort: { '_id.year': 1, '_id.month': 1 } }
     ]),
     Deal.aggregate([
-      { $match: { ...dealFilter, status: { $in: ['Won', 'won', 'Converted', 'Closed Won'] } } },
+      { $match: { ...dealFilter, stage: 'Won' } },
       {
         $group: {
           _id: '$assigned_to',
@@ -280,7 +282,21 @@ exports.getMetrics = asyncHandler(async (req, res) => {
       { $limit: 3 }
     ]),
     isEmployee && userObjectId ? SupportTicket.countDocuments({ assigned_to: userObjectId }) : 0,
-    Lead.countDocuments({ ...leadFilter, status: { $ne: 'Converted' }, follow_up_date: { $lt: startOfToday } }),
+    Lead.countDocuments({ 
+      ...leadFilter, 
+      status: { $nin: ['Converted', 'Lost'] }, 
+      nextFollowupDate: { $lt: startOfToday } 
+    }),
+    Customer.aggregate([
+      { $match: customerFilter },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+      { $project: { _id: 0, status: { $ifNull: ['$_id', 'Active'] }, count: 1 } }
+    ]),
+    Customer.aggregate([
+      { $match: customerFilter },
+      { $group: { _id: '$customer_type', count: { $sum: 1 } } },
+      { $project: { _id: 0, type: { $ifNull: ['$_id', 'Individual'] }, count: 1 } }
+    ]),
   ]);
 
   const revenueTotal = (dealRevenueRaw[0]?.total || 0);
@@ -298,7 +314,9 @@ exports.getMetrics = asyncHandler(async (req, res) => {
       inactive: customersInactive,
       recent: recentCustomers, 
       trend: fillTrend(customerTrendRaw),
-      vipTotal: vipCustomersTotal
+      vipTotal: vipCustomersTotal,
+      byStatus: customersByStatus,
+      byType: customersByType,
     },
     leads: {
       total: leadsTotal,

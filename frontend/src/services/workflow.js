@@ -30,6 +30,10 @@ export const supportApi = {
     const data = await api.patch(`/api/support/${id}/note`, { text })
     return data
   },
+  async reply(id, text) {
+    const data = await api.post(`/api/support/${id}/reply`, { text })
+    return data
+  },
 }
 
 export const workflowApi = {

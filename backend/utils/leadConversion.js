@@ -24,7 +24,7 @@ async function performLeadConversion(leadId, companyId, userId, customerData = n
     return { customerId: lead.convertedCustomerId };
   }
 
-  const normalizedUserModel = userModel === 'DemoUser' ? 'DemoUser' : 'User';
+  const normalizedUserModel = 'User';
 
   const baseCustomer = {
     name: lead.name,

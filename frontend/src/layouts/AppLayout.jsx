@@ -13,8 +13,6 @@ function pageTitle(pathname, user) {
   if (pathname.startsWith('/tickets') || pathname.startsWith('/support')) return 'TICKETS'
   if (pathname.startsWith('/users')) return 'USERS'
   if (pathname.startsWith('/reports')) return 'REPORTS'
-  if (pathname.startsWith('/tasks')) return 'TASKS'
-  if (pathname.startsWith('/followups')) return 'FOLLOWUPS'
   if (pathname.startsWith('/trash')) return 'TRASH'
   return `${user?.role || 'CRM'} DASHBOARD`
 }
@@ -90,7 +88,7 @@ export default function AppLayout() {
         )}
 
         <main className="crmMain">
-          <div className="crmPanel route-motion-shell crm-route-motion" key={motionKey}>
+          <div className="crmRouteCanvas route-motion-shell crm-route-motion" key={motionKey}>
             <Outlet />
           </div>
         </main>
@@ -133,18 +131,6 @@ export default function AppLayout() {
           {hasRequiredRole(user?.role, NAV_ACCESS.reports) && (
             <>
               <Link to="/reports">Reports</Link>
-              <span className="bullet">&bull;</span>
-            </>
-          )}
-          {hasRequiredRole(user?.role, NAV_ACCESS.tasks) && (
-            <>
-              <Link to="/tasks">Tasks</Link>
-              <span className="bullet">&bull;</span>
-            </>
-          )}
-          {hasRequiredRole(user?.role, NAV_ACCESS.followups) && (
-            <>
-              <Link to="/followups">Followups</Link>
               <span className="bullet">&bull;</span>
             </>
           )}

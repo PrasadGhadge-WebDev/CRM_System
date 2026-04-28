@@ -60,7 +60,7 @@ export default function UserDetail() {
     try {
       const res = await usersApi.resetPassword(id, { newPassword: resetForm.newPassword })
       setResetForm({ newPassword: '', confirmPassword: '' })
-      toast.success(res.message || 'Password reset successfully')
+      toast.success(res?.message || 'Password reset successfully')
     } catch (e) {
       setError(e.message || 'Failed to reset password')
     } finally {
@@ -334,7 +334,6 @@ export default function UserDetail() {
         .hero-main-row { display: flex; align-items: center; gap: 32px; justify-content: space-between; position: relative; z-index: 1; }
         .hero-avatar-modern { width: 100px; height: 100px; flex: 0 0 auto; background: linear-gradient(135deg, #4f46e5, #9333ea); border-radius: 30px; border: 2px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; font-size: 3.2rem; font-weight: 900; color: white; box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4); overflow: hidden; }
         .hero-avatar-modern img { width: 100%; height: 100%; object-fit: cover; }
-        .hero-copy { min-width: 0; }
         .hero-name-modern { margin: 0 0 12px; font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1; letter-spacing: -0.04em; color: white; font-weight: 900; }
         .hero-subline { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
         .hero-subline-item { display: inline-flex; align-items: center; gap: 8px; color: rgba(255, 255, 255, 0.75); font-size: 0.95rem; font-weight: 500; }
@@ -347,67 +346,62 @@ export default function UserDetail() {
         .hero-stat-value { color: white; font-weight: 700; line-height: 1.3; word-break: break-word; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2); }
 
         .user-detail-grid { display: flex; gap: 24px; align-items: start; }
-        .user-detail-main { display: grid; gap: 24px; flex: 1 1 auto; min-width: 0; }
-        .user-detail-side { width: 360px; flex: 0 0 auto; position: sticky; top: 96px; }
+        .user-detail-main { display: flex; flex-direction: column; gap: 24px; flex: 1 1 auto; min-width: 0; }
+        .user-detail-side { width: 360px; flex: 0 0 auto; position: sticky; top: 96px; display: flex; flex-direction: column; gap: 24px; }
 
-        .detail-card { background: var(--bg-surface); border: 1px solid rgba(148, 163, 184, 0.38); border-radius: 24px; overflow: hidden; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08); }
-        .detail-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 24px; border-bottom: 1px solid rgba(148, 163, 184, 0.3); background: rgba(255, 255, 255, 0.06); }
+        .detail-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 24px; overflow: hidden; padding: 24px; }
+        .detail-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
         .detail-card-title { display: flex; align-items: center; gap: 12px; }
-        .detail-card-title h3 { margin: 0; font-size: 1.05rem; font-weight: 800; }
+        .detail-card-title h3 { margin: 0; font-size: 1.05rem; font-weight: 800; color: white; }
         .detail-card-title svg { color: var(--primary); }
-        .detail-card-body { padding: 24px; }
 
         .detail-card-badge { display: inline-flex; align-items: center; justify-content: center; padding: 6px 12px; border-radius: 999px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.82); }
         .detail-card-badge.success { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2); }
         .detail-card-badge.subtle { background: rgba(59, 130, 246, 0.08); color: #93c5fd; border-color: rgba(59, 130, 246, 0.18); }
 
-        .detail-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
-        .intel-field label { display: block; font-size: 0.75rem; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.06em; }
-        .intel-value { font-size: 1.05rem; font-weight: 600; color: var(--text); word-break: break-word; }
+        .detail-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .intel-field label { display: block; font-size: 0.65rem; font-weight: 900; color: var(--text-dimmed); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.08em; }
+        .intel-value { font-size: 1.05rem; font-weight: 700; color: white; }
         .intel-value.highlight { color: var(--primary); }
         .full-width { grid-column: 1 / -1; }
 
-        .password-reset-panel { border-top: 1px solid rgba(148, 163, 184, 0.3); padding-top: 24px; }
-        .password-reset-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; }
-        .password-reset-header svg { color: var(--primary); margin-top: 2px; flex-shrink: 0; }
-        .password-reset-title { font-size: 0.95rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }
-        .password-reset-sub { font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; }
+        .password-reset-panel { border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 24px; margin-top: 12px; }
+        .password-reset-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 24px; }
+        .password-reset-header svg { color: var(--primary); margin-top: 4px; }
+        .password-reset-title { font-size: 1rem; font-weight: 800; color: white; margin-bottom: 4px; }
+        .password-reset-sub { font-size: 0.85rem; color: var(--text-dimmed); line-height: 1.4; }
 
-        .input-sleek-detail { width: 100%; background: rgba(0, 0, 0, 0.15); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; color: var(--text); font-size: 0.95rem; outline: none; transition: all 0.2s ease; }
-        .input-sleek-detail::placeholder { color: var(--text-dimmed); }
-        .input-sleek-detail:focus { border-color: var(--primary); background: rgba(0, 0, 0, 0.25); box-shadow: 0 0 0 3px var(--primary-soft); }
+        .input-sleek-detail { width: 100%; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px 16px; color: white; font-size: 0.95rem; outline: none; transition: all 0.2s; }
+        .input-sleek-detail:focus { border-color: var(--primary); background: rgba(0, 0, 0, 0.3); }
 
-        .accent-card { background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, var(--bg-surface) 100%); }
-        .milestone-panel { margin-bottom: 18px; padding: 20px; background: rgba(255, 255, 255, 0.08); border-radius: 18px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.3); }
-        .milestone-label { font-size: 0.8rem; font-weight: 700; color: var(--text-dimmed); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
-        .milestone-value { font-size: 1.35rem; font-weight: 900; color: var(--primary); line-height: 1.25; text-transform: capitalize; }
+        .accent-card { background: rgba(59, 130, 246, 0.03); border-color: rgba(59, 130, 246, 0.2); }
+        .milestone-panel { background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.1); border-radius: 18px; padding: 20px; margin-bottom: 24px; text-align: center; }
+        .milestone-label { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-dimmed); margin-bottom: 8px; }
+        .milestone-value { font-size: 1.4rem; font-weight: 900; color: var(--primary); }
 
-        .snapshot-list { display: grid; gap: 12px; margin-bottom: 18px; }
-        .snapshot-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-radius: 14px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.24); }
-        .snapshot-label { font-size: 0.75rem; color: rgba(255, 255, 255, 0.68); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
-        .snapshot-value { color: rgba(255, 255, 255, 0.94); font-weight: 700; text-align: right; word-break: break-word; text-transform: capitalize; }
+        .snapshot-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+        .snapshot-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .snapshot-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+        .snapshot-value { color: white; font-weight: 800; text-align: right; }
 
-        .converted-link-premium { display: flex; align-items: center; gap: 16px; background: var(--bg-elevated); padding: 16px; border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.34); text-decoration: none; transition: all 0.2s ease; }
+        .converted-link-premium { display: flex; align-items: center; gap: 16px; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-decoration: none; transition: all 0.2s; }
         .converted-link-premium:hover { border-color: var(--primary); transform: translateX(4px); }
         .link-icon { color: var(--primary); }
-        .link-text { display: flex; flex-direction: column; gap: 2px; }
-        .link-text strong { color: var(--text); font-size: 0.95rem; }
-        .link-text span { color: var(--text-muted); font-size: 0.8rem; }
+        .link-text strong { display: block; color: white; font-size: 0.9rem; }
+        .link-text span { font-size: 0.75rem; color: var(--text-dimmed); }
 
         @media (max-width: 1024px) {
           .user-detail-grid { flex-direction: column; }
           .user-detail-side { width: 100%; position: static; }
           .hero-main-row { flex-direction: column; align-items: flex-start; }
-          .hero-side-stack { width: 100%; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .hero-side-stack { width: 100%; grid-template-columns: 1fr 1fr; }
         }
 
         @media (max-width: 768px) {
-          .user-hero-shell { padding: 20px; }
+          .user-hero-shell { padding: 24px; }
           .hero-side-stack { grid-template-columns: 1fr; }
-          .hero-divider { display: none; }
           .detail-grid-2 { grid-template-columns: 1fr; }
           .full-width { grid-column: span 1; }
-          .detail-card-header, .detail-card-body { padding-left: 18px; padding-right: 18px; }
         }
       `}</style>
     </div>

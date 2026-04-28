@@ -7,7 +7,7 @@ export default function StatCard({ to, code, label, value, loading }) {
         {label}
       </div>
 
-      <div className="statValue" style={{ fontSize: '2rem', fontWeight: '900', color: 'white' }}>
+      <div className="statValue" style={{ fontSize: '2rem', fontWeight: '900', color: 'var(--text)' }}>
         {loading ? <span className="skeleton small" /> : value}
       </div>
     </Link>

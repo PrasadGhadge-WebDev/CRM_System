@@ -134,6 +134,7 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
                 value={model.name}
                 onChange={(e) => setModel({ ...model, name: e.target.value })}
                 placeholder="e.g. Q4 Cloud Infrastructure Upgrade"
+                autoFocus
               />
             </div>
 

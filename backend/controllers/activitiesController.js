@@ -4,7 +4,7 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { moveDocumentToTrash } = require('../utils/trash');
 
 function getAuthUserModelName(req) {
-  return req?.user?.constructor?.modelName === 'DemoUser' ? 'DemoUser' : 'User';
+  return 'User';
 }
 
 function buildSearchQuery(q) {

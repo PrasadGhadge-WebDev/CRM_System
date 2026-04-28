@@ -24,6 +24,17 @@ exports.getSettings = asyncHandler(async (req, res) => {
         { name: 'NEGOTIATION', color: '#fb923c', order: 3, type: 'lead', isSystem: true },
         { name: 'WON', color: '#22c55e', order: 4, type: 'lead', isSystem: true },
         { name: 'LOST', color: '#ef4444', order: 5, type: 'lead', isSystem: true }
+      ],
+      customerTypes: [
+        { name: 'Individual' },
+        { name: 'Corporate' },
+        { name: 'Government' },
+        { name: 'Non-Profit' }
+      ],
+      customerCategories: [
+        { name: 'Premium' },
+        { name: 'Standard' },
+        { name: 'Trial' }
       ]
     });
   }

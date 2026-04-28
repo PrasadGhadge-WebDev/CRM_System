@@ -1,0 +1,361 @@
+/* 
+  CRM Standard UI Design System 
+  Based on the "Gold Standard" Users Module
+*/
+
+:root {
+  --crm-radius-main: 40px;
+  --crm-radius-card: 24px;
+  --crm-radius-input: 12px;
+  --crm-radius-pill: 999px;
+  --crm-padding-main: 32px;
+  --crm-padding-card: 24px;
+}
+
+/* Main Immersive Shell */
+.crm-fullscreen-shell {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: var(--crm-padding-main);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--crm-radius-main);
+  background: 
+    radial-gradient(circle at top right, var(--primary-soft), transparent 40%),
+    linear-gradient(180deg, var(--bg), var(--bg-elevated));
+  box-shadow: var(--shadow-2xl);
+  overflow: hidden;
+  margin: 20px;
+}
+
+/* Filter Panel Standard */
+.crm-filter-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+  padding: var(--crm-padding-card);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--crm-radius-card);
+}
+
+.crm-filter-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.crm-filter-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-dimmed);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-left: 4px;
+}
+
+/* Search & Input Precision */
+.crm-search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.crm-search-input-wrap .search-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-dimmed);
+  pointer-events: none;
+  font-size: 16px;
+}
+
+.crm-input,
+.crm-search-input-wrap input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--crm-radius-input);
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.crm-input::placeholder,
+.crm-search-input-wrap input::placeholder {
+  color: var(--text-dimmed);
+}
+
+.crm-input option {
+  background: var(--bg-surface);
+  color: var(--text);
+}
+
+.crm-search-input-wrap input {
+  padding-left: 42px;
+}
+
+.crm-input:focus,
+.crm-search-input-wrap input:focus {
+  border-color: var(--primary);
+  background: var(--bg-elevated);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* Table Architecture */
+.crm-table-wrap {
+  border-radius: var(--crm-radius-card);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.crm-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.crm-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.crm-table th {
+  padding: 16px 20px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-dimmed);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 2px solid var(--border-subtle);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.crm-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+  color: var(--text-muted);
+}
+
+.crm-table-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.crm-table-row.selected {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+/* Status & Pills */
+.crm-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--crm-radius-pill);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.crm-status-pill.success { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2); }
+.crm-status-pill.warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
+.crm-status-pill.danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); }
+.crm-status-pill.info { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: rgba(59, 130, 246, 0.2); }
+
+/* User Entity standard */
+.crm-user-mention {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.crm-user-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 8px var(--primary-soft);
+}
+
+/* Action Buttons (Hyper-Premium) */
+.crm-action-group {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.crm-btn-premium {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 22px;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.crm-btn-premium span {
+  position: relative;
+  z-index: 1;
+}
+
+.crm-btn-premium svg {
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+}
+
+/* Vibrant / Primary Variant */
+.crm-btn-premium.vibrant {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.crm-btn-premium.vibrant:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
+  filter: brightness(1.1);
+}
+
+/* Success Variant */
+.crm-btn-premium.success {
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.crm-btn-premium.success:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+}
+
+/* Danger Variant */
+.crm-btn-premium.danger {
+  background: linear-gradient(135deg, #dc2626, #f43f5e);
+  color: white;
+  box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.crm-btn-premium.danger:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(244, 63, 94, 0.4);
+}
+
+/* Glass / Secondary Variant */
+.crm-btn-premium.glass {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  color: var(--text-muted);
+  border-color: var(--border-subtle);
+}
+
+.crm-btn-premium.glass:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+/* Ghost / Minimal Variant */
+.crm-btn-icon-only {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-dimmed);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.crm-btn-icon-only:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-color: var(--primary);
+  transform: scale(1.1);
+}
+
+.crm-btn-icon-only.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+/* Utility Layouts */
+.crm-flex-between { display: flex; align-items: center; justify-content: space-between; }
+.crm-flex-end { display: flex; align-items: center; justify-content: flex-end; }
+.crm-gap-12 { gap: 12px; }
+
+/* View Switchers (Deals Specific but Standardized) */
+.crm-view-switcher {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px;
+  border-radius: 12px;
+  display: flex;
+  gap: 4px;
+  border: 1px solid var(--border-subtle);
+}
+
+.crm-view-btn {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  color: var(--text-dimmed);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.crm-view-btn.active {
+  background: white;
+  color: var(--bg-dark);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .crm-fullscreen-shell { padding: 24px; margin: 10px; border-radius: 32px; }
+  .crm-filter-panel { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .crm-filter-panel { grid-template-columns: 1fr; }
+  .crm-flex-end { flex-direction: column; width: 100%; }
+  .crm-flex-end button { width: 100%; }
+}

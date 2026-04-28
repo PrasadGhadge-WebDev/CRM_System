@@ -38,9 +38,13 @@ export default function Onboarding() {
     setError('')
     try {
       const res = await authApi.verifyOnboarding(credentials)
-      setDetails((prev) => ({ ...prev, userId: res.userId }))
-      setStep(2)
-      toast.success('Credentials verified! Please fill in your details.')
+      if (res) {
+        setDetails((prev) => ({ ...prev, userId: res.userId }))
+        setStep(2)
+        toast.success('Credentials verified! Please fill in your details.')
+      } else {
+        throw new Error('Verification returned no data')
+      }
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Verification failed')
     } finally {

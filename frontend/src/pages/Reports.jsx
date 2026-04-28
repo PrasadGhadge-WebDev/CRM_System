@@ -77,6 +77,49 @@ export default function Reports() {
           </div>
         </div>
 
+        {/* CUSTOMER ANALYTICS */}
+        <div className="card glass-panel report-card full-width shadow-vibrant">
+           <div className="report-header">
+              <h3>Customer Demographics</h3>
+              <p className="muted small">Breakdown by status and classification</p>
+           </div>
+           <div className="grid2 gap-32">
+              <div className="stack gap-12">
+                 <h4 className="text-xs uppercase muted">Status Distribution</h4>
+                 <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                       <Pie
+                          data={metrics?.customers?.byStatus || []}
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="count"
+                          nameKey="status"
+                       >
+                          {(metrics?.customers?.byStatus || []).map((entry, index) => (
+                             <Cell key={`cell-${index}`} fill={chartPalette[index % chartPalette.length]} />
+                          ))}
+                       </Pie>
+                       <Tooltip />
+                       <Legend />
+                    </PieChart>
+                 </ResponsiveContainer>
+              </div>
+              <div className="stack gap-12">
+                 <h4 className="text-xs uppercase muted">Customer Types</h4>
+                 <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={metrics?.customers?.byType || []}>
+                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                       <XAxis dataKey="type" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                       <YAxis tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                       <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                 </ResponsiveContainer>
+              </div>
+           </div>
+        </div>
+
         <div className="grid2 gap-24">
           {/* LEAD CONVERSION RATE */}
           <div className="card glass-panel report-card shadow-vibrant">

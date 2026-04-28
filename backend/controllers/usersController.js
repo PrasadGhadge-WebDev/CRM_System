@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
-const DemoUser = require('../models/DemoUser');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { moveDocumentToTrash } = require('../utils/trash');
 
@@ -48,6 +47,18 @@ function buildSearchQuery(q) {
   return { $regex: safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
 }
 
+function isHRUser(req) {
+  return req.user?.role === 'HR';
+}
+
+function ensureHRCanOnlyManageEmployees(req, targetRole) {
+  if (!isHRUser(req)) return null;
+  if (normalizeRole(targetRole) !== 'Employee') {
+    return 'HR can only access employee users';
+  }
+  return null;
+}
+
 function cleanPayload(body = {}, options = {}) {
   const { inferUsernameFromName = true } = options;
   const payload = { ...body };
@@ -90,12 +101,7 @@ async function ensureUniqueEmail(email, excludeId = null) {
     query._id = { $ne: oid };
   }
 
-  const [existingUser, existingDemoUser] = await Promise.all([
-    User.findOne(query),
-    DemoUser.findOne(query)
-  ]);
-
-  return existingUser || existingDemoUser;
+  return User.findOne(query);
 }
 
 exports.listUsers = asyncHandler(async (req, res) => {
@@ -111,7 +117,11 @@ exports.listUsers = asyncHandler(async (req, res) => {
   filter.company_id = req.user.company_id;
   if (status) filter.status = String(status).trim();
   if (req.query.manager_id) filter.manager_id = String(req.query.manager_id).trim();
-  if (role) filter.role = normalizeRole(role) || String(role).trim();
+  if (isHRUser(req)) {
+    filter.role = 'Employee';
+  } else if (role) {
+    filter.role = normalizeRole(role) || String(role).trim();
+  }
   if (search) {
     filter.$or = [{ name: search }, { username: search }, { email: search }, { phone: search }];
   }
@@ -130,6 +140,11 @@ exports.createUser = asyncHandler(async (req, res) => {
   const payload = cleanPayload(req.body || {}, { inferUsernameFromName: true });
   // Never trust client-provided company payload.
   delete payload.company_id;
+
+  const hrRoleError = ensureHRCanOnlyManageEmployees(req, payload.role || 'Employee');
+  if (hrRoleError) {
+    return res.fail(hrRoleError, 403);
+  }
 
   // If it's an onboarding user, we only need username and password
   if (req.body.is_onboarding) {
@@ -162,6 +177,9 @@ exports.getUser = asyncHandler(async (req, res) => {
   if (!user) {
     return res.fail('User not found', 404);
   }
+  if (isHRUser(req) && user.role !== 'Employee') {
+    return res.fail('HR can only access employee users', 403);
+  }
   res.ok(user);
 });
 
@@ -186,6 +204,7 @@ exports.updateUser = asyncHandler(async (req, res) => {
     'date_of_birth',
     'is_profile_complete',
     'settings',
+    'password',
   ]);
 
   const updates = {};
@@ -205,6 +224,15 @@ exports.updateUser = asyncHandler(async (req, res) => {
   }).select('+password');
   if (!user) {
     return res.fail('User not found', 404);
+  }
+
+  if (isHRUser(req) && user.role !== 'Employee') {
+    return res.fail('HR can only access employee users', 403);
+  }
+
+  const hrRoleError = ensureHRCanOnlyManageEmployees(req, updates.role || user.role);
+  if (hrRoleError) {
+    return res.fail(hrRoleError, 403);
   }
 
   Object.keys(updates).forEach((key) => {
@@ -239,6 +267,9 @@ exports.deleteUser = asyncHandler(async (req, res) => {
   if (!user) {
     return res.fail('User not found', 404);
   }
+  if (isHRUser(req) && user.role !== 'Employee') {
+    return res.fail('HR can only access employee users', 403);
+  }
   await moveDocumentToTrash({ entityType: 'user', document: user, deletedBy: req.user?.id });
   res.ok(null, 'User moved to trash');
 });
@@ -260,6 +291,9 @@ exports.resetUserPassword = asyncHandler(async (req, res) => {
   }).select('+password');
   if (!user) {
     return res.fail('User not found', 404);
+  }
+  if (isHRUser(req) && user.role !== 'Employee') {
+    return res.fail('HR can only access employee users', 403);
   }
 
   user.password = newPassword;

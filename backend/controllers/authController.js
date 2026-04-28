@@ -1,7 +1,5 @@
-const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const DemoUser = require('../models/DemoUser');
 const Company = require('../models/Company');
 const Role = require('../models/Role');
 const { asyncHandler } = require('../middleware/asyncHandler');
@@ -12,14 +10,14 @@ const notifier = require('../utils/notifier');
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\d{10}$/;
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
-const ALLOWED_ROLES = ['Admin', 'Manager', 'Accountant', 'Employee'];
-const REGISTERABLE_ROLES = ['Admin', 'Manager', 'Accountant', 'Employee'];
+const ALLOWED_ROLES = ['Admin', 'Manager', 'Accountant', 'HR', 'Employee'];
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_BLOCK_DURATION_MS = 15 * 60 * 1000;
 const ROLE_ALIASES = {
   admin: 'Admin',
   manager: 'Manager',
   accountant: 'Accountant',
+  hr: 'HR',
   employee: 'Employee',
 };
 
@@ -29,13 +27,13 @@ async function seedDefaultRoles(companyId) {
     {
       name: 'Admin',
       description: 'Full system access',
-      permissions: ['leads', 'customers', 'deals', 'tickets', 'users', 'reports', 'tasks', 'followups', 'billing', 'trash', 'settings', 'notifications'],
+      permissions: ['leads', 'customers', 'deals', 'tickets', 'users', 'reports', 'tasks', 'billing', 'trash', 'settings', 'notifications'],
       is_system_role: true,
     },
     {
       name: 'Manager',
       description: 'Management access',
-      permissions: ['leads', 'customers', 'deals', 'reports', 'tasks', 'followups'],
+      permissions: ['leads', 'customers', 'deals', 'reports', 'tasks'],
       is_system_role: true,
     },
     {
@@ -45,9 +43,15 @@ async function seedDefaultRoles(companyId) {
       is_system_role: true,
     },
     {
+      name: 'HR',
+      description: 'Human resources access',
+      permissions: ['users', 'attendance', 'notifications'],
+      is_system_role: true,
+    },
+    {
       name: 'Employee',
       description: 'Standard staff access',
-      permissions: ['leads', 'tasks', 'followups'],
+      permissions: ['leads', 'tasks'],
       is_system_role: true,
     },
   ].map((role) => ({ ...role, company_id: companyId }));
@@ -59,18 +63,6 @@ async function seedDefaultRoles(companyId) {
       throw err;
     }
   }
-}
-
-function getDemoAccountConfig() {
-  return {
-    username: String(process.env.DEMO_USER_USERNAME || 'demo').trim(),
-    name: String(process.env.DEMO_USER_NAME || 'Demo User').trim(),
-    email: String(process.env.DEMO_USER_EMAIL || 'demo@crm.com').trim().toLowerCase(),
-    phone: String(process.env.DEMO_USER_PHONE || '9876543211').trim(),
-    password: String(process.env.DEMO_USER_PASSWORD || 'Demo123').trim(),
-    role: String(process.env.DEMO_USER_ROLE || 'Manager').trim(),
-    status: 'active',
-  };
 }
 
 function normalizeText(value) {
@@ -101,21 +93,12 @@ async function resolveUniqueUsername(...candidates) {
   let username = baseUsername;
   let suffix = 1;
 
-  while ((await User.exists({ username })) || (await DemoUser.exists({ username }))) {
+  while (await User.exists({ username })) {
     suffix += 1;
     username = `${baseUsername}${suffix}`;
   }
 
   return username;
-}
-
-function getRequestIp(req) {
-  const forwardedFor = req.headers['x-forwarded-for'];
-  if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
-    return forwardedFor.split(',')[0].trim();
-  }
-
-  return req.ip || req.socket?.remoteAddress || '';
 }
 
 function getBlockMessage(blockedUntil) {
@@ -246,12 +229,8 @@ exports.register = asyncHandler(async (req, res, next) => {
   console.log('[Registration] Processed values:', JSON.stringify(values, null, 2));
 
   try {
-    const [existingUser, existingDemoUser] = await Promise.all([
-      User.findOne({ email: values.email }),
-      DemoUser.findOne({ email: values.email })
-    ]);
-
-    if (existingUser || existingDemoUser) {
+    const existingUser = await User.findOne({ email: values.email });
+    if (existingUser) {
       return res.fail('Email already registered', 400);
     }
 
@@ -273,14 +252,9 @@ exports.register = asyncHandler(async (req, res, next) => {
       status: 'active',
     });
 
-    // 2. Create the Demo User linked to this company
-    console.log('[Registration] Creating demo user linked to company:', company._id);
-    
-    // Generate secure approval token
-    const approvalToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
-
-    const user = await DemoUser.create({
+    // 2. Create the User linked to this company
+    console.log('[Registration] Creating user linked to company:', company._id);
+    const user = await User.create({
       username,
       name: values.name,
       email: values.email,
@@ -292,8 +266,6 @@ exports.register = asyncHandler(async (req, res, next) => {
       is_trial: true,
       is_demo: true,
       trial_ends_at: trialEndsAt,
-      approval_token: approvalToken,
-      approval_token_expires: tokenExpires,
     });
 
     // 3. Create Default System Roles for the company
@@ -302,7 +274,7 @@ exports.register = asyncHandler(async (req, res, next) => {
 
     // 4. Seed the workspace with Demo Entries
     console.log('[Registration] Seeding demo data for company:', company._id);
-    await seedDemoData(company._id, user._id, 'DemoUser');
+    await seedDemoData(company._id, user._id, 'User');
 
     // 5. Notify System Admin with Instant Alert
     try {
@@ -358,15 +330,6 @@ exports.login = asyncHandler(async (req, res, next) => {
       { username: values.identifier }
     ]
   }).select('+password');
-
-  if (!user) {
-    user = await DemoUser.findOne({
-      $or: [
-        { email: values.identifier.toLowerCase() },
-        { username: values.identifier }
-      ]
-    }).select('+password');
-  }
 
   if (!user && values.identifier === getDefaultAdminEmail()) {
     await ensureDefaultAdmin();
@@ -442,7 +405,7 @@ exports.demoLogin = asyncHandler(async (req, res, next) => {
   const trialEndsAt = new Date();
   trialEndsAt.setDate(trialEndsAt.getDate() + 5);
 
-  const user = await DemoUser.create({
+  const user = await User.create({
     username: guestUsername,
     name: guestName,
     email: guestEmail,
@@ -459,7 +422,7 @@ exports.demoLogin = asyncHandler(async (req, res, next) => {
   try {
     await seedDefaultRoles(company._id);
     // 3. Seed the unique sandbox with Demo Entries
-    await seedDemoData(company._id, user._id, 'DemoUser');
+    await seedDemoData(company._id, user._id, 'User');
 
     const loginAt = new Date();
     user.last_login = loginAt;
@@ -541,18 +504,12 @@ exports.updateMe = asyncHandler(async (req, res, next) => {
     return res.fail('Name and email are required', 400);
   }
 
-  const [emailInUse, demoEmailInUse] = await Promise.all([
-    User.findOne({
-      email: email.trim().toLowerCase(),
-      _id: { $ne: req.user._id },
-    }),
-    DemoUser.findOne({
-      email: email.trim().toLowerCase(),
-      _id: { $ne: req.user._id },
-    })
-  ]);
+  const emailInUse = await User.findOne({
+    email: email.trim().toLowerCase(),
+    _id: { $ne: req.user._id },
+  });
 
-  if (emailInUse || demoEmailInUse) {
+  if (emailInUse) {
     return res.fail('Email already in use', 400);
   }
 
@@ -579,8 +536,7 @@ exports.updatePassword = asyncHandler(async (req, res, next) => {
     return res.fail('New password must be at least 6 characters', 400);
   }
 
-  const model = req.user.is_demo ? DemoUser : User;
-  const user = await model.findById(req.user._id).select('+password');
+  const user = await User.findById(req.user._id).select('+password');
   const isMatch = await user.matchPassword(currentPassword);
 
   if (!isMatch) {

@@ -4,19 +4,13 @@ const Lead = require('../models/Lead');
 const FollowupHistory = require('../models/FollowupHistory');
 const Activity = require('../models/Activity');
 const User = require('../models/User');
-const DemoUser = require('../models/DemoUser');
 
 async function findActiveCompanyUserById(companyId, userId) {
   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) return null;
 
   const query = { _id: userId, company_id: companyId, status: 'active' };
   const user = await User.findOne(query).select('_id');
-  if (user) return { model: 'User', user };
-
-  const demoUser = await DemoUser.findOne(query).select('_id');
-  if (demoUser) return { model: 'DemoUser', user: demoUser };
-
-  return null;
+  return user ? { model: 'User', user } : null;
 }
 
 exports.createFollowup = asyncHandler(async (req, res) => {
@@ -83,7 +77,7 @@ exports.createFollowup = asyncHandler(async (req, res) => {
     return res.fail('Assigned user not found or inactive', 404);
   }
 
-  const validOutcomes = ['Converted', 'Not Interested', 'Call Later', 'Wrong Number', 'Demo Scheduled', 'Negotiation'];
+  const validOutcomes = ['Converted', 'Interested', 'Not Interested', 'Call Later', 'Wrong Number', 'Demo Scheduled', 'Negotiation'];
   const resolvedStatusAfterCall = validOutcomes.includes(statusAfterCall) ? statusAfterCall : 'Call Later';
   const validReminderOffsets = ['15m', '1h'];
   const resolvedReminderOffsets = Array.isArray(reminderOffsets)

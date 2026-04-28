@@ -21,10 +21,10 @@ export default function PageHeader({
   }
 
   return (
-    <div className="pageHeader" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '32px', padding: '0 5px', flexWrap: 'wrap' }}>
+    <div className="pageHeader pageHeaderPremium">
       
       {/* Left Column: Back Button + Title */}
-      <div className="pageHeaderLeft" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+      <div className="pageHeaderLeft pageHeaderCluster">
         <button 
           className="btn-modern-back" 
           type="button" 
@@ -34,25 +34,15 @@ export default function PageHeader({
           <span>{backLabel}</span>
         </button>
 
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h1 style={{ 
-            fontSize: '2.4rem', 
-            fontWeight: 900, 
-            letterSpacing: '-0.04em', 
-            margin: 0,
-            background: 'linear-gradient(to bottom, #ffffff 40%, #94a3b8 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))',
-            lineHeight: 1.1
-          }}>
+        <div className="pageHeaderCopy">
+          <h1 className="pageHeaderHeroTitle">
             {title}
           </h1>
-          {description ? <p className="muted" style={{ margin: '4px 0 0 2px', fontSize: '0.95rem', fontWeight: 500, opacity: 0.6 }}>{description}</p> : null}
+          {description ? <p className="pageHeaderHeroDescription">{description}</p> : null}
         </div>
       </div>
 
-      {actions ? <div className="pageHeaderActions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>{actions}</div> : null}
+      {actions ? <div className="pageHeaderActions">{actions}</div> : null}
 
     </div>
   )

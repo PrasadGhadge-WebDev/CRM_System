@@ -4,7 +4,7 @@ import { rolesApi } from '../../../services/roles.js'
 import { Icon } from '../../../layouts/icons.jsx'
 
 const MODULE_PERMISSIONS = [
-  'leads', 'customers', 'deals', 'tickets', 'users', 'reports', 'tasks', 'followups', 'billing', 'trash', 'settings', 'notifications'
+  'leads', 'customers', 'deals', 'tickets', 'users', 'reports', 'tasks', 'billing', 'trash', 'settings', 'attendance', 'notifications'
 ]
 
 export default function RoleFormModal({ role, onClose, onSuccess }) {

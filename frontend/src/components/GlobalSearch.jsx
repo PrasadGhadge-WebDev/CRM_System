@@ -118,13 +118,14 @@ export default function GlobalSearch() {
           top: calc(100% + 10px);
           left: 0;
           right: 0;
-          background: var(--bg-surface);
+          background: color-mix(in srgb, var(--bg-elevated) 92%, white 8%);
           border: 1px solid var(--border);
-          border-radius: 16px;
+          border-radius: 20px;
           z-index: 1000;
           max-height: 480px;
           overflow-y: auto;
           animation: slideDown 0.2s ease-out;
+          box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
         }
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-10px); }
@@ -161,7 +162,7 @@ export default function GlobalSearch() {
         }
         .result-item-title {
           font-weight: 700;
-          color: white;
+          color: var(--text);
           margin-bottom: 2px;
         }
         .result-item-meta {
@@ -171,7 +172,7 @@ export default function GlobalSearch() {
         .search-spinner {
           width: 16px;
           height: 16px;
-          border: 2px solid rgba(255,255,255,0.1);
+          border: 2px solid rgba(var(--primary-rgb), 0.14);
           border-top-color: var(--primary);
           border-radius: 50%;
           animation: spin 0.8s linear infinite;

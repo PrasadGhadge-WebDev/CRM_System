@@ -25,6 +25,7 @@ exports.listCustomers = asyncHandler(async (req, res) => {
     limit = 20,
     sortField = 'created_at',
     sortOrder = 'desc',
+    is_vip,
   } = req.query;
 
   const pageNum = Math.max(1, Number(page) || 1);
@@ -32,21 +33,48 @@ exports.listCustomers = asyncHandler(async (req, res) => {
   const sort = { [sortField]: sortOrder === 'desc' ? -1 : 1 };
 
   const search = buildSearchQuery(q);
-  const filter = {};
+  const filter = { isDeleted: { $ne: true } };
+
   if (req.user?.company_id) {
     filter.company_id = req.user.company_id;
   } else if (companyId) {
     filter.company_id = companyId;
   }
 
+  // --- Role-Based Access Control ---
   if (req.user?.role === 'Employee') {
     filter.assigned_to = req.user.id;
-  } else if (assignedToFilter) {
-    filter.assigned_to = assignedToFilter;
+  } else if (req.user?.role === 'Manager') {
+    // Manager: Team Access (Self + Reporting Users)
+    const User = require('../models/User');
+    const teamMembers = await User.find({ manager_id: req.user.id }).select('_id');
+    const teamIds = teamMembers.map(m => m._id);
+    filter.assigned_to = { $in: [req.user.id, ...teamIds] };
+  }
+  // Admin, Accountant, HR see all in company by default
+  
+  if (assignedToFilter) {
+    // If specific assignee filter is provided, it must be within the allowed set
+    if (filter.assigned_to) {
+       // Combine filters if already restricted
+       if (filter.assigned_to.$in) {
+         if (filter.assigned_to.$in.includes(assignedToFilter)) {
+            filter.assigned_to = assignedToFilter;
+         } else {
+            // Filter out if not in team
+            filter.assigned_to = { $in: [] }; 
+         }
+       } else if (String(filter.assigned_to) !== String(assignedToFilter)) {
+         filter.assigned_to = { $in: [] };
+       }
+    } else {
+      filter.assigned_to = assignedToFilter;
+    }
   }
 
   if (customer_type) filter.customer_type = customer_type;
   if (status) filter.status = status;
+  if (is_vip === 'true' || is_vip === true) filter.is_vip = true;
 
   if (startDate || endDate) {
     filter.created_at = {};
@@ -70,7 +98,7 @@ exports.listCustomers = asyncHandler(async (req, res) => {
 
   const [customers, total] = await Promise.all([
     Customer.find(filter)
-      .populate('assigned_to', 'name email')
+      .populate('assigned_to', 'name email role')
       .sort(sort)
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
@@ -82,7 +110,7 @@ exports.listCustomers = asyncHandler(async (req, res) => {
   const Deal = require('../models/Deal');
   const items = await Promise.all(customers.map(async (c) => {
     const [dealCount, lastNote] = await Promise.all([
-      Deal.countDocuments({ customer_id: c._id }),
+      Deal.countDocuments({ customer_id: c._id, isDeleted: { $ne: true } }),
       CustomerNote.findOne({ customer_id: c._id }).sort({ created_at: -1 }).select('created_at')
     ]);
     return {
@@ -97,9 +125,11 @@ exports.listCustomers = asyncHandler(async (req, res) => {
 });
 
 exports.createCustomer = asyncHandler(async (req, res) => {
-  if (req.user?.role === 'Employee') {
-    return res.fail('Not allowed', 403);
+  // Roles allowed to create: Admin, Manager
+  if (!['Admin', 'Manager'].includes(req.user?.role)) {
+    return res.fail('Only Administrators and Managers can onboard new clients', 403);
   }
+
   const payload = req.body || {};
   if (req.user?.company_id) {
     payload.company_id = req.user.company_id;
@@ -112,7 +142,8 @@ exports.createCustomer = asyncHandler(async (req, res) => {
   if (duplicateConditions.length > 0) {
     const existing = await Customer.findOne({
       company_id: payload.company_id || { $exists: true },
-      $or: duplicateConditions
+      $or: duplicateConditions,
+      isDeleted: { $ne: true }
     });
 
     if (existing) {
@@ -130,30 +161,70 @@ exports.createCustomer = asyncHandler(async (req, res) => {
 });
 
 exports.getCustomer = asyncHandler(async (req, res) => {
-  const filter = { _id: req.params.id };
+  const filter = { _id: req.params.id, isDeleted: { $ne: true } };
   if (req.user?.company_id) {
     filter.company_id = req.user.company_id;
   }
-  if (req.user?.role === 'Employee') {
-    filter.assigned_to = req.user.id;
-  }
+
   const customer = await Customer.findOne(filter)
-    .populate('assigned_to', 'name email')
+    .populate('assigned_to', 'name email role')
     .populate('converted_from_lead_id', 'name status email phone');
+
   if (!customer) {
     return res.fail('Customer not found', 404);
   }
+
+  // Role Access Check
+  if (req.user?.role === 'Employee') {
+    if (String(customer.assigned_to?._id || customer.assigned_to) !== String(req.user.id)) {
+      return res.fail('Access denied: Record not assigned to you', 403);
+    }
+  } else if (req.user?.role === 'Manager') {
+    // Check if assigned to team
+    const assignedId = String(customer.assigned_to?._id || customer.assigned_to);
+    if (assignedId !== String(req.user.id)) {
+      const User = require('../models/User');
+      const isTeamMember = await User.exists({ _id: assignedId, manager_id: req.user.id });
+      if (!isTeamMember) {
+        return res.fail('Access denied: Record not in your team scope', 403);
+      }
+    }
+  }
+
   res.ok(customer);
 });
 
 exports.updateCustomer = asyncHandler(async (req, res) => {
-  if (req.user?.role === 'Employee') {
-    return res.fail('Not allowed', 403);
-  }
-
-  const filter = { _id: req.params.id };
+  const filter = { _id: req.params.id, isDeleted: { $ne: true } };
   if (req.user?.company_id) {
     filter.company_id = req.user.company_id;
+  }
+
+  const customer = await Customer.findOne(filter);
+  if (!customer) return res.fail('Customer not found', 404);
+
+  // Role Access Check
+  if (req.user?.role === 'Employee') {
+    if (String(customer.assigned_to) !== String(req.user.id)) {
+      return res.fail('Access denied: You can only update your own assigned customers', 403);
+    }
+    // Employee can only update specific fields
+    const allowed = ['name', 'email', 'phone', 'alternate_phone', 'address', 'city', 'postal_code', 'notes', 'status'];
+    const payload = req.body || {};
+    for (const key of Object.keys(payload)) {
+      if (!allowed.includes(key)) delete payload[key];
+    }
+  } else if (req.user?.role === 'Manager') {
+    const assignedId = String(customer.assigned_to);
+    if (assignedId !== String(req.user.id)) {
+      const User = require('../models/User');
+      const isTeamMember = await User.exists({ _id: assignedId, manager_id: req.user.id });
+      if (!isTeamMember) {
+        return res.fail('Access denied: You can only update team-assigned customers', 403);
+      }
+    }
+  } else if (['Accountant', 'HR'].includes(req.user?.role)) {
+    return res.fail('Access denied: View-only permissions', 403);
   }
 
   const payload = req.body || {};
@@ -164,8 +235,9 @@ exports.updateCustomer = asyncHandler(async (req, res) => {
   if (duplicateConditions.length > 0) {
     const existing = await Customer.findOne({
       _id: { $ne: req.params.id },
-      company_id: filter.company_id || { $exists: true },
-      $or: duplicateConditions
+      company_id: customer.company_id,
+      $or: duplicateConditions,
+      isDeleted: { $ne: true }
     });
 
     if (existing) {
@@ -186,24 +258,26 @@ exports.updateCustomer = asyncHandler(async (req, res) => {
       runValidators: true,
     }
   );
-  if (!updated) {
-    return res.fail('Customer not found', 404);
-  }
+
   res.ok(updated);
 });
 
 exports.deleteCustomer = asyncHandler(async (req, res) => {
-  if (req.user?.role === 'Employee') {
-    return res.fail('Not allowed', 403);
+  // Only Admin can delete (move to trash)
+  if (req.user?.role !== 'Admin') {
+    return res.fail('Only Administrators can delete client records', 403);
   }
+
   const filter = { _id: req.params.id };
   if (req.user?.company_id) {
     filter.company_id = req.user.company_id;
   }
+
   const customer = await Customer.findOne(filter);
   if (!customer) {
     return res.fail('Customer not found', 404);
   }
+
   await customer.softDelete(req.user.id);
 
   const TrashEntry = require('../models/TrashEntry');
@@ -220,40 +294,40 @@ exports.deleteCustomer = asyncHandler(async (req, res) => {
 });
 
 const CSV_HEADERS = [
-  'company_id',
   'name',
   'email',
   'phone',
   'alternate_phone',
   'address',
   'city',
-  'state',
-  'country',
   'postal_code',
   'customer_type',
+  'status',
   'notes',
-  'follow_up_date',
 ];
 
 exports.exportCustomersCsv = asyncHandler(async (req, res) => {
-  if (req.user?.role === 'Employee') {
-    return res.fail('Not allowed', 403);
+  if (['Accountant', 'HR', 'Employee'].includes(req.user?.role)) {
+    return res.fail('Access denied: Export restricted', 403);
   }
-  const { q, companyId } = req.query;
-  const limitParam = Number(req.query.limit);
-  const maxLimit = 10000;
-  const limitNum = Math.min(maxLimit, Math.max(1, Number.isFinite(limitParam) ? limitParam : maxLimit));
 
-  const search = buildSearchQuery(q);
-  const filter = {};
+  const { q, companyId } = req.query;
+  const filter = { isDeleted: { $ne: true } };
+  
   if (req.user?.company_id) {
     filter.company_id = req.user.company_id;
   } else if (companyId) {
     filter.company_id = companyId;
   }
-  if (req.user?.role === 'Employee') {
-    filter.assigned_to = req.user.id;
+
+  if (req.user?.role === 'Manager') {
+    const User = require('../models/User');
+    const teamMembers = await User.find({ manager_id: req.user.id }).select('_id');
+    const teamIds = teamMembers.map(m => m._id);
+    filter.assigned_to = { $in: [req.user.id, ...teamIds] };
   }
+
+  const search = buildSearchQuery(q);
   if (search) filter.$or = [{ name: search }, { email: search }, { phone: search }];
 
   const template = String(req.query.template || '').toLowerCase();
@@ -261,16 +335,15 @@ exports.exportCustomersCsv = asyncHandler(async (req, res) => {
 
   const items = wantsTemplate
     ? []
-    : await Customer.find(filter)
-        .sort({ created_at: -1 })
-        .limit(limitNum);
+    : await Customer.find(filter).sort({ created_at: -1 }).limit(5000);
 
+  const { toCsv } = require('../utils/csv');
   const rows = [CSV_HEADERS];
   for (const c of items) {
     rows.push(CSV_HEADERS.map((h) => (c[h] === undefined ? '' : c[h])));
   }
 
-  const filename = wantsTemplate ? 'customers-template.csv' : 'customers.csv';
+  const filename = wantsTemplate ? 'customers-template.csv' : 'customers-export.csv';
   const csv = '\ufeff' + toCsv(rows);
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -278,48 +351,27 @@ exports.exportCustomersCsv = asyncHandler(async (req, res) => {
   res.send(csv);
 });
 
-function cleanImportValue(v) {
-  const s = String(v === undefined || v === null ? '' : v).trim();
-  return s === '' ? undefined : s;
-}
-
 exports.importCustomersCsv = asyncHandler(async (req, res) => {
-  if (req.user?.role === 'Employee') {
-    return res.fail('Not allowed', 403);
+  if (!['Admin', 'Manager'].includes(req.user?.role)) {
+    return res.fail('Access denied: Import restricted', 403);
   }
+
   const { csv } = req.body || {};
-  if (!csv || typeof csv !== 'string') {
-    res.status(400);
-    throw new Error('Missing csv string in request body');
-  }
+  if (!csv) return res.fail('Missing csv data', 400);
 
+  const { parseCsv, rowsToObjects } = require('../utils/csv');
   const rows = parseCsv(csv);
-  if (!rows.length) {
-    res.status(400);
-    throw new Error('CSV is empty');
-  }
-
   const objects = rowsToObjects(rows, { header: true });
-  if (!objects.length) {
-    res.status(400);
-    throw new Error('CSV has no data rows');
-  }
 
   const created = [];
   const errors = [];
   let skipped = 0;
 
   for (let idx = 0; idx < objects.length; idx++) {
-    const rowNum = idx + 2; // header is row 1
     const r = objects[idx] || {};
-
     const payload = {};
     for (const key of CSV_HEADERS) {
-      if (key in r) payload[key] = cleanImportValue(r[key]);
-    }
-
-    if (req.user?.company_id) {
-      payload.company_id = req.user.company_id;
+      if (r[key] !== undefined) payload[key] = String(r[key]).trim();
     }
 
     if (!payload.name) {
@@ -327,11 +379,14 @@ exports.importCustomersCsv = asyncHandler(async (req, res) => {
       continue;
     }
 
+    payload.company_id = req.user.company_id;
+    payload.assigned_to = req.user.id; // Default to importer
+
     try {
       const doc = await Customer.create(payload);
       created.push(doc);
     } catch (e) {
-      errors.push({ row: rowNum, message: e.message || String(e) });
+      errors.push({ row: idx + 2, message: e.message });
     }
   }
 
@@ -343,66 +398,113 @@ exports.importCustomersCsv = asyncHandler(async (req, res) => {
 });
 
 exports.getCustomerAnalytics = asyncHandler(async (req, res) => {
-  const { company_id } = req.query;
-  const filter = {};
-  if (req.user?.company_id) {
-    filter.company_id = req.user.company_id;
-  } else if (company_id) {
-    filter.company_id = company_id;
+  // Accountant/Admin can see analytics
+  if (!['Admin', 'Accountant', 'Manager'].includes(req.user?.role)) {
+     return res.fail('Access denied', 403);
   }
 
-  const [total, active, inactive, topCustomers] = await Promise.all([
+  const filter = { isDeleted: { $ne: true } };
+  if (req.user?.company_id) {
+    filter.company_id = req.user.company_id;
+  }
+
+  if (req.user?.role === 'Manager') {
+    const User = require('../models/User');
+    const teamMembers = await User.find({ manager_id: req.user.id }).select('_id');
+    const teamIds = teamMembers.map(m => m._id);
+    filter.assigned_to = { $in: [req.user.id, ...teamIds] };
+  }
+
+  const [total, active, inactive, topCustomers, paymentsSummary] = await Promise.all([
     Customer.countDocuments(filter),
     Customer.countDocuments({ ...filter, status: 'Active' }),
     Customer.countDocuments({ ...filter, status: 'Inactive' }),
     Customer.find(filter)
       .sort({ total_purchase_amount: -1 })
       .limit(5)
-      .select('name email total_purchase_amount status')
+      .select('name email total_purchase_amount status'),
+    Customer.aggregate([
+      { $match: filter },
+      { $group: {
+        _id: null,
+        totalPaid: { $sum: '$total_purchase_amount' },
+        avgPaid: { $avg: '$total_purchase_amount' }
+      }}
+    ])
   ]);
 
   res.ok({
     total,
     active,
     inactive,
-    topCustomers
+    topCustomers,
+    metrics: paymentsSummary[0] || { totalPaid: 0, avgPaid: 0 }
   });
 });
 
 exports.convertLead = asyncHandler(async (req, res) => {
+  if (!['Admin', 'Manager', 'Employee'].includes(req.user?.role)) {
+    return res.fail('Not allowed to convert leads', 403);
+  }
   const { lead_id, assigned_to, source, initial_note } = req.body;
 
-  if (!lead_id) return res.fail('Lead ID is required for conversion', 400);
-  if (!assigned_to) return res.fail('Assigned employee is required', 400);
-  if (!source) return res.fail('Lead source is required', 400);
-
+  if (!lead_id) return res.fail('Lead ID is required', 400);
   const lead = await Lead.findById(lead_id);
   if (!lead) return res.fail('Lead not found', 404);
-  if (lead.convertedCustomerId) return res.fail('This lead is already converted', 400);
 
-  // Business Logic: Conversion
+  // Step 1: Duplicate Check
+  const duplicateConditions = [];
+  if (lead.email) duplicateConditions.push({ email: lead.email });
+  if (lead.phone) duplicateConditions.push({ phone: lead.phone });
+
+  if (duplicateConditions.length > 0) {
+    const existing = await Customer.findOne({
+      company_id: lead.company_id || req.user.company_id,
+      $or: duplicateConditions,
+      isDeleted: { $ne: true }
+    });
+    if (existing) {
+      return res.fail('A customer with this email or phone already exists in your database', 400);
+    }
+  }
+
+  // Step 2 & 3: Mapping & Assignment
   const customerPayload = {
     name: lead.name,
     email: lead.email,
     phone: lead.phone,
     company_name: lead.company,
-    company_id: lead.company_id || req.user?.company_id,
-    assigned_to: assigned_to,
-    source: source,
+    company_id: lead.company_id || req.user.company_id,
+    assigned_to: assigned_to || lead.assignedTo || req.user.id,
+    assigned_by: req.user.id,
+    source: source || lead.source || 'Lead Conversion',
     converted_from_lead_id: lead._id,
     status: 'Active',
-    notes: initial_note || lead.notes
+    notes: initial_note || lead.notes,
+    last_interaction_date: new Date()
   };
 
   const customer = await Customer.create(customerPayload);
-
-  // Update lead status
+  
+  // Step 1: Link & Update Lead
   lead.convertedCustomerId = customer._id;
-  lead.convertedAt = new Date();
   lead.status = 'Converted';
+  lead.convertedAt = new Date();
   await lead.save();
 
-  // Create initial discussion note if provided
+  // Step 7: Activity Tracking
+  const { logActivity } = require('../utils/activityLogger');
+  await logActivity({
+    activity_type: 'Customer Created',
+    category: 'system',
+    description: `Converted from Lead ${lead.leadId || lead.name}. ${initial_note ? `Note: ${initial_note}` : ''}`,
+    related_to: customer._id,
+    related_type: 'Customer',
+    company_id: req.user.company_id,
+    created_by: req.user.id,
+    color_code: 'green'
+  });
+
   if (initial_note) {
     await CustomerNote.create({
       customer_id: customer._id,
@@ -411,14 +513,13 @@ exports.convertLead = asyncHandler(async (req, res) => {
     });
   }
 
-  res.created(customer, 'Lead converted to customer successfully');
+  res.created(customer);
 });
 
 exports.addNote = asyncHandler(async (req, res) => {
   const { content } = req.body;
   const customer_id = req.params.id;
-
-  if (!content) return res.fail('Note content cannot be empty', 400);
+  if (!content) return res.fail('Note content is required', 400);
 
   const note = await CustomerNote.create({
     customer_id,
@@ -426,7 +527,7 @@ exports.addNote = asyncHandler(async (req, res) => {
     content
   });
 
-  res.created(note, 'Discussion note added');
+  res.created(note);
 });
 
 exports.listNotes = asyncHandler(async (req, res) => {
@@ -436,4 +537,5 @@ exports.listNotes = asyncHandler(async (req, res) => {
 
   res.ok(notes);
 });
+
 

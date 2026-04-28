@@ -74,12 +74,16 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
   const { user: currentUser } = useAuth()
   const isAdmin = currentUser?.role === 'Admin'
   const isManager = currentUser?.role === 'Manager'
-  const isEmployeeView = !isAdmin && !isManager
+  const isHR = currentUser?.role === 'HR'
+  const isEmployeeView = !isAdmin && !isManager && !isHR
 
   const [model, setModel] = useState(emptyUser)
   const [managers, setManagers] = useState([])
   const [availableRoles, setAvailableRoles] = useState([])
   const roleChoices = Array.isArray(availableRoles) ? availableRoles : []
+  const visibleRoleChoices = isHR
+    ? roleChoices.filter((role) => role.name === 'Employee')
+    : roleChoices
   const [loading, setLoading] = useState(isEdit && !!id)
   const [saving, setSaving] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -287,327 +291,249 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
   }
 
   return (
-    <div className="crm-form-page crmContent" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-        <form className="premium-form-card" onSubmit={handleSubmit} noValidate>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '32px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '20px' }}>
-            <button className="btn-modern-back" type="button" onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)' }}>
-              <Icon name="arrowLeft" size={16} />
-              <span>Back</span>
-            </button>
-            <h1 className="userFormTitle" style={{ margin: 0, fontSize: '1.5rem' }}>{isEdit ? 'Edit User' : 'Add New User'}</h1>
+    <div className="crm-form-page crmContent page-enter">
+      <div className="lead-form-page">
+        <header className="leadsHeader">
+          <div>
+            <h1 className="leadsTitle">{isEdit ? 'Refine Identity' : 'Onboard Personnel'}</h1>
+            <p className="leadsDescription">Configure system access, organizational role, and personnel profile metadata.</p>
           </div>
+          <div className="leadsHeaderActions">
+            <button className="btn-premium secondary" onClick={handleCancel}>
+              <Icon name="close" />
+              <span>Cancel</span>
+            </button>
+            <button 
+              className="btn-premium action-vibrant" 
+              onClick={handleSubmit}
+              disabled={saving}
+            >
+              <Icon name={saving ? 'spinner' : 'check'} className={saving ? 'spinner' : ''} />
+              <span>{saving ? 'Processing...' : isEdit ? 'Update Identity' : 'Authorize User'}</span>
+            </button>
+          </div>
+        </header>
 
-          {/* ── PERSONAL INFORMATION ── */}
-          <div className="stack gap-16">
-            <div className="section-header-row">
-              <div className="section-icon" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)' }}>
-                <Icon name="user" size={18} color="white" />
-              </div>
-              <h4 className="section-title">Personal Information</h4>
+        <div className="intelligence-form-grid">
+          {/* Personnel Identity */}
+          <div className="intel-form-card glass-panel">
+            <div className="card-header-premium">
+              <Icon name="user" />
+              <h3>Personnel Identity</h3>
             </div>
-
-            {/* First / Last name */}
-            <div className="grid2">
-              <div className="stack tiny-gap">
-                <label className="text-small muted" style={{ fontWeight: 600 }}>First Name *</label>
-                <input
-                  className={`input ${fieldErrors.firstName ? 'error' : ''}`}
-                  value={model.firstName}
-                  onChange={e => handleChange('firstName', e.target.value)}
-                  placeholder="John"
-                  maxLength={50}
-                />
-                {fieldErrors.firstName && <span className="text-small text-danger">{fieldErrors.firstName}</span>}
-              </div>
-              <div className="stack tiny-gap">
-                <label className="text-small muted" style={{ fontWeight: 600 }}>Last Name *</label>
-                <input
-                  className={`input ${fieldErrors.lastName ? 'error' : ''}`}
-                  value={model.lastName}
-                  onChange={e => handleChange('lastName', e.target.value)}
-                  placeholder="Doe"
-                  maxLength={50}
-                />
-                {fieldErrors.lastName && <span className="text-small text-danger">{fieldErrors.lastName}</span>}
-              </div>
-            </div>
-
-            {/* Phone + DOB */}
-            <div className="grid2">
-              <div className="stack tiny-gap">
-                <label className="text-small muted" style={{ fontWeight: 600 }}>Primary Phone *
-                  <span className="muted" style={{ fontWeight: 400 }}> (10 digits)</span>
-                </label>
-                <div className="row tiny-gap">
-                  <div className="crm-input-joined" style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)', overflow: 'hidden' }}>
-                    <select className="input" style={{ width: '85px', border: 'none', background: 'transparent', paddingRight: '5px', fontWeight: 600, borderRight: '1px solid var(--border)', borderRadius: 0 }} 
-                      value={model.countryCode}
-                      onChange={e => handleChange('countryCode', e.target.value)}>
+            <div className="card-body-premium">
+              <div className="grid-2">
+                <div className="intel-field-group">
+                  <label className="intel-label">First Name</label>
+                  <input
+                    className="input-premium"
+                    value={model.firstName}
+                    onChange={e => handleChange('firstName', e.target.value)}
+                    placeholder="e.g. Alexander"
+                  />
+                  {fieldErrors.firstName && <span className="intel-error-msg">{fieldErrors.firstName}</span>}
+                </div>
+                <div className="intel-field-group">
+                  <label className="intel-label">Last Name</label>
+                  <input
+                    className="input-premium"
+                    value={model.lastName}
+                    onChange={e => handleChange('lastName', e.target.value)}
+                    placeholder="e.g. Hamilton"
+                  />
+                  {fieldErrors.lastName && <span className="intel-error-msg">{fieldErrors.lastName}</span>}
+                </div>
+                <div className="intel-field-group">
+                  <label className="intel-label">Contact Intelligence (Phone)</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select className="input-premium" style={{ width: '90px' }} value={model.countryCode} onChange={e => handleChange('countryCode', e.target.value)}>
                       {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                     </select>
                     <input
-                      className={`input ${fieldErrors.phone ? 'error' : model.phone.length === 10 ? 'success' : ''}`}
-                      style={{ flex: 1, border: 'none', background: 'transparent' }}
+                      className="input-premium"
+                      style={{ flex: 1 }}
                       value={model.phone}
                       onChange={e => handleChange('phone', e.target.value)}
-                      placeholder="88888 88888"
-                      inputMode="numeric"
-                      maxLength={10}
+                      placeholder="98765 43210"
                     />
                   </div>
+                  {fieldErrors.phone && <span className="intel-error-msg">{fieldErrors.phone}</span>}
                 </div>
-                {fieldErrors.phone
-                  ? <span className="text-small text-danger">{fieldErrors.phone}</span>
-                  : model.phone.length === 10 && <span className="text-small" style={{ color: '#10b981' }}>✓ Valid phone number</span>
-                }
-              </div>
-
-              <div className="stack tiny-gap">
-                <label className="text-small muted" style={{ fontWeight: 600 }}>Date of Birth
-                  <span className="muted" style={{ fontWeight: 400 }}> (optional)</span>
-                </label>
-                <input
-                  className={`input ${fieldErrors.date_of_birth ? 'error' : ''}`}
-                  type="date"
-                  value={model.date_of_birth}
-                  onChange={e => handleChange('date_of_birth', e.target.value)}
-                  max={today}
-                />
-                {fieldErrors.date_of_birth && <span className="text-small text-danger">{fieldErrors.date_of_birth}</span>}
+                <div className="intel-field-group">
+                  <label className="intel-label">Date of Birth</label>
+                  <input
+                    className="input-premium"
+                    type="date"
+                    value={model.date_of_birth}
+                    onChange={e => handleChange('date_of_birth', e.target.value)}
+                  />
+                  {fieldErrors.date_of_birth && <span className="intel-error-msg">{fieldErrors.date_of_birth}</span>}
+                </div>
               </div>
             </div>
-
-
           </div>
 
-          {!isEmployeeView && isAdmin && (
-            <div className="stack gap-16">
-              <div className="section-header-row">
-                <div className="section-icon" style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}>
-                  <Icon name="shield" size={18} color="white" />
-                </div>
-                <h4 className="section-title">Account Security</h4>
+          {/* System Security */}
+          {!isEmployeeView && (isAdmin || isHR) && (
+            <div className="intel-form-card glass-panel">
+              <div className="card-header-premium">
+                <Icon name="shield" />
+                <h3>System Security & Credentials</h3>
               </div>
-              <div className="grid2">
-                <div className="stack tiny-gap">
-                  <label className="text-small muted" style={{ fontWeight: 600 }}>Login Email *</label>
-                  <input
-                    className={`input ${fieldErrors.email ? 'error' : model.email && !fieldErrors.email ? 'success' : ''}`}
-                    type="email"
-                    value={model.email}
-                    onChange={e => handleChange('email', e.target.value)}
-                    placeholder="user@example.com"
-                    autoComplete="off"
-                  />
-                  {fieldErrors.email && <span className="text-small text-danger">{fieldErrors.email}</span>}
-                </div>
-
-              </div>
-
-              <div className="grid2">
-                <div className="stack tiny-gap">
-                  <label className="text-small muted" style={{ fontWeight: 600 }}>
-                    Password {isEdit ? <span style={{ fontWeight: 400, fontSize: '0.8rem' }}>(leave blank to keep)</span> : '*'}
-                  </label>
-                  <input
-                    className={`input ${fieldErrors.password ? 'error' : model.password && !fieldErrors.password ? 'success' : ''}`}
-                    type="password"
-                    value={model.password}
-                    onChange={e => handleChange('password', e.target.value)}
-                    placeholder="Password (letters + numbers)"
-                    autoComplete="new-password"
-                  />
-                  {fieldErrors.password && <span className="text-small text-danger">{fieldErrors.password}</span>}
-                  {!fieldErrors.password && model.password && (
-                    <span className="text-small text-success">Strong password format captured</span>
-                  )}
-                </div>
-                <div className="stack tiny-gap">
-                  <label className="text-small muted" style={{ fontWeight: 600 }}>Confirm Password *</label>
-                  <input
-                    className={`input ${fieldErrors.confirmPassword ? 'error' : model.confirmPassword && model.confirmPassword === model.password ? 'success' : ''}`}
-                    type="password"
-                    value={model.confirmPassword}
-                    onChange={e => handleChange('confirmPassword', e.target.value)}
-                    placeholder="Repeat password"
-                    autoComplete="new-password"
-                    onPaste={e => e.preventDefault()}
-                  />
-                  {fieldErrors.confirmPassword
-                    ? <span className="text-small text-danger">{fieldErrors.confirmPassword}</span>
-                    : model.confirmPassword && model.confirmPassword === model.password && <span className="text-small text-success">✓ Passwords match</span>
-                  }
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── EMPLOYMENT DETAILS (Admin / Manager) ── */}
-          {!isEmployeeView && (
-            <div className="stack gap-16">
-              <div className="section-header-row">
-                <div className="section-icon" style={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)' }}>
-                  <Icon name="briefcase" size={18} color="white" />
-                </div>
-                <h4 className="section-title">Employment Details</h4>
-              </div>
-
-              <div className="grid2">
-                {/* Join Date */}
-                <div className="stack tiny-gap">
-                  <label className="text-small muted" style={{ fontWeight: 600 }}>Join Date *</label>
-                  <input
-                    className={`input ${fieldErrors.joining_date ? 'error' : ''}`}
-                    type="date"
-                    value={model.joining_date}
-                    onChange={e => handleChange('joining_date', e.target.value)}
-                  />
-                  {fieldErrors.joining_date && <span className="text-small text-danger">{fieldErrors.joining_date}</span>}
-                </div>
-
-                {/* Department */}
-                <div className="stack tiny-gap">
-                  <label className="text-small muted" style={{ fontWeight: 600 }}>Department</label>
-                  <select className="input" value={model.department}
-                    onChange={e => handleChange('department', e.target.value)}>
-                    <option value="">— Select Department —</option>
-                    {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-
-                {/* Reporting Manager */}
-                <div className="stack tiny-gap">
-                  <label className="text-small muted" style={{ fontWeight: 600 }}>Reporting Manager</label>
-                  <select className="input" value={model.manager_id}
-                    onChange={e => handleChange('manager_id', e.target.value)}>
-                    <option value="">— None —</option>
-                    {managers.map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.name || m.username} ({m.department || 'Manager'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── ADMINISTRATIVE SETUP (Admin / Manager) ── */}
-          {!isEmployeeView && (
-            <div className="stack gap-16">
-              <div className="section-header-row">
-                <div className="section-icon" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
-                  <Icon name="settings" size={18} color="white" />
-                </div>
-                <h4 className="section-title">Administrative Setup</h4>
-              </div>
-              <div className="grid2">
-                <div className="stack tiny-gap">
-                  <label className="text-small muted" style={{ fontWeight: 600 }}>System Role</label>
-                  <select className="input" value={model.role} onChange={e => handleChange('role', e.target.value)}>
-                    <option value="Admin">Administrator</option>
-                    <option value="Manager">Manager</option>
-                    {roleChoices
-                      .map((roleItem) => (typeof roleItem === 'string' ? { name: roleItem } : roleItem))
-                      .filter((r) => r?.name && r.name !== 'Admin' && r.name !== 'Manager')
-                      .map((r) => (
-                        <option key={r.id ?? r._id ?? r.name} value={r.name}>
-                          {r.name}
-                        </option>
-                      ))}
-                    {!roleChoices
-                      .map((roleItem) => (typeof roleItem === 'string' ? { name: roleItem } : roleItem))
-                      .some((r) => r?.name === 'Employee') && <option value="Employee">Employee</option>}
-                  </select>
-                </div>
-                <div className="stack tiny-gap">
-                  <label className="text-small muted" style={{ fontWeight: 600 }}>Operational Status</label>
-                  <select className="input" value={model.status} onChange={e => handleChange('status', e.target.value)}>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="pending">Pending Auth</option>
-                  </select>
-                </div>
-              </div>
-
-
-
-              {/* Identity snapshot (edit mode) */}
-              {isEdit && (
-                <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 16px' }}>
-                  <h4 className="text-small muted" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                    <Icon name="info" /> Identity Snapshot
-                  </h4>
-                  <div className="grid3" style={{ fontSize: '0.82rem', gap: '12px' }}>
-                    <div>
-                      <span className="muted" style={{ display: 'block', fontSize: '0.68rem', marginBottom: '2px' }}>Created</span>
-                      <strong>{formatMetaDate(model.created_at)}</strong>
-                    </div>
-                    <div>
-                      <span className="muted" style={{ display: 'block', fontSize: '0.68rem', marginBottom: '2px' }}>Official Join Date</span>
-                      <strong>{formatMetaDate(model.joining_date || model.created_at)}</strong>
-                    </div>
-                    <div>
-                      <span className="muted" style={{ display: 'block', fontSize: '0.68rem', marginBottom: '2px' }}>Last Login</span>
-                      <strong>{formatMetaDate(model.last_login)}</strong>
-                    </div>
+              <div className="card-body-premium">
+                <div className="grid-2">
+                  <div className="intel-field-group span-2">
+                    <label className="intel-label">Primary Access Email</label>
+                    <input
+                      className="input-premium"
+                      type="email"
+                      value={model.email}
+                      onChange={e => handleChange('email', e.target.value)}
+                      placeholder="personnel@institutional.com"
+                    />
+                    {fieldErrors.email && <span className="intel-error-msg">{fieldErrors.email}</span>}
+                  </div>
+                  <div className="intel-field-group">
+                    <label className="intel-label">Secure Passphrase {isEdit && '(Leave blank to retain)'}</label>
+                    <input
+                      className="input-premium"
+                      type="password"
+                      value={model.password}
+                      onChange={e => handleChange('password', e.target.value)}
+                      placeholder="••••••••"
+                    />
+                    {fieldErrors.password && <span className="intel-error-msg">{fieldErrors.password}</span>}
+                  </div>
+                  <div className="intel-field-group">
+                    <label className="intel-label">Verify Passphrase</label>
+                    <input
+                      className="input-premium"
+                      type="password"
+                      value={model.confirmPassword}
+                      onChange={e => handleChange('confirmPassword', e.target.value)}
+                      placeholder="••••••••"
+                    />
+                    {fieldErrors.confirmPassword && <span className="intel-error-msg">{fieldErrors.confirmPassword}</span>}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
-          {/* ── PROFILE PHOTO ── */}
-          <div className="stack gap-16">
-            <div className="section-header-row">
-              <div className="section-icon" style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
-                <Icon name="image" size={18} color="white" />
+          {/* Organizational Setup */}
+          {!isEmployeeView && (
+            <div className="intel-form-card glass-panel">
+              <div className="card-header-premium">
+                <Icon name="briefcase" />
+                <h3>Organizational Setup</h3>
               </div>
-              <h4 className="section-title">Profile Photo</h4>
+              <div className="card-body-premium">
+                <div className="grid-3">
+                  <div className="intel-field-group">
+                    <label className="intel-label">Institutional Role</label>
+                    <select className="input-premium" value={model.role} onChange={e => handleChange('role', e.target.value)}>
+                      {!isHR && <option value="Admin">Administrator</option>}
+                      {!isHR && <option value="Manager">Manager</option>}
+                      {!isHR && !visibleRoleChoices.some(r => r.name === 'HR') && <option value="HR">HR</option>}
+                      {visibleRoleChoices.map(r => <option key={r.id || r._id} value={r.name}>{r.name}</option>)}
+                      {!visibleRoleChoices.some(r => r.name === 'Employee') && <option value="Employee">Employee</option>}
+                    </select>
+                  </div>
+                  <div className="intel-field-group">
+                    <label className="intel-label">Deployment Status</label>
+                    <select className="input-premium" value={model.status} onChange={e => handleChange('status', e.target.value)}>
+                      <option value="active">Active Service</option>
+                      <option value="inactive">Suspended</option>
+                      <option value="pending">Awaiting Auth</option>
+                    </select>
+                  </div>
+                  <div className="intel-field-group">
+                    <label className="intel-label">Onboarding Date</label>
+                    <input className="input-premium" type="date" value={model.joining_date} onChange={e => handleChange('joining_date', e.target.value)} />
+                  </div>
+                  <div className="intel-field-group">
+                    <label className="intel-label">Department</label>
+                    <select className="input-premium" value={model.department} onChange={e => handleChange('department', e.target.value)}>
+                      <option value="">Select Dept</option>
+                      {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                  {!isHR && (
+                    <div className="intel-field-group span-2">
+                      <label className="intel-label">Reporting Authority</label>
+                      <select className="input-premium" value={model.manager_id} onChange={e => handleChange('manager_id', e.target.value)}>
+                        <option value="">Direct Accountability</option>
+                        {managers.map(m => <option key={m.id} value={m.id}>{m.name || m.username} ({m.department || 'Lead'})</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="row gap-24" style={{ alignItems: 'flex-start' }}>
-              <div
-                style={{ width: '96px', height: '96px', flexShrink: 0, borderRadius: '50%', background: 'var(--bg-elevated)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', position: 'relative', boxShadow: 'var(--shadow-lg)' }}
-                onClick={() => fileInputRef.current?.click()}
-                title="Upload profile picture"
-              >
-                {model.profile_photo
-                  ? <img src={model.profile_photo} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <div style={{ opacity: 0.5 }}><Icon name="user" size={32} /></div>}
-                <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(59, 130, 246, 0.85)', fontSize: '0.6rem', textAlign: 'center', color: 'white', padding: '4px 0', letterSpacing: '0.05em', fontWeight: 600 }}>CHANGE</div>
-              </div>
-              <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImageUpload} />
-              <div className="stack tiny-gap" style={{ justifyContent: 'center', paddingTop: '8px' }}>
-                <p className="extra-small muted" style={{ margin: 0 }}>Square Image, Max 2MB</p>
-                {model.profile_photo && (
-                  <button type="button" className="btn secondary" style={{ fontSize: '0.75rem', padding: '3px 10px' }}
-                    onClick={() => handleChange('profile_photo', '')}>Remove photo</button>
-                )}
+          )}
+
+          {/* Profile Visual */}
+          <div className="intel-form-card glass-panel">
+            <div className="card-header-premium">
+              <Icon name="image" />
+              <h3>Personnel Visual Identity</h3>
+            </div>
+            <div className="card-body-premium">
+              <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                <div 
+                  style={{ width: '120px', height: '120px', borderRadius: '32px', background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden' }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {model.profile_photo ? (
+                    <img src={model.profile_photo} alt="Identity" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <Icon name="user" size={40} style={{ opacity: 0.2 }} />
+                  )}
+                </div>
+                <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImageUpload} />
+                <div className="stack gap-8">
+                  <button type="button" className="btn-premium action-secondary" onClick={() => fileInputRef.current?.click()}>
+                    <Icon name="image" />
+                    <span>Upload New Visual</span>
+                  </button>
+                  <p className="text-xs muted">Supported: PNG, JPG (Max 2MB)</p>
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* ── ACTIONS ── */}
-          <div className="row gap-16" style={{ marginTop: '20px', justifyContent: 'flex-end', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <button className="btn secondary" type="button" onClick={handleCancel} style={{ padding: '12px 24px', borderRadius: '12px' }}>Cancel</button>
-            <button 
-              className="btn primary" 
-              type="submit" 
-              disabled={saving}
-              style={{
-                background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-                padding: '12px 32px',
-                borderRadius: '12px',
-                border: 'none',
-                boxShadow: '0 8px 16px rgba(59, 130, 246, 0.4)',
-                fontWeight: 600
-              }}
-            >
-              {saving ? 'Saving…' : isEdit ? 'Update User Account' : 'Create New User Account'}
-            </button>
-          </div>
+        <div className="form-action-footer">
+          <button className="btn-premium action-secondary" type="button" onClick={handleCancel}>Cancel</button>
+          <button className="btn-premium action-vibrant" type="submit" disabled={saving} onClick={handleSubmit}>
+            {saving ? 'Processing Identity...' : isEdit ? 'Commit Changes' : 'Finalize Onboarding'}
+          </button>
+        </div>
+      </div>
 
-        </form>
+      <style>{`
+        .lead-form-page { padding-bottom: 80px; }
+        .intelligence-form-grid { display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 32px; max-width: 1000px; }
+        .intel-form-card { border-radius: 24px; overflow: hidden; }
+        .card-header-premium { padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.02); }
+        .card-header-premium h3 { margin: 0; font-size: 1rem; font-weight: 800; }
+        .card-header-premium svg { color: var(--primary); }
+        .card-body-premium { padding: 24px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        .span-2 { grid-column: span 2; }
+        
+        .intel-field-group { display: flex; flex-direction: column; gap: 8px; }
+        .intel-label { font-size: 0.65rem; font-weight: 900; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.08em; }
+        .intel-error-msg { font-size: 0.7rem; color: #ef4444; margin-top: 4px; font-weight: 600; }
+
+        .form-action-footer { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 32px; padding: 24px; background: rgba(15, 23, 42, 0.4); border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
+        
+        @media (max-width: 768px) {
+          .grid-2, .grid-3 { grid-template-columns: 1fr; }
+          .span-2 { grid-column: span 1; }
+        }
+      `}</style>
     </div>
   )
 }

@@ -52,12 +52,20 @@ function getFollowupBucket(value) {
   return 'future'
 }
 
+function stripHtml(html) {
+  if (!html) return ''
+  const tmp = document.createElement('DIV')
+  tmp.innerHTML = html
+  return tmp.textContent || tmp.innerText || ''
+}
+
 export default function LeadDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user: currentUser } = useAuth()
 
   const [lead, setLead] = useState(null)
+  const [activeTab, setActiveTab] = useState('info')
   const [statusOptions, setStatusOptions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -215,64 +223,56 @@ export default function LeadDetail() {
   return (
     <div className="stack gap-32 lead-profile-container">
       <PageHeader
-        title="Lead Profile"
+        title="Lead Details"
+        description={lead.name}
         backTo="/leads"
         actions={
           <div className="control-bar-premium">
             <button className="btn-premium action-info" type="button" onClick={openFollowup}>
               <Icon name="phone" />
-              <span>Follow-up</span>
+              <span>Log Follow-up</span>
             </button>
             {canEdit && !isConverted ? (
-              <button className="btn-premium action-info" type="button" onClick={onConvert} disabled={converting}>
+              <button className="btn-premium action-vibrant" type="button" onClick={onConvert} disabled={converting}>
                 <Icon name="check" />
-                <span>{converting ? 'Converting...' : 'Convert'}</span>
+                <span>{converting ? 'Converting...' : 'Convert to Customer'}</span>
               </button>
             ) : null}
             {canEdit ? (
               <Link className="btn-premium action-secondary" to={`/leads/${lead.id || lead._id}/edit`}>
                 <Icon name="edit" />
-                <span>Edit</span>
+                <span>Edit Lead</span>
               </Link>
-            ) : null}
-            {canDelete ? (
-              <button className="btn-premium action-danger" type="button" onClick={onDelete}>
-                <Icon name="trash" />
-                <span>Delete</span>
-              </button>
             ) : null}
           </div>
         }
       />
 
-      {error ? <div className="alert error">{error}</div> : null}
-
-      {/* Hero Shell (matches User view style) */}
       <section className="user-hero-shell">
         <div className="hero-glow hero-glow-a" />
         <div className="hero-glow hero-glow-b" />
 
         <div className="hero-topline">
           <span className={`status-pill ${statusPillClass}`}>{displayValue(lead.status, 'Active')}</span>
-          <span className="hero-meta-chip">Lead since {formatDate(lead.created_at)}</span>
+          <span className="hero-meta-chip">Lead ID: {lead.leadId || lead.readable_id || lead._id}</span>
           {lead.nextFollowupDate ? (
             <span className={`status-pill ${followupMetaChipClass}`}>
-              {followupBucket === 'overdue' ? 'Overdue' : followupBucket === 'today' ? 'Today' : 'Next'} • {nextFollowupLabel}
+              Follow-up {followupBucket === 'overdue' ? 'Overdue' : followupBucket === 'today' ? 'Due Today' : 'Scheduled'} • {nextFollowupLabel}
             </span>
           ) : null}
         </div>
 
         <div className="hero-main-row">
-          <div className="hero-avatar-modern" aria-hidden="true">
-            {(lead?.name || 'L').charAt(0).toUpperCase()}
+          <div className="hero-avatar-modern" aria-hidden="true" style={{ background: 'linear-gradient(135deg, #0ea5e9, #6366f1)' }}>
+            <Icon name="users" size={40} />
           </div>
 
           <div className="hero-copy">
             <h1 className="hero-name-modern">{displayValue(lead.name, 'Unnamed Lead')}</h1>
             <div className="hero-subline">
               <div className="hero-subline-item">
-                <Icon name="users" />
-                <span>{lead.assignedTo?.name || 'Unassigned'}</span>
+                <Icon name="user" />
+                <span>Assigned to: {lead.assignedTo?.name || 'Unassigned'}</span>
               </div>
               <div className="hero-divider" />
               <div className="hero-subline-item">
@@ -292,204 +292,132 @@ export default function LeadDetail() {
           </div>
 
           <div className="hero-side-stack">
-            <div className="hero-stat-card">
-              <span className="hero-stat-label">Created</span>
+            <div className="hero-stat-card vibrant-border">
+              <span className="hero-stat-label">Created Date</span>
               <span className="hero-stat-value">{createdLabel}</span>
-            </div>
-            <div className="hero-stat-card">
-              <span className="hero-stat-label">Next follow-up</span>
-              <span className="hero-stat-value">{lead.nextFollowupDate ? `${nextFollowupLabel}${followupCountdown ? ` • ${followupCountdown}` : ''}` : '—'}</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Detail Grid (matches User view style) */}
+      <div className="hub-navigation">
+        {[
+          { id: 'info', label: 'Details', icon: 'dashboard' },
+          { id: 'followup', label: 'Follow-up Hub', icon: 'bell' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`hub-tab ${activeTab === tab.id ? 'active' : ''}`}
+          >
+            <Icon name={tab.icon} size={14} />
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="user-detail-grid">
         <div className="user-detail-main">
-          <section className="detail-card">
-            <div className="detail-card-header">
-              <div className="detail-card-title">
-                <Icon name="users" />
-                <h3>Basic Information</h3>
+          {activeTab === 'info' && (
+            <section className="detail-card">
+              <div className="detail-card-header">
+                <div className="detail-card-title">
+                  <Icon name="info" />
+                  <h3>Lead Summary</h3>
+                </div>
+                <span className="detail-card-badge subtle">Basic Info</span>
               </div>
-              <span className="detail-card-badge">Core record</span>
-            </div>
-            <div className="detail-card-body detail-grid-2">
-              <div className="intel-field">
-                <label>Name</label>
-                <div className="intel-value">{displayValue(lead.name)}</div>
-              </div>
-              <div className="intel-field">
-                <label>Status</label>
-                <div className="intel-value">
-                  {lead.status ? (
-                    <span className="status-pill badge-muted-vibrant" style={{ border: `1px solid ${statusColor || 'rgba(148,163,184,0.25)'}` }}>
-                      {lead.status}
-                    </span>
-                  ) : (
-                    '—'
-                  )}
+              <div className="detail-card-body detail-grid-2">
+                <div className="intel-field">
+                  <label>Full Name</label>
+                  <div className="intel-value">{displayValue(lead.name)}</div>
+                </div>
+                <div className="intel-field">
+                  <label>Status</label>
+                  <div className="intel-value highlight">{lead.status}</div>
+                </div>
+                <div className="intel-field">
+                  <label>Lead Source</label>
+                  <div className="intel-value">{displayValue(lead.source)}</div>
+                </div>
+                <div className="intel-field">
+                  <label>Priority</label>
+                  <div className="intel-value">{displayValue(lead.priority)}</div>
+                </div>
+                <div className="intel-field full-width">
+                  <label>Company Name</label>
+                  <div className="intel-value">{displayValue(lead.company, 'Not specified')}</div>
+                </div>
+                <div className="intel-field full-width">
+                  <label>General Notes</label>
+                  <div className="intel-value" style={{ fontSize: '0.95rem', fontWeight: 400, opacity: 0.8, lineHeight: 1.6 }}>
+                    {stripHtml(lead.followupNote) || 'No notes added.'}
+                  </div>
                 </div>
               </div>
-              <div className="intel-field">
-                <label>Assigned User</label>
-                <div className="intel-value">{displayValue(lead.assignedTo?.name, 'Unassigned')}</div>
-              </div>
-              <div className="intel-field">
-                <label>Created Date</label>
-                <div className="intel-value highlight">{createdLabel}</div>
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
 
-          <section className="detail-card">
-            <div className="detail-card-header">
-              <div className="detail-card-title">
-                <Icon name="phone" />
-                <h3>Contact Details</h3>
-              </div>
-              <span className="detail-card-badge subtle">Contact</span>
-            </div>
-            <div className="detail-card-body detail-grid-2">
-              <div className="intel-field">
-                <label>Phone</label>
-                <div className="intel-value">{displayValue(lead.phone)}</div>
-              </div>
-              <div className="intel-field">
-                <label>Email</label>
-                <div className="intel-value">{displayValue(lead.email)}</div>
-              </div>
-              <div className="intel-field full-width">
-                <label>Company</label>
-                <div className="intel-value">{displayValue(lead.company, 'Individual')}</div>
-              </div>
-            </div>
-          </section>
-
-          <section className="detail-card">
-            <div className="detail-card-header">
-              <div className="detail-card-title">
-                <Icon name="info" />
-                <h3>Additional Info</h3>
-              </div>
-              <span className="detail-card-badge subtle">Metadata</span>
-            </div>
-            <div className="detail-card-body detail-grid-2">
-              <div className="intel-field">
-                <label>Source</label>
-                <div className="intel-value">{displayValue(lead.source)}</div>
-              </div>
-              <div className="intel-field">
-                <label>Priority</label>
-                <div className="intel-value">{displayValue(lead.priority)}</div>
-              </div>
-              <div className="intel-field full-width">
-                <label>Lead ID</label>
-                <div className="intel-value">{displayValue(lead.leadId || lead.readable_id || lead._id)}</div>
-              </div>
-            </div>
-          </section>
-
-          <section className="detail-card">
-            <div className="detail-card-header">
-              <div className="detail-card-title">
-                <Icon name="bell" />
-                <h3>Follow-up Information</h3>
-              </div>
-              <span className="detail-card-badge subtle">Next steps</span>
-            </div>
-            <div className="detail-card-body detail-grid-2">
-              <div className="intel-field">
-                <label>Last Contact Date</label>
-                <div className="intel-value">{formatShortDate(lead.lastContactDate, '—')}</div>
-              </div>
-              <div className="intel-field">
-                <label>Next Follow-up</label>
-                <div className="intel-value">
-                  {lead.nextFollowupDate ? (
-                    <span
-                      className={`status-pill ${
-                        followupBucket === 'overdue'
-                          ? 'badge-danger-vibrant'
-                          : followupBucket === 'today'
-                            ? 'badge-warning-vibrant'
-                            : 'badge-muted-vibrant'
-                      }`}
-                    >
-                      {followupBucket === 'overdue' ? 'Overdue' : followupBucket === 'today' ? 'Today' : 'Upcoming'} • {nextFollowupLabel}
-                    </span>
-                  ) : (
-                    <span className="muted">—</span>
-                  )}
+          {activeTab === 'followup' && (
+            <section className="detail-card">
+              <div className="detail-card-header">
+                <div className="detail-card-title">
+                  <Icon name="bell" />
+                  <h3>Follow-up Hub</h3>
                 </div>
               </div>
-              <div className="intel-field full-width">
-                <label>Notes</label>
-                <div className="intel-value">{displayValue(lead.followupNote)}</div>
+              <div className="detail-card-body">
+                <div className="milestone-panel">
+                  <div className="milestone-label">Next Follow-up Date</div>
+                  <div className="milestone-value highlight">
+                    {lead.nextFollowupDate ? nextFollowupLabel : 'No follow-up set'}
+                  </div>
+                </div>
+                <div className="intel-field full-width">
+                  <label>Notes for next step</label>
+                  <div className="intel-value">{stripHtml(lead.followupNote) || 'No notes for the next step.'}</div>
+                </div>
+                <div className="stack gap-16 margin-top-24">
+                  <h4 style={{ fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-dimmed)' }}>Follow-up History</h4>
+                  <Timeline relatedId={lead.id || lead._id} relatedType="Lead" defaultView="table" />
+                </div>
               </div>
-            </div>
-          </section>
-
-          <section className="detail-card">
-            <div className="detail-card-header">
-              <div className="detail-card-title">
-                <Icon name="reports" />
-                <h3>Lead Activity History</h3>
-              </div>
-              <span className="detail-card-badge subtle">Timeline</span>
-            </div>
-            <div className="detail-card-body">
-              <Timeline relatedId={lead.id || lead._id} relatedType="Lead" />
-            </div>
-          </section>
+            </section>
+          )}
         </div>
 
         <aside className="user-detail-side">
           <section className="detail-card accent-card">
             <div className="detail-card-header">
               <div className="detail-card-title">
-                <Icon name="users" />
-                <h3>Lead Snapshot</h3>
+                <Icon name="bell" />
+                <h3>Follow-up Details</h3>
               </div>
-              <span className="detail-card-badge success">Live data</span>
+              <span className="detail-card-badge success">Active</span>
             </div>
             <div className="detail-card-body">
               <div className="milestone-panel">
-                <div className="milestone-label">Assigned to</div>
-                <div className="milestone-value">{lead.assignedTo?.name || 'Unassigned'}</div>
+                <div className="milestone-label">Next Follow-up</div>
+                <div className="milestone-value highlight">
+                  {lead.nextFollowupDate ? nextFollowupLabel : 'Not Set'}
+                </div>
               </div>
 
               <div className="snapshot-list">
                 <div className="snapshot-row">
-                  <span className="snapshot-label">Status</span>
-                  <span className="snapshot-value">{displayValue(lead.status, 'Active')}</span>
+                  <span className="snapshot-label">Lead Owner</span>
+                  <span className="snapshot-value">{lead.assignedTo?.name || 'Unassigned'}</span>
                 </div>
                 <div className="snapshot-row">
-                  <span className="snapshot-label">Source</span>
-                  <span className="snapshot-value">{displayValue(lead.source, '—')}</span>
-                </div>
-                <div className="snapshot-row">
-                  <span className="snapshot-label">Next follow-up</span>
-                  <span className="snapshot-value">{lead.nextFollowupDate ? nextFollowupLabel : '—'}</span>
-                </div>
-                <div className="snapshot-row">
-                  <span className="snapshot-label">Created</span>
-                  <span className="snapshot-value">{formatShortDate(lead.created_at, '—')}</span>
+                  <span className="snapshot-label">Contact Info</span>
+                  <span className="snapshot-value">{lead.phone || lead.email || '—'}</span>
                 </div>
               </div>
 
-              {canEdit ? (
-                <Link to={`/leads/${lead.id || lead._id}/edit`} className="converted-link-premium">
-                  <div className="link-icon">
-                    <Icon name="edit" />
-                  </div>
-                  <div className="link-text">
-                    <strong>Edit this lead</strong>
-                    <span>Update status, owner, or details</span>
-                  </div>
-                </Link>
-              ) : null}
+              <button className="btn-modern-vibrant full-width" onClick={openFollowup}>
+                <Icon name="plus" />
+                <span>Log New Follow-up</span>
+              </button>
             </div>
           </section>
         </aside>
@@ -514,30 +442,27 @@ export default function LeadDetail() {
 
       <style>{`
         .lead-profile-container { padding-bottom: 60px; }
-
         .control-bar-premium { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
         .btn-premium { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 0.88rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid transparent; cursor: pointer; text-decoration: none; }
+        .action-vibrant { background: var(--primary); color: white; box-shadow: 0 4px 12px var(--primary-soft); }
         .action-secondary { background: var(--bg-surface); color: var(--text-muted); border-color: var(--border); }
-        .action-danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); }
         .action-info { background: rgba(14, 165, 233, 0.1); color: #0ea5e9; border-color: rgba(14, 165, 233, 0.2); }
         .btn-premium:hover { transform: translateY(-2px); filter: brightness(1.05); }
 
-        .user-hero-shell { position: relative; overflow: hidden; background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.15), transparent 40%), linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(15, 23, 42, 0.95)); border: 1px solid var(--border); border-radius: 32px; padding: 32px; box-shadow: var(--shadow-xl); backdrop-filter: blur(14px); }
+        .user-hero-shell { position: relative; overflow: hidden; background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.15), transparent 40%), linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(15, 23, 42, 0.95)); border: 1px solid var(--border); border-radius: 32px; padding: 32px; box-shadow: var(--shadow-xl); backdrop-filter: blur(14px); margin-bottom: 32px; }
         .hero-glow { position: absolute; border-radius: 999px; filter: blur(40px); pointer-events: none; opacity: 0.5; }
         .hero-glow-a { top: -80px; left: -40px; width: 300px; height: 300px; background: rgba(59, 130, 246, 0.2); }
         .hero-glow-b { right: -70px; bottom: -100px; width: 350px; height: 350px; background: rgba(99, 102, 241, 0.15); }
 
-        .hero-topline { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; position: relative; z-index: 1; flex-wrap: wrap; }
-        .status-pill, .hero-meta-chip { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; padding: 7px 14px; text-transform: uppercase; }
+        .hero-topline { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; position: relative; z-index: 1; }
+        .status-pill, .hero-meta-chip, .detail-card-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; padding: 7px 14px; text-transform: uppercase; }
         .badge-success-vibrant { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
         .badge-danger-vibrant { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.28); }
         .badge-warning-vibrant { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.28); }
-        .badge-muted-vibrant { background: rgba(148, 163, 184, 0.12); color: rgba(255, 255, 255, 0.7); border: 1px solid rgba(148, 163, 184, 0.25); }
         .hero-meta-chip { background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.85); border: 1px solid rgba(255, 255, 255, 0.15); }
 
         .hero-main-row { display: flex; align-items: center; gap: 32px; justify-content: space-between; position: relative; z-index: 1; }
-        .hero-avatar-modern { width: 100px; height: 100px; flex: 0 0 auto; background: linear-gradient(135deg, #4f46e5, #9333ea); border-radius: 30px; border: 2px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; font-size: 3.2rem; font-weight: 900; color: white; box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4); overflow: hidden; }
-        .hero-copy { min-width: 0; }
+        .hero-avatar-modern { width: 100px; height: 100px; flex: 0 0 auto; border-radius: 30px; border: 2px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4); overflow: hidden; }
         .hero-name-modern { margin: 0 0 12px; font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1; letter-spacing: -0.04em; color: white; font-weight: 900; }
         .hero-subline { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
         .hero-subline-item { display: inline-flex; align-items: center; gap: 8px; color: rgba(255, 255, 255, 0.75); font-size: 0.95rem; font-weight: 500; }
@@ -547,60 +472,57 @@ export default function LeadDetail() {
         .hero-side-stack { display: grid; gap: 14px; min-width: 280px; grid-template-columns: 1fr; }
         .hero-stat-card { padding: 16px 18px; border-radius: 18px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.24); }
         .hero-stat-label { display: block; color: rgba(255, 255, 255, 0.72); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 6px; }
-        .hero-stat-value { color: white; font-weight: 700; line-height: 1.3; word-break: break-word; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2); }
+        .hero-stat-value { color: white; font-weight: 700; line-height: 1.3; }
+
+        .hub-navigation { display: flex; gap: 12px; margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 2px; overflow-x: auto; }
+        .hub-tab { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border: none; background: none; color: var(--text-dimmed); font-size: 0.9rem; font-weight: 700; cursor: pointer; position: relative; white-space: nowrap; transition: all 0.2s; }
+        .hub-tab:hover { color: white; }
+        .hub-tab.active { color: var(--primary); }
+        .hub-tab.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: var(--primary); box-shadow: 0 0 12px var(--primary); }
 
         .user-detail-grid { display: flex; gap: 24px; align-items: start; }
-        .user-detail-main { display: grid; gap: 24px; flex: 1 1 auto; min-width: 0; }
-        .user-detail-side { width: 360px; flex: 0 0 auto; position: sticky; top: 96px; }
-
-        .detail-card { background: var(--bg-surface); border: 1px solid rgba(148, 163, 184, 0.38); border-radius: 24px; overflow: hidden; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08); }
-        .detail-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 24px; border-bottom: 1px solid rgba(148, 163, 184, 0.3); background: rgba(255, 255, 255, 0.06); }
+        .user-detail-main { display: flex; flex-direction: column; gap: 24px; flex: 1 1 auto; min-width: 0; }
+        .user-detail-side { width: 360px; flex: 0 0 auto; position: sticky; top: 96px; display: flex; flex-direction: column; gap: 24px; }
+        
+        .detail-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 24px; overflow: hidden; padding: 24px; }
+        .detail-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
         .detail-card-title { display: flex; align-items: center; gap: 12px; }
-        .detail-card-title h3 { margin: 0; font-size: 1.05rem; font-weight: 800; }
+        .detail-card-title h3 { margin: 0; font-size: 1.05rem; font-weight: 800; color: white; }
         .detail-card-title svg { color: var(--primary); }
-        .detail-card-body { padding: 24px; }
-
         .detail-card-badge { display: inline-flex; align-items: center; justify-content: center; padding: 6px 12px; border-radius: 999px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.82); }
-        .detail-card-badge.success { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2); }
         .detail-card-badge.subtle { background: rgba(59, 130, 246, 0.08); color: #93c5fd; border-color: rgba(59, 130, 246, 0.18); }
 
-        .detail-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
-        .intel-field label { display: block; font-size: 0.75rem; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.06em; }
-        .intel-value { font-size: 1.05rem; font-weight: 600; color: var(--text); word-break: break-word; }
+        .detail-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .intel-field label { display: block; font-size: 0.65rem; font-weight: 900; color: var(--text-dimmed); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.08em; }
+        .intel-value { font-size: 1.05rem; font-weight: 700; color: white; }
         .intel-value.highlight { color: var(--primary); }
         .full-width { grid-column: 1 / -1; }
 
-        .accent-card { background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, var(--bg-surface) 100%); }
-        .milestone-panel { margin-bottom: 18px; padding: 20px; background: rgba(255, 255, 255, 0.08); border-radius: 18px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.3); }
-        .milestone-label { font-size: 0.8rem; font-weight: 700; color: var(--text-dimmed); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
-        .milestone-value { font-size: 1.2rem; font-weight: 900; color: var(--primary); line-height: 1.25; text-transform: capitalize; }
+        .accent-card { background: rgba(59, 130, 246, 0.03); border-color: rgba(59, 130, 246, 0.2); }
+        .milestone-panel { background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.1); border-radius: 18px; padding: 20px; margin-bottom: 24px; text-align: center; }
+        .milestone-label { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-dimmed); margin-bottom: 8px; }
+        .milestone-value { font-size: 1.4rem; font-weight: 900; color: var(--primary); }
+        .milestone-value.highlight { color: #fbbf24; }
 
-        .snapshot-list { display: grid; gap: 12px; margin-bottom: 18px; }
-        .snapshot-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-radius: 14px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.24); }
-        .snapshot-label { font-size: 0.75rem; color: rgba(255, 255, 255, 0.68); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
-        .snapshot-value { color: rgba(255, 255, 255, 0.94); font-weight: 700; text-align: right; word-break: break-word; text-transform: capitalize; }
+        .snapshot-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+        .snapshot-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .snapshot-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+        .snapshot-value { color: white; font-weight: 800; text-align: right; }
 
-        .converted-link-premium { display: flex; align-items: center; gap: 16px; background: var(--bg-elevated); padding: 16px; border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.34); text-decoration: none; transition: all 0.2s ease; }
+        .btn-modern-vibrant { background: var(--primary); color: white; border: none; border-radius: 12px; padding: 14px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; transition: 0.2s; }
+        .btn-modern-vibrant:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--primary-soft); }
+
+        .converted-link-premium { display: flex; align-items: center; gap: 16px; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-decoration: none; transition: all 0.2s; }
         .converted-link-premium:hover { border-color: var(--primary); transform: translateX(4px); }
         .link-icon { color: var(--primary); }
-        .link-text { display: flex; flex-direction: column; gap: 2px; }
-        .link-text strong { color: var(--text); font-size: 0.95rem; }
-        .link-text span { color: var(--text-muted); font-size: 0.8rem; }
-
+        .link-text strong { display: block; color: white; font-size: 0.9rem; }
+        .link-text span { font-size: 0.75rem; color: var(--text-dimmed); }
+        
         @media (max-width: 1024px) {
           .user-detail-grid { flex-direction: column; }
           .user-detail-side { width: 100%; position: static; }
-          .hero-main-row { flex-direction: column; align-items: flex-start; }
-          .hero-side-stack { width: 100%; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-
-        @media (max-width: 768px) {
-          .user-hero-shell { padding: 20px; }
-          .hero-side-stack { grid-template-columns: 1fr; }
-          .hero-divider { display: none; }
-          .detail-grid-2 { grid-template-columns: 1fr; }
-          .full-width { grid-column: span 1; }
-          .detail-card-header, .detail-card-body { padding-left: 18px; padding-right: 18px; }
+          .hero-main-row { flex-direction: column; align-items: flex-start; gap: 24px; }
+          .hero-side-stack { width: 100%; min-width: auto; grid-template-columns: 1fr 1fr; }
         }
       `}</style>
     </div>

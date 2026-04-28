@@ -7,7 +7,7 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { notifyRoleUsers } = require('../utils/notifier');
 
 function getAuthUserModelName(req) {
-  return req?.user?.constructor?.modelName === 'DemoUser' ? 'DemoUser' : 'User';
+  return 'User';
 }
 
 const LEAD_STATUS = {

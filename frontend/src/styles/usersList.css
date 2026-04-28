@@ -1,0 +1,199 @@
+.usersListPage .usersShell {
+  color: var(--text);
+  min-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: 40px;
+  background: 
+    radial-gradient(circle at top right, var(--primary-soft), transparent 40%),
+    linear-gradient(180deg, var(--bg), var(--bg-elevated));
+  box-shadow: var(--shadow-2xl);
+  margin: 20px;
+}
+
+.usersFiltersPanel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 24px;
+}
+
+.usersListPage .filter-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.usersListPage .filter-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-dimmed);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-left: 4px;
+}
+
+/* Precise Search Input Alignment */
+.usersListPage .search-input-premium {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.usersListPage .search-input-premium .search-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-dimmed);
+  pointer-events: none;
+  font-size: 16px;
+}
+
+.usersListPage .search-input-premium input,
+.usersListPage .input-premium {
+  width: 100%;
+  padding: 14px 16px 14px 42px;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 12px;
+  color: white !important;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.usersListPage .input-premium {
+  padding-left: 16px; /* No icon for selects */
+}
+
+.usersListPage .search-input-premium input:focus,
+.usersListPage .input-premium:focus {
+  border-color: var(--primary) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* Table Refinements */
+.usersTableWrap {
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid var(--border-subtle) !important;
+  overflow: hidden;
+  flex: 1;
+}
+
+.usersListPage .table-premium th {
+  padding: 16px 20px;
+  font-size: 0.75rem;
+  font-weight: 800 !important;
+  color: var(--text-dimmed) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-bottom: 2px solid var(--border-subtle) !important;
+}
+
+.usersListPage .table-premium td {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  vertical-align: middle;
+}
+
+.usersListPage .tableRowInteractive:hover td {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.usersListPage .tableAvatarImage,
+.usersListPage .tableAvatarFallback {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px; /* Matching the theme's softer squares */
+}
+
+.usersListPage .tableAvatarFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.usersIdentityCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.usersPrimaryText {
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.usersSecondaryText {
+  color: var(--text-dimmed);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.usersEmailText {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.usersStatusPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.usersActionBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.usersActionBtn:hover {
+  background: var(--bg-elevated);
+  color: white;
+  border-color: var(--primary);
+}
+
+.usersActionBtn.danger:hover {
+  color: #ef4444;
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+@media (max-width: 980px) {
+  .usersShell { padding: 20px; margin: 10px; }
+  .usersListPage .table-premium th,
+  .usersListPage .table-premium td {
+    padding: 14px 12px;
+  }
+}

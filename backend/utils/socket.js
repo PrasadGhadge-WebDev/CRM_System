@@ -23,6 +23,14 @@ const init = (server) => {
       }
     });
 
+    // Join room based on Company ID
+    socket.on('joinCompany', (companyId) => {
+      if (companyId) {
+        socket.join(String(companyId));
+        logger.info(`🏭 Socket ${socket.id} joined company room: ${companyId}`);
+      }
+    });
+
     socket.on('disconnect', () => {
       logger.info(`🔌 Socket disconnected: ${socket.id}`);
     });
@@ -41,8 +49,13 @@ const getIO = () => {
 const sendToUser = (userId, event, data) => {
   if (io && userId) {
     io.to(String(userId)).emit(event, data);
-    logger.info(`📨 Real-time event "${event}" sent to user ${userId}`);
   }
 };
 
-module.exports = { init, getIO, sendToUser };
+const broadcastToCompany = (companyId, event, data) => {
+  if (io && companyId) {
+    io.to(String(companyId)).emit(event, data);
+  }
+};
+
+module.exports = { init, getIO, sendToUser, broadcastToCompany };

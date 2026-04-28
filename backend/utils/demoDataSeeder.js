@@ -16,7 +16,7 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
     return;
   }
   const targetUserId = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
-  const targetUserModel = userModel === 'DemoUser' ? 'DemoUser' : 'User';
+  const targetUserModel = 'User';
   
   try {
     // 1. Create Sample Leads

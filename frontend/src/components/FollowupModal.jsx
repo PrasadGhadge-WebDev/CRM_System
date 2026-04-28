@@ -242,6 +242,7 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
                       min={new Date().toISOString().split('T')[0]}
                       onChange={(e) => setForm((prev) => ({ ...prev, followupDate: e.target.value }))}
                       required
+                      autoFocus
                     />
                   </label>
                   <label className="fu-field-row">
@@ -261,14 +262,13 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
                       required
                     >
                       <option value="Call">Call</option>
-                      <option value="WhatsApp">WhatsApp</option>
-                      <option value="Email">Email</option>
                       <option value="Meeting">Meeting</option>
-                      <option value="Demo">Demo</option>
+                      <option value="Email">Email</option>
+                      <option value="WhatsApp">WhatsApp</option>
                     </select>
                   </label>
                   <label className="fu-field-row">
-                    <span>STATUS</span>
+                    <span>STATUS *</span>
                     <select
                       value={form.followUpStatus}
                       onChange={(e) => setForm((prev) => ({ ...prev, followUpStatus: e.target.value }))}
@@ -276,7 +276,8 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
                     >
                       <option value="planned">Pending</option>
                       <option value="completed">Completed</option>
-                      <option value="missed">Missed</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="rescheduled">Rescheduled</option>
                     </select>
                   </label>
                   <label className="fu-field-row">
@@ -301,6 +302,7 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
                   <div className="fu-quick-actions">
                     <button type="button" onClick={() => setQuickDate('tomorrow')}>Tomorrow 10AM</button>
                     <button type="button" onClick={() => setQuickDate('next-week')}>Next Week</button>
+                    <button type="button" onClick={() => setForm(prev => ({ ...prev, followupDate: '', followupTime: '' }))}>Custom</button>
                   </div>
                 </section>
 
@@ -332,26 +334,27 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
                     </label>
 
                     <div className="fu-reminder-group">
-                      <label className="fu-reminder-toggle">
+                      <div className="fu-reminder-toggle">
                         <input
                           type="checkbox"
+                          id="reminder-toggle"
                           checked={form.sendReminder}
                           onChange={(e) => setForm((prev) => ({ ...prev, sendReminder: e.target.checked }))}
                         />
-                        <span>🔔 Reminder: Send reminder</span>
-                      </label>
+                        <label htmlFor="reminder-toggle">🔔 Send reminder</label>
+                      </div>
 
                       {form.sendReminder && (
                         <label className="fu-reminder-offset">
-                          <span>Before:</span>
+                          <span>⏰</span>
                           <select
                             value={form.reminderOffset}
                             onChange={(e) => setForm((prev) => ({ ...prev, reminderOffset: e.target.value }))}
                           >
-                            <option value="15m">15 min</option>
-                            <option value="30m">30 min</option>
-                            <option value="1h">1 hour</option>
-                            <option value="1d">1 day</option>
+                            <option value="15m">15 min before</option>
+                            <option value="30m">30 min before</option>
+                            <option value="1h">1 hour before</option>
+                            <option value="1d">1 day before</option>
                           </select>
                         </label>
                       )}
@@ -403,9 +406,9 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
             </section>
 
             <section className="fu-panel fu-footer-panel">
-              <button type="button" className="fu-btn secondary" onClick={onClose}>CANCEL</button>
-              <button type="submit" className="fu-btn primary" disabled={loading}>
-                {loading ? 'SAVING...' : 'SAVE FOLLOW-UP'}
+              <button type="button" className="fu-btn-secondary" onClick={onClose}>Cancel</button>
+              <button type="submit" className="fu-btn-primary" disabled={loading}>
+                {loading ? 'Scheduling...' : 'Schedule Follow-up'}
               </button>
             </section>
           </form>
@@ -528,6 +531,16 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
             overflow: hidden;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
+            position: relative;
+          }
+          .fu-panel::after {
+             content: '';
+             position: absolute;
+             bottom: 0;
+             left: 0;
+             right: 0;
+             height: 1px;
+             background: linear-gradient(to right, transparent, var(--border), transparent);
           }
           .fu-panel:hover {
             border-color: rgba(59,130,246,0.2);
@@ -798,24 +811,37 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
             align-items: center;
             padding: 32px 48px;
             gap: 20px;
-            background: none;
-            border: none;
+            background: rgba(255,255,255,0.02);
+            border-top: 1px solid rgba(255,255,255,0.05);
           }
 
-          .fu-btn {
-            height: 52px;
-            border-radius: 14px;
-            font-weight: 800;
-            letter-spacing: 0.05em;
+          .fu-btn-primary, .fu-btn-secondary {
+            height: 54px;
             padding: 0 32px;
+            border-radius: 16px;
+            font-weight: 800;
+            font-size: 0.95rem;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
           }
 
-          .fu-btn.secondary {
-            border: 1px solid var(--border, rgba(255,255,255,0.1));
-            background: rgba(255,255,255,0.03);
+          .fu-btn-primary {
+            background: var(--primary, #3b82f6);
+            color: white;
+            border: none;
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+          }
+          .fu-btn-primary:hover:not(:disabled) {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(59, 130, 246, 0.4);
+          }
+
+          .fu-btn-secondary {
+            background: rgba(255,255,255,0.05);
             color: var(--text-muted);
           }
           .fu-btn.secondary:hover { background: rgba(255,255,255,0.08); border-color: var(--text-muted); }

@@ -1,7 +1,6 @@
 const Lead = require('../models/Lead');
 const LeadNote = require('../models/LeadNote');
 const User = require('../models/User');
-const DemoUser = require('../models/DemoUser');
 const Counter = require('../models/Counter');
 const mongoose = require('mongoose');
 const { asyncHandler } = require('../middleware/asyncHandler');
@@ -10,7 +9,7 @@ const { notifyRoleUsers, sendLeadAssignmentNotification } = require('../utils/no
 const ExcelJS = require('exceljs');
 
 function getAuthUserModelName(req) {
-  return req?.user?.constructor?.modelName === 'DemoUser' ? 'DemoUser' : 'User';
+  return 'User';
 }
 
 async function findActiveCompanyUserById(companyId, userId) {
@@ -20,9 +19,6 @@ async function findActiveCompanyUserById(companyId, userId) {
   const query = { _id: normalizedId, company_id: companyId, status: 'active' };
   const user = await User.findOne(query).select('_id');
   if (user) return { model: 'User', user };
-
-  const demoUser = await DemoUser.findOne(query).select('_id');
-  if (demoUser) return { model: 'DemoUser', user: demoUser };
 
   return null;
 }
@@ -481,9 +477,11 @@ exports.createLead = asyncHandler(async (req, res, next) => {
       company_id: req.user.company_id,
       user_id: req.user.id,
       user_model: getAuthUserModelName(req),
+      type: 'Lead Created',
       description: `New lead created: ${created.name}`,
       related_to: created._id,
-      related_type: 'Lead'
+      related_type: 'Lead',
+      color_code: 'green'
     });
 
     return res.status(201).json({
@@ -620,6 +618,18 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
         assignee_model: updated.assignedToModel,
         assigner_name: req.user.name
       }).catch(err => console.error('Failed to notify assignee:', err));
+
+      const { logActivity } = require('../utils/activityLogger');
+      await logActivity({
+        company_id: req.user.company_id,
+        user_id: req.user.id,
+        user_model: getAuthUserModelName(req),
+        type: 'Assigned',
+        description: `Lead assigned to ${updated.assignedTo?.name || updated.assignedTo}`,
+        related_to: updated._id,
+        related_type: 'Lead',
+        color_code: 'blue'
+      });
     }
 
 
@@ -629,9 +639,11 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
         company_id: req.user.company_id,
         user_id: req.user.id,
         user_model: getAuthUserModelName(req),
+        type: 'Status Changed',
         description: `Status updated from ${oldLead.status} to ${status}`,
         related_to: updated._id,
-        related_type: 'Lead'
+        related_type: 'Lead',
+        color_code: 'purple'
       });
     }
 
@@ -688,9 +700,11 @@ exports.updateLeadStatus = asyncHandler(async (req, res, next) => {
     company_id: req.user.company_id,
     user_id: req.user.id,
     user_model: getAuthUserModelName(req),
+    type: 'Status Changed',
     description: `Status updated from ${oldLead.status} to ${status}`,
     related_to: id,
-    related_type: 'Lead'
+    related_type: 'Lead',
+    color_code: 'purple'
   });
 
   res.ok(updated);
@@ -1050,25 +1064,41 @@ exports.updateFollowup = asyncHandler(async (req, res, next) => {
     await lead.save();
 
     // 7. Sync Activity Log
+    const { logActivity } = require('../utils/activityLogger');
     const Activity = require('../models/Activity');
-    await Activity.create({
+    
+    await logActivity({
       company_id: req.user.company_id,
-      activity_type: 'follow-up',
-      follow_up_mode: resolvedFollowupType,
-      follow_up_priority: resolvedPriority || undefined,
-      status_after_call: resolvedStatusAfterCall,
-      description: `[Follow-up] Type: ${resolvedFollowupType}. Outcome: ${resolvedStatusAfterCall}. Note: ${note || 'No notes'}`,
+      user_id: req.user.id,
+      user_model: getAuthUserModelName(req),
+      type: 'follow-up',
+      description: `${resolvedFollowupType}: ${resolvedStatusAfterCall}. ${note || ''}`,
       related_to: lead._id,
       related_type: 'Lead',
-      activity_date: now,
-      due_date: targetDate,
-      status: resolvedStatus === 'planned' ? 'planned' : 'completed',
-      reminder_required: resolvedReminder,
-      assigned_to: resolvedAssignee.user._id,
-      assigned_to_model: resolvedAssignee.model,
-      created_by: req.user.id,
-      created_by_model: getAuthUserModelName(req)
+      category: 'manual',
+      color_code: 'yellow'
     });
+
+    // Handle the 'planned' activity separately if it's for the future
+    if (resolvedStatus === 'planned') {
+       await Activity.create({
+         company_id: req.user.company_id,
+         activity_type: 'follow-up',
+         description: `Scheduled: ${resolvedFollowupType}`,
+         related_to: lead._id,
+         related_type: 'Lead',
+         activity_date: now,
+         due_date: targetDate,
+         status: 'planned',
+         reminder_required: resolvedReminder,
+         assigned_to: resolvedAssignee.user._id,
+         assigned_to_model: resolvedAssignee.model,
+         created_by: req.user.id,
+         created_by_model: getAuthUserModelName(req),
+         category: 'manual',
+         color_code: 'yellow'
+       });
+    }
 
     // 8. Sync Lead status with outcome (and convert to Customer when needed)
     // This matches the expected flow: follow-up -> outcome -> lead status changes.

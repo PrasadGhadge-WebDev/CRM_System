@@ -368,8 +368,8 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
         <div className="lf-section">
           <SectionHeader
             icon="👤"
-            title="Basic Information"
-            subtitle="Contact details and personal information"
+            title="Personal Details"
+            subtitle="How to reach the person."
           />
           <div className="lf-grid-3">
             <Field label="First Name" required error={fieldErrors.firstName}>
@@ -379,6 +379,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                 onChange={e => handleChange('firstName', e.target.value)}
                 placeholder="Rahul"
                 maxLength={50}
+                autoFocus
               />
             </Field>
             <Field label="Last Name" required error={fieldErrors.lastName}>
@@ -410,7 +411,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                />
              </Field>
 
-            <Field label="District">
+            <Field label="City">
               <input
                 className="lf-input"
                 value={model.city}
@@ -446,8 +447,8 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
         <div className="lf-section">
           <SectionHeader
             icon="📊"
-            title="Lead Details"
-            subtitle="Source, status, and assignment"
+            title="Lead Info"
+            subtitle="Where it came from and who is working on it."
           />
           <div className="lf-grid-3">
             <Field label="Lead Source" required error={fieldErrors.source}>
@@ -481,7 +482,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                 <option value="Cold">❄️ Cold</option>
               </select>
             </Field>
-            <Field label="Deal Amount (₹)" error={fieldErrors.dealAmount}>
+            <Field label="Amount (₹)" error={fieldErrors.dealAmount}>
                <input
                  className={`lf-input ${fieldErrors.dealAmount ? 'lf-input-error' : ''}`}
                  type="number"
@@ -492,7 +493,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                />
              </Field>
               {canAssign && (
-                <Field label="Assigned To" error={fieldErrors.assignedTo}>
+                <Field label="Staff Member" error={fieldErrors.assignedTo}>
                   <select
                     className={`lf-select ${fieldErrors.assignedTo ? 'lf-input-error' : ''}`}
                     value={model.assignedTo}
@@ -525,11 +526,11 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
         <div className="lf-section">
           <SectionHeader
             icon="📅"
-            title="Follow-up Info"
-            subtitle="Track contact history and schedule next steps"
+            title="Next Steps"
+            subtitle="When to call again."
           />
           <div className="lf-grid-3">
-            <Field label="Last Contact Date">
+            <Field label="Last Talked On">
               <input
                 className="lf-input"
                 type="date"
@@ -537,7 +538,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                 onChange={e => handleChange('lastContactDate', e.target.value)}
               />
             </Field>
-            <Field label="Next Follow-up" error={fieldErrors.followUpDate}>
+            <Field label="Call Back Date" error={fieldErrors.followUpDate}>
               <input
                 className={`lf-input ${fieldErrors.followUpDate ? 'lf-input-error' : ''}`}
                 type="date"
@@ -546,7 +547,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                 onChange={e => handleChange('followUpDate', e.target.value)}
               />
             </Field>
-            <Field label="Follow-up Note" span2>
+            <Field label="Note for Call" span2>
               <textarea
                 className="lf-textarea"
                 rows={2}

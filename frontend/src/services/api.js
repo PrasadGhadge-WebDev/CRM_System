@@ -68,7 +68,7 @@ api.interceptors.response.use(
     const res = response.data
     // If it's our new standardized format, extract data
     if (res && typeof res.success === 'boolean' && Object.prototype.hasOwnProperty.call(res, 'data')) {
-      return res.data
+      return res.data ?? {}
     }
     // Fallback for non-refactored endpoints
     return res

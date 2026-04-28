@@ -14,6 +14,7 @@
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   padding-top: 0;
+  box-shadow: 1px 0 0 var(--border);
 }
 
 .crmSidebar.collapsed {
@@ -21,7 +22,7 @@
 }
 
 .sidebarTop {
-  padding: 24px 20px;
+  padding: 22px 18px 18px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -75,10 +76,10 @@
 }
 
 .brandMark {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -86,24 +87,24 @@
   font-weight: 800;
   font-size: 13px;
   letter-spacing: -0.5px;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 14px 28px rgba(59, 130, 246, 0.25);
 }
 
 .brandName {
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
+  font-size: 1.12rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   color: var(--text);
 }
 
 .brandSub {
   font-size: 0.8rem;
   font-weight: 500;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .sidebarNav {
-  padding: 16px 12px;
+  padding: 18px 12px;
   overflow-y: auto;
 }
 
@@ -111,15 +112,15 @@
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  padding: 10px 14px;
-  margin-bottom: var(--space-xs);
-  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 6px;
+  border-radius: 14px;
   text-decoration: none;
   color: var(--text-muted);
-  font-weight: 500;
-  font-size: 0.95rem;
+  font-weight: 600;
+  font-size: 0.96rem;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0);
   white-space: nowrap;
 }
 
@@ -131,16 +132,17 @@
 
 .navItem:hover {
   background: var(--sidebar-item-active);
-  color: var(--primary);
-  transform: translateX(4px);
+  color: var(--text);
+  border-color: var(--border);
+  transform: translateX(3px);
 }
 
 .navItem.active {
-  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
   color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.25);
-  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.24);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .navIcon {
@@ -158,17 +160,17 @@
 }
 
 .sidebarBottom {
-  padding: var(--space-lg);
+  padding: 16px;
   border-top: 1px solid var(--border);
 }
 
 .userCard {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
-  border-radius: var(--radius-lg);
-  background: var(--bg-elevated);
+  gap: 12px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   transition: all 0.2s;
 }
@@ -182,7 +184,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--primary-2);
+  background: var(--primary-soft);
   color: var(--primary);
   display: flex;
   align-items: center;
@@ -199,13 +201,13 @@
 
 .userName {
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 
 .userRole {
   font-size: 0.75rem;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .collapsed .brandText,

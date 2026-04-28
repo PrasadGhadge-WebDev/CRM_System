@@ -5,7 +5,7 @@ const NotificationSchema = new mongoose.Schema(
   {
     company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: false, index: true },
     user_id: { type: mongoose.Schema.Types.ObjectId, refPath: 'user_id_model', required: true, index: true },
-    user_id_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
+    user_id_model: { type: String, enum: ['User'], default: 'User', index: true },
     title: { type: String, required: true, trim: true },
     message: { type: String, required: true, trim: true },
     type: { type: String, enum: ['info', 'success', 'warning', 'error', 'lead', 'deal'], default: 'info' },

@@ -1,6 +1,5 @@
 const Notification = require('../models/Notification');
 const User = require('../models/User');
-const DemoUser = require('../models/DemoUser');
 const { sendEmail } = require('./emailService');
 const { sendToUser } = require('./socket');
 
@@ -17,18 +16,7 @@ exports.notify = async ({
   linked_entity_type,
   send_email = false,
 }) => {
-  let resolvedModel = user_model === 'DemoUser' ? 'DemoUser' : 'User';
-  if (!user_model) {
-    const user = await User.findById(user_id).select('_id email');
-    if (user) {
-      resolvedModel = 'User';
-    } else {
-      const demoUser = await DemoUser.findById(user_id).select('_id email');
-      if (demoUser) {
-        resolvedModel = 'DemoUser';
-      }
-    }
-  }
+  const resolvedModel = 'User';
 
   // 1. Create In-app Notification (DB)
   const notification = await Notification.create({
@@ -55,9 +43,7 @@ exports.notify = async ({
 
   // 3. Optional Email Notification
   if (send_email) {
-    const user = resolvedModel === 'DemoUser'
-      ? await DemoUser.findById(user_id)
-      : await User.findById(user_id);
+    const user = await User.findById(user_id);
 
     if (user?.email) {
       try {
@@ -125,9 +111,7 @@ exports.sendLeadAssignmentNotification = async ({ lead, assignee_id, assignee_mo
 
   // 2. Trigger Specialized Email
   try {
-    const user = assignee_model === 'DemoUser' 
-      ? await DemoUser.findById(assignee_id) 
-      : await User.findById(assignee_id);
+    const user = await User.findById(assignee_id);
     
     if (user?.email) {
       await sendEmail({
@@ -218,14 +202,12 @@ exports.notifyAdmin = async ({ title, message, data = {} }) => {
  */
 exports.sendAdminRegistrationEmail = async (user, approvalToken) => {
   const adminEmails = process.env.CONTACT_EMAIL ? [process.env.CONTACT_EMAIL, 'prasadghadge748@gmail.com'] : ['prasadghadge2212@gmail.com', 'prasadghadge748@gmail.com'];
-  const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
-  const approveUrl = `${baseUrl}/api/admin-actions/approve/${approvalToken}`;
-  const rejectUrl = `${baseUrl}/api/admin-actions/reject/${approvalToken}`;
+  const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/users`;
 
   await Promise.all(adminEmails.map(email => sendEmail({
     to: email,
     subject: `[CRM] New Demo User Registration Request`,
-    text: `A new demo user ${user.name} (${user.email}) has registered.\nApprove: ${approveUrl}\nReject: ${rejectUrl}`,
+    text: `A new demo user ${user.name} (${user.email}) has registered.\nReview in dashboard: ${dashboardUrl}`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
         <div style="background: #2563eb; color: white; padding: 24px;">
@@ -238,9 +220,8 @@ exports.sendAdminRegistrationEmail = async (user, approvalToken) => {
             <li><b>Email:</b> ${user.email}</li>
             <li><b>Phone:</b> ${user.phone || 'N/A'}</li>
           </ul>
-          <div style="margin-top: 24px; display: flex; gap: 10px;">
-            <a href="${approveUrl}" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px;">Approve User</a>
-            <a href="${rejectUrl}" style="background: #ef4444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px;">Reject Request</a>
+          <div style="margin-top: 24px;">
+            <a href="${dashboardUrl}" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px;">Open User Dashboard</a>
           </div>
         </div>
       </div>

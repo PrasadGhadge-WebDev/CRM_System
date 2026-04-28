@@ -8,7 +8,7 @@ const NoteSchema = new mongoose.Schema(
     related_type: { type: String, required: true, enum: ['Lead', 'Customer', 'Deal'], index: true },
     company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', index: true },
     created_by: { type: mongoose.Schema.Types.ObjectId, refPath: 'created_by_model' },
-    created_by_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
+    created_by_model: { type: String, enum: ['User'], default: 'User', index: true },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );

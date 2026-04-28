@@ -16,7 +16,7 @@ const CompanySchema = new mongoose.Schema(
       timezone: { type: String, default: 'UTC' },
       fiscal_year_start: { type: String, default: 'January' },
       last_assigned_user_id: { type: mongoose.Schema.Types.ObjectId, refPath: 'settings.last_assigned_user_id_model' },
-      last_assigned_user_id_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
+      last_assigned_user_id_model: { type: String, enum: ['User'], default: 'User', index: true },
       smtp: {
         host: { type: String, trim: true },
         port: { type: String, trim: true },

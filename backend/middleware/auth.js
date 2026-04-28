@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const DemoUser = require('../models/DemoUser');
 const { asyncHandler } = require('./asyncHandler');
 
 // Protect routes
@@ -17,10 +16,7 @@ exports.protect = asyncHandler(async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
-    let user = await User.findById(decoded.id);
-    if (!user) {
-      user = await DemoUser.findById(decoded.id);
-    }
+    const user = await User.findById(decoded.id);
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'User not found' });

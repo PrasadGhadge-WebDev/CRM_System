@@ -25,6 +25,13 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
   const id = customerId || paramsId
   const navigate = useNavigate()
   const { user } = useAuth()
+  
+  const isAdmin = user?.role === 'Admin'
+  const isManager = user?.role === 'Manager'
+  const isAccountant = user?.role === 'Accountant'
+  const isHR = user?.role === 'HR'
+  
+  const isReadOnly = isHR || isAccountant
   const isEdit = mode === 'edit' || (!!id && id !== 'new')
 
   const [model, setModel] = useState(INITIAL_CUSTOMER)
@@ -35,11 +42,15 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
   const [checking, setChecking] = useState(false)
 
   useEffect(() => {
+    if (isReadOnly) {
+       toast.error('Access denied: Read-only profile')
+       navigate('/customers')
+       return
+    }
+    
     async function loadData() {
       try {
-        const [statRes] = await Promise.all([
-          statusesApi.list('customer')
-        ])
+        const [statRes] = await Promise.all([statusesApi.list('customer')])
         setAvailableStatuses(statRes || [])
 
         if (isEdit && id) {
@@ -48,257 +59,166 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
           setModel({ ...INITIAL_CUSTOMER, ...data })
         } else if (!customerId) {
           const defaultStat = statRes?.find(s => s.is_default)
-          if (defaultStat) {
-            setModel(prev => ({ ...prev, status: defaultStat.name }))
-          }
+          if (defaultStat) setModel(prev => ({ ...prev, status: defaultStat.name }))
         }
       } catch (err) {
-        toast.error('Failed to load required data')
+        toast.error('Initialization failed')
         if (!isEdit) navigate('/customers')
-      } finally {
-        setLoading(false)
-      }
+      } finally { setLoading(false) }
     }
     loadData()
-  }, [id, isEdit, navigate, customerId])
+  }, [id, isEdit, navigate, customerId, isReadOnly])
 
   const checkDuplicate = useCallback(async (field, value) => {
     if (!value || !value.trim()) return
     setChecking(true)
     try {
       const res = await customersApi.list({ q: value.trim(), limit: 5 })
-      const items = res?.items || []
-      const conflict = items.find(c => {
-        const matches = field === 'email'
-          ? c.email?.toLowerCase() === value.trim().toLowerCase()
-          : c.phone === value.trim()
+      const conflict = (res?.items || []).find(c => {
+        const matches = field === 'email' ? c.email?.toLowerCase() === value.trim().toLowerCase() : c.phone === value.trim()
         return matches && (isEdit ? c.id !== id : true)
       })
-      if (conflict) {
-        setFieldErrors(prev => ({ ...prev, [field]: `Already registered to "${conflict.name}"` }))
-      } else {
-        setFieldErrors(prev => { const next = { ...prev }; delete next[field]; return next })
-      }
-    } catch {
-      // silent
-    } finally {
-      setChecking(false)
-    }
+      if (conflict) setFieldErrors(prev => ({ ...prev, [field]: `Assigned to "${conflict.name}"` }))
+      else setFieldErrors(prev => { const next = { ...prev }; delete next[field]; return next })
+    } catch { } finally { setChecking(false) }
   }, [id, isEdit])
 
   async function onSubmit(e) {
     e.preventDefault()
-    if (!model.name || !model.email || !model.phone) {
-      toast.warn('Please complete all required fields')
-      return
-    }
-
-    if (!/^\d{10}$/.test(model.phone.trim())) {
-      setFieldErrors(prev => ({ ...prev, phone: 'Must be 10 digits' }))
-      toast.warn('Invalid phone number')
-      return
-    }
-
-    if (Object.keys(fieldErrors).length > 0) {
-      toast.warn('Please fix validation errors')
-      return
-    }
+    if (isReadOnly) return
+    if (!model.name || !model.email || !model.phone) return toast.warn('All required identifiers needed')
+    if (!/^\d{10}$/.test(model.phone.trim())) return setFieldErrors(prev => ({ ...prev, phone: '10 digits required' }))
+    if (Object.keys(fieldErrors).length > 0) return toast.warn('Resolve validation conflicts')
 
     setSaving(true)
     try {
       const saved = isEdit ? await customersApi.update(id, model) : await customersApi.create(model)
-      toast.success(`Customer ${isEdit ? 'updated' : 'onboarded'} successfully`)
-      if (onSuccess) onSuccess(saved)
-      else navigate(`/customers/${saved.id || id}`)
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Transaction failed'
-      toast.error(msg)
-    } finally {
-      setSaving(false)
-    }
+      toast.success(`Client ${isEdit ? 'updated' : 'onboarded'}`)
+      if (onSuccess) onSuccess(saved); else navigate(`/customers/${saved.id || id}`)
+    } catch (err) { toast.error(err.response?.data?.message || 'Transaction error') } finally { setSaving(false) }
   }
-
-  function handleBack() {
-    if (onCancel) onCancel()
-    else navigate(-1)
-  }
-
-  if (loading) return <div className="crm-loader-state">Synchronizing Profile...</div>
 
   return (
-    <div className="crm-form-page crmContent" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-      <form className="premium-form-card" onSubmit={onSubmit} noValidate>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '32px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '20px' }}>
-          <button className="btn-modern-back" type="button" onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)' }}>
-            <Icon name="arrowLeft" size={16} />
-            <span>Back</span>
-          </button>
-          <h1 className="userFormTitle" style={{ margin: 0, fontSize: '1.5rem' }}>{isEdit ? 'Update Customer' : 'Onboard Client'}</h1>
-        </div>
-
-        {/* ── CORE IDENTITY ── */}
-        <div className="stack gap-16">
-          <div className="section-header-row">
-            <div className="section-icon" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)' }}>
-              <Icon name="user" size={18} color="white" />
-            </div>
-            <h4 className="section-title">Core Identity</h4>
+    <div className="crm-form-page crmContent page-enter">
+      <div className="lead-form-page">
+        <header className="leadsHeader">
+          <div>
+            <h1 className="leadsTitle">{isEdit ? 'Refine Client Intel' : 'Onboard New Entity'}</h1>
+            <p className="leadsDescription">Manage institutional metadata, firmographic details, and account governance.</p>
           </div>
-
-          <div className="grid3">
-            <div className="stack tiny-gap">
-              <label className="text-small muted" style={{ fontWeight: 600 }}>Client Name *</label>
-              <input
-                className="input"
-                required
-                value={model.name}
-                onChange={e => setModel({ ...model, name: e.target.value })}
-                placeholder="Full Name / Company"
-              />
-            </div>
-            <div className="stack tiny-gap">
-              <label className="text-small muted" style={{ fontWeight: 600 }}>Primary Email *</label>
-              <input
-                className={`input ${fieldErrors.email ? 'error' : ''}`}
-                type="email"
-                required
-                value={model.email}
-                onChange={e => {
-                  setModel({ ...model, email: e.target.value })
-                  setFieldErrors(prev => { const n = { ...prev }; delete n.email; return n })
-                }}
-                onBlur={e => e.target.value && checkDuplicate('email', e.target.value)}
-                placeholder="client@example.com"
-              />
-              {fieldErrors.email && <span className="text-small text-danger">{fieldErrors.email}</span>}
-            </div>
-            <div className="stack tiny-gap">
-              <label className="text-small muted" style={{ fontWeight: 600 }}>Mobile Contact *</label>
-              <input
-                className={`input ${fieldErrors.phone ? 'error' : ''}`}
-                required
-                value={model.phone}
-                onChange={e => {
-                  const val = e.target.value.replace(/\D/g, '').slice(0, 10)
-                  setModel({ ...model, phone: val })
-                  setFieldErrors(prev => { const n = { ...prev }; delete n.phone; return n })
-                }}
-                onBlur={e => e.target.value && checkDuplicate('phone', e.target.value)}
-                placeholder="10-digit number"
-                maxLength={10}
-              />
-              {fieldErrors.phone && <span className="text-small text-danger">{fieldErrors.phone}</span>}
-            </div>
+          <div className="leadsHeaderActions">
+            <button className="btn-premium secondary" onClick={() => (onCancel ? onCancel() : navigate(-1))}>
+              <Icon name="close" />
+              <span>Cancel</span>
+            </button>
+            <button className="btn-premium action-vibrant" onClick={onSubmit} disabled={saving || checking}>
+              <Icon name={saving ? 'spinner' : 'check'} className={saving ? 'spinner' : ''} />
+              <span>{saving ? 'Processing...' : isEdit ? 'Commit Profile' : 'Authorize Entity'}</span>
+            </button>
           </div>
-        </div>
+        </header>
 
-        {/* ── FIRMOGRAPHIC DETAILS ── */}
-        <div className="stack gap-16">
-          <div className="section-header-row">
-            <div className="section-icon" style={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)' }}>
-              <Icon name="briefcase" size={18} color="white" />
+        <div className="intelligence-form-grid">
+          <div className="intel-form-card glass-panel">
+            <div className="card-header-premium">
+              <Icon name="user" />
+              <h3>Core Identity</h3>
             </div>
-            <h4 className="section-title">Firmographic Details</h4>
-          </div>
-
-          <div className="grid2">
-            <div className="stack tiny-gap">
-              <label className="text-small muted" style={{ fontWeight: 600 }}>Business Sector</label>
-              <input
-                className="input"
-                value={model.industry}
-                onChange={e => setModel({ ...model, industry: e.target.value })}
-                placeholder="e.g. Technology, Retail"
-              />
-            </div>
-            <div className="stack tiny-gap">
-              <label className="text-small muted" style={{ fontWeight: 600 }}>Geographic Hub</label>
-              <input
-                className="input"
-                value={model.city}
-                onChange={e => setModel({ ...model, city: e.target.value })}
-                placeholder="City/Base"
-              />
-            </div>
-            <div className="stack tiny-gap" style={{ gridColumn: '1 / -1' }}>
-              <label className="text-small muted" style={{ fontWeight: 600 }}>Full Address</label>
-              <input
-                className="input"
-                value={model.address}
-                onChange={e => setModel({ ...model, address: e.target.value })}
-                placeholder="Street, Area, Building"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ── ACCOUNT GOVERNANCE ── */}
-        <div className="stack gap-16">
-          <div className="section-header-row">
-            <div className="section-icon" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
-              <Icon name="settings" size={18} color="white" />
-            </div>
-            <h4 className="section-title">Account Governance</h4>
-          </div>
-
-          <div className="grid2">
-            <div className="stack tiny-gap">
-              <label className="text-small muted" style={{ fontWeight: 600 }}>Operational Status</label>
-              <select 
-                className="input" 
-                value={model.status} 
-                onChange={e => setModel({ ...model, status: e.target.value })}
-              >
-                {availableStatuses.length > 0 ? (
-                  availableStatuses.map(s => <option key={s.id} value={s.name}>{s.name}</option>)
-                ) : (
-                  <>
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                    <option value="Prospect">Prospect</option>
-                  </>
-                )}
-              </select>
-            </div>
-
-            {(user?.role === 'Admin' || user?.role === 'Manager') && (
-              <div className="stack tiny-gap">
-                <label className="text-small muted" style={{ fontWeight: 600 }}>Strategic Classification</label>
-                <div style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '12px', display: 'flex', alignItems: 'center', height: '44px' }}>
-                  <label className="row align-center gap-12 pointer no-select" style={{ fontSize: '0.9rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={model.is_vip}
-                      onChange={(e) => setModel((prev) => ({ ...prev, is_vip: e.target.checked }))}
-                    />
-                    <span>Mark as Strategic VIP Account</span>
-                  </label>
+            <div className="card-body-premium">
+              <div className="grid-2">
+                <div className="intel-field-group span-2">
+                  <label className="intel-label">Full Entity Name / Organization</label>
+                  <input className="input-premium" value={model.name} onChange={e => setModel({ ...model, name: e.target.value })} placeholder="e.g. Acme Corporation" autoFocus />
+                </div>
+                <div className="intel-field-group">
+                  <label className="intel-label">Primary Email</label>
+                  <input className="input-premium" type="email" value={model.email} onBlur={e => checkDuplicate('email', e.target.value)} onChange={e => setModel({ ...model, email: e.target.value })} placeholder="contact@entity.com" />
+                  {fieldErrors.email && <span className="intel-error-msg">{fieldErrors.email}</span>}
+                </div>
+                <div className="intel-field-group">
+                  <label className="intel-label">Secure Phone</label>
+                  <input className="input-premium" value={model.phone} onBlur={e => checkDuplicate('phone', e.target.value)} onChange={e => setModel({ ...model, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="10-digit number" />
+                  {fieldErrors.phone && <span className="intel-error-msg">{fieldErrors.phone}</span>}
                 </div>
               </div>
-            )}
+            </div>
+          </div>
+
+          <div className="intel-form-card glass-panel">
+            <div className="card-header-premium">
+              <Icon name="briefcase" />
+              <h3>Firmographic Metadata</h3>
+            </div>
+            <div className="card-body-premium">
+              <div className="grid-2">
+                <div className="intel-field-group">
+                  <label className="intel-label">Business Sector</label>
+                  <input className="input-premium" value={model.industry} onChange={e => setModel({ ...model, industry: e.target.value })} placeholder="e.g. Technology, Finance" />
+                </div>
+                <div className="intel-field-group">
+                  <label className="intel-label">Geographic Hub (City)</label>
+                  <input className="input-premium" value={model.city} onChange={e => setModel({ ...model, city: e.target.value })} placeholder="e.g. Mumbai" />
+                </div>
+                <div className="intel-field-group span-2">
+                  <label className="intel-label">Registered Office Address</label>
+                  <input className="input-premium" value={model.address} onChange={e => setModel({ ...model, address: e.target.value })} placeholder="Complete street address" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="intel-form-card glass-panel">
+            <div className="card-header-premium">
+              <Icon name="settings" />
+              <h3>Account Governance</h3>
+            </div>
+            <div className="card-body-premium">
+              <div className="grid-2">
+                <div className="intel-field-group">
+                  <label className="intel-label">Operational Status</label>
+                  <select className="input-premium" value={model.status} onChange={e => setModel({ ...model, status: e.target.value })}>
+                    {availableStatuses.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    {!availableStatuses.length && <option value="Active">Active</option>}
+                  </select>
+                </div>
+                <div className="intel-field-group">
+                  <label className="intel-label">Strategic Tier</label>
+                  <div style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', display: 'flex', alignItems: 'center', height: '48px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                      <input type="checkbox" checked={model.is_vip} onChange={e => setModel({ ...model, is_vip: e.target.checked })} />
+                      <span>Elevate to VIP Account</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* ── ACTIONS ── */}
-        <div className="row gap-16" style={{ marginTop: '20px', justifyContent: 'flex-end', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-          <button className="btn secondary" type="button" onClick={handleBack} style={{ padding: '12px 24px', borderRadius: '12px' }}>Cancel</button>
-          <button 
-            className="btn primary" 
-            type="submit" 
-            disabled={saving || checking}
-            style={{
-              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-              padding: '12px 32px',
-              borderRadius: '12px',
-              border: 'none',
-              boxShadow: '0 8px 16px rgba(59, 130, 246, 0.4)',
-              fontWeight: 600
-            }}
-          >
-            {saving ? 'Processing...' : checking ? 'Checking...' : (isEdit ? 'Update Profile' : 'Confirm Onboarding')}
+        <div className="form-action-footer">
+          <button className="btn-premium action-secondary" type="button" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
+          <button className="btn-premium action-vibrant" onClick={onSubmit} disabled={saving || checking}>
+            {saving ? 'Processing Intel...' : isEdit ? 'Commit Record' : 'Finalize Authorization'}
           </button>
         </div>
-      </form>
+      </div>
+
+      <style>{`
+        .lead-form-page { padding-bottom: 80px; }
+        .intelligence-form-grid { display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 32px; max-width: 1000px; }
+        .intel-form-card { border-radius: 24px; overflow: hidden; }
+        .card-header-premium { padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.02); }
+        .card-header-premium h3 { margin: 0; font-size: 1rem; font-weight: 800; }
+        .card-header-premium svg { color: var(--primary); }
+        .card-body-premium { padding: 24px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .span-2 { grid-column: span 2; }
+        .intel-field-group { display: flex; flex-direction: column; gap: 8px; }
+        .intel-label { font-size: 0.65rem; font-weight: 900; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.08em; }
+        .intel-error-msg { font-size: 0.7rem; color: #ef4444; margin-top: 4px; font-weight: 600; }
+        .form-action-footer { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 32px; padding: 24px; background: rgba(15, 23, 42, 0.4); border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } .span-2 { grid-column: span 1; } }
+      `}</style>
     </div>
   )
 }

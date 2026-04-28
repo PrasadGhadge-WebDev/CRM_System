@@ -36,10 +36,11 @@ async function ensureDefaultAdmin() {
 
   // 2. Ensure Default Roles exist for this company
   const rolesToSeed = [
-    { name: 'Admin', description: 'Full system access', permissions: ['leads', 'customers', 'deals', 'tickets', 'users', 'reports', 'tasks', 'followups', 'billing', 'trash', 'settings', 'notifications'], is_system_role: true },
-    { name: 'Manager', description: 'Management access', permissions: ['leads', 'customers', 'deals', 'reports', 'tasks', 'followups'], is_system_role: true },
+    { name: 'Admin', description: 'Full system access', permissions: ['leads', 'customers', 'deals', 'tickets', 'users', 'reports', 'tasks', 'billing', 'trash', 'settings', 'notifications'], is_system_role: true },
+    { name: 'Manager', description: 'Management access', permissions: ['leads', 'customers', 'deals', 'reports', 'tasks'], is_system_role: true },
     { name: 'Accountant', description: 'Financial access', permissions: ['customers', 'deals', 'billing', 'reports'], is_system_role: true },
-    { name: 'Employee', description: 'Standard staff access', permissions: ['leads', 'tasks', 'followups'], is_system_role: true },
+    { name: 'HR', description: 'Human resources access', permissions: ['users', 'attendance', 'notifications'], is_system_role: true },
+    { name: 'Employee', description: 'Standard staff access', permissions: ['leads', 'tasks'], is_system_role: true },
   ];
 
   for (const r of rolesToSeed) {

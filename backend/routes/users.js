@@ -8,7 +8,7 @@ const { preventDemoDelete, preventDemoEdit } = require('../middleware/demoGuard'
 const router = express.Router();
 
 router.use(protect);
-router.use(authorize('Admin'));
+router.use(authorize('Admin', 'HR'));
 
 router.get('/', controller.listUsers);
 router.post('/', controller.createUser);

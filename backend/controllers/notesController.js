@@ -16,7 +16,8 @@ exports.listNotes = asyncHandler(async (req, res) => {
     Note.find(filter)
       .sort({ created_at: -1 })
       .skip((pageNum - 1) * limitNum)
-      .limit(limitNum),
+      .limit(limitNum)
+      .populate('created_by', 'name email'),
     Note.countDocuments(filter),
   ]);
 

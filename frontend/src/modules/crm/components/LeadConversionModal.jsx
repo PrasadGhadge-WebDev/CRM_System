@@ -4,8 +4,11 @@ import { leadSourcesApi } from '../../../services/leadSources.js'
 import { customersApi } from '../../../services/customers.js'
 import { Icon } from '../../../layouts/icons.jsx'
 import { toast } from 'react-toastify'
+import { useAuth } from '../../../context/AuthContext.jsx'
 
 export default function LeadConversionModal({ isOpen, lead, onClose, onConverted }) {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'Admin'
   const [employees, setEmployees] = useState([])
   const [sources, setSources] = useState([])
   const [loading, setLoading] = useState(false)
@@ -29,7 +32,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
       setForm({
         assigned_to: lead.assignedTo?._id || lead.assignedTo?.id || lead.assignedTo || '',
         source: lead.source || '',
-        initial_note: `Lead converted to customer profile. Original Lead ID: ${lead.leadId}`
+        initial_note: `Lead changed to customer. Lead ID: ${lead.leadId}`
       })
     }).finally(() => setLoading(false))
   }, [isOpen, lead])
@@ -37,7 +40,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.assigned_to || !form.source) {
-      return toast.warn('Please select both Assignee and Source')
+      return toast.warn('Please select user and source')
     }
 
     setSaving(true)
@@ -48,11 +51,11 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
         source: form.source,
         initial_note: form.initial_note
       })
-      toast.success('Lead converted successfully!')
+      toast.success('Lead converted successfully')
       onConverted(res)
       onClose()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Conversion failed')
+      toast.error(err.response?.data?.message || 'Could not convert lead')
     } finally {
       setSaving(false)
     }
@@ -61,7 +64,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay-premium">
+    <div className={`modal-overlay-premium ${isAdmin ? 'admin-header-open' : ''}`}>
       <div className="modal-content-glass">
         <form onSubmit={handleSubmit} className="conversion-form-shell">
           <div className="conversion-header-vibrant">
@@ -71,15 +74,15 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
                   <Icon name="check" size={24} />
                 </div>
                 <div className="header-text">
-                  <h2>Strategic Conversion</h2>
-                  <p>Promoting <strong>{lead?.name}</strong> to Client status.</p>
+                  <h2>Convert Lead</h2>
+                  <p>Convert <strong>{lead?.name}</strong> to customer.</p>
                 </div>
              </div>
           </div>
 
           <div className="conversion-body">
             <div className="conversion-field">
-              <label>Strategic Account Manager</label>
+              <label>Assigned User</label>
               <div className="select-wrap-modern">
                 <select 
                   className="input-premium-select"
@@ -87,7 +90,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
                   onChange={e => setForm({...form, assigned_to: e.target.value})}
                   required
                 >
-                  <option value="">Select Portfolio Manager</option>
+                  <option value="">Select user</option>
                   {employees.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
                 </select>
                 <div className="select-arrow"><Icon name="chevron-down" size={12} /></div>
@@ -95,7 +98,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
             </div>
 
             <div className="conversion-field">
-              <label>Primary Acquisition Source</label>
+              <label>Source</label>
               <div className="select-wrap-modern">
                 <select 
                   className="input-premium-select"
@@ -103,7 +106,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
                   onChange={e => setForm({...form, source: e.target.value})}
                   required
                 >
-                  <option value="">Select Acquisition Source</option>
+                  <option value="">Select source</option>
                   {sources.map(s => <option key={s.id || s.name} value={s.name}>{s.name}</option>)}
                 </select>
                 <div className="select-arrow"><Icon name="chevron-down" size={12} /></div>
@@ -111,10 +114,10 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
             </div>
 
             <div className="conversion-field">
-              <label>Initial Strategic Note</label>
+              <label>Note</label>
               <textarea 
                 className="textarea-premium"
-                placeholder="Log the final discussion or conversion notes..."
+                placeholder="Add a short note"
                 value={form.initial_note}
                 onChange={e => setForm({...form, initial_note: e.target.value})}
               />
@@ -128,7 +131,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
               disabled={saving}
               className="btn-modern-vibrant"
             >
-              {saving ? 'Synchronizing...' : 'Confirm Promotion'}
+              {saving ? 'Saving...' : 'Convert'}
             </button>
           </div>
         </form>
@@ -136,6 +139,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
 
       <style>{`
         .modal-overlay-premium { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px; animation: modalFadeIn 0.3s ease; }
+        .modal-overlay-premium.admin-header-open { align-items: flex-start; padding-top: 72px; }
         .modal-content-glass { width: 100%; max-width: 520px; background: var(--bg-surface); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 28px; overflow: hidden; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5); animation: modalZoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         
         .conversion-form-shell { display: flex; flex-direction: column; }
@@ -151,8 +155,9 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
         .conversion-field label { display: block; font-size: 0.72rem; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
         
         .select-wrap-modern { position: relative; }
-        .input-premium-select { width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 16px; color: white; font-size: 0.95rem; outline: none; appearance: none; cursor: pointer; transition: all 0.2s ease; }
+        .input-premium-select { width: 100%; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; color: var(--text); font-size: 0.95rem; outline: none; appearance: none; cursor: pointer; transition: all 0.2s ease; }
         .input-premium-select:focus { border-color: var(--primary); background: rgba(255, 255, 255, 0.08); }
+        .input-premium-select option { background: var(--bg-surface); color: var(--text); }
         .select-arrow { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-dimmed); }
         
         .textarea-premium { width: 100%; min-height: 100px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 16px; color: white; font-size: 0.95rem; outline: none; resize: none; transition: all 0.2s ease; }
@@ -164,6 +169,10 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
         .btn-modern-vibrant { background: var(--primary); color: white; border: none; border-radius: 12px; padding: 12px 28px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2); }
         .btn-modern-vibrant:hover { transform: translateY(-2px); filter: brightness(1.1); }
         .btn-modern-vibrant:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
+
+        @media (max-width: 768px) {
+          .modal-overlay-premium.admin-header-open { padding-top: 20px; }
+        }
 
         @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes modalZoomIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }

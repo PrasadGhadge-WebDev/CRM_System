@@ -6,20 +6,28 @@ const SupportTicketSchema = new mongoose.Schema(
     company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: false, index: true },
     ticket_id: { type: String, unique: true, index: true }, // TKT-101 format
     ticket_no: { type: Number }, // Raw sequence number
-    customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },
+    customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: false, index: true },
+    user_customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, index: true }, // If the customer is a system user
     subject: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
     status: { type: String, default: 'open', index: true }, // open, in-progress, resolved, closed
     priority: { type: String, default: 'medium', index: true }, // low, medium, high, urgent
-    assigned_to: { type: mongoose.Schema.Types.ObjectId, refPath: 'assigned_to_model', index: true },
-    assigned_to_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
+    assigned_to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     category: { type: String, trim: true },
     is_escalated: { type: Boolean, default: false },
     escalation_reason: { type: String, trim: true },
-    escalated_by: { type: mongoose.Schema.Types.ObjectId, refPath: 'escalated_by_model' },
-    escalated_by_model: { type: String, enum: ['User', 'DemoUser'], default: 'User', index: true },
+    escalated_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     escalated_at: { type: Date },
     solution: { type: String, trim: true },
+    messages: [
+      {
+        sender_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        sender_name: { type: String, required: true },
+        sender_role: { type: String, required: true },
+        text: { type: String, required: true },
+        created_at: { type: Date, default: Date.now }
+      }
+    ],
     notes: [
       {
         text: { type: String, required: true },

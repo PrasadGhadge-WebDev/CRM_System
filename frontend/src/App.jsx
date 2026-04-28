@@ -1,7 +1,8 @@
 import { Navigate, Route, Routes, Outlet } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
-import './App.css'
+import './index.css'
+import './styles/crm-standard.css'
 import AppLayout from './layouts/AppLayout.jsx'
 import PublicLayout from './layouts/PublicLayout.jsx'
 import Dashboard from './pages/Dashboard.jsx'
@@ -16,6 +17,7 @@ import DealsList from './modules/crm/pages/DealsList.jsx'
 import DealForm from './modules/crm/pages/DealForm.jsx'
 import DealDetail from './modules/crm/pages/DealDetail.jsx'
 import DealAnalytics from './modules/crm/pages/DealAnalytics.jsx'
+
 // Core Module Imports
 import SupportList from './modules/crm/pages/SupportList.jsx'
 import TicketDetail from './modules/crm/pages/TicketDetail.jsx'
@@ -23,16 +25,20 @@ import TicketForm from './modules/crm/pages/TicketForm.jsx'
 import UserForm from './modules/admin/pages/UserForm.jsx'
 import UsersList from './modules/admin/pages/UsersList.jsx'
 import UserDetail from './modules/admin/pages/UserDetail.jsx'
-import DemoUsersList from './modules/admin/pages/DemoUsersList.jsx'
 import Billing from './modules/admin/pages/Billing.jsx'
+import PaymentsList from './modules/accountant/pages/PaymentsList.jsx'
+import InvoicesList from './modules/accountant/pages/InvoicesList.jsx'
+import PaymentForm from './modules/accountant/pages/PaymentForm.jsx'
+import PaymentDetail from './modules/accountant/pages/PaymentDetail.jsx'
+import InvoiceForm from './modules/accountant/pages/InvoiceForm.jsx'
+import InvoiceDetail from './modules/accountant/pages/InvoiceDetail.jsx'
 import Settings from './modules/admin/pages/Settings.jsx'
 import Notifications from './modules/admin/pages/Notifications.jsx'
 import Reports from './pages/Reports.jsx'
-import TasksList from './modules/crm/pages/TasksList.jsx'
-import FollowupsModule from './modules/crm/pages/FollowupsModule.jsx'
 import Filters from './modules/admin/pages/Filters.jsx'
 import PaginationSettings from './modules/admin/pages/PaginationSettings.jsx'
 import TrashList from './modules/admin/pages/TrashList.jsx'
+import Attendance from './modules/admin/pages/Attendance.jsx'
 
 // Page Imports
 import Login from './pages/Login.jsx'
@@ -43,7 +49,7 @@ import Profile from './pages/Profile.jsx'
 import { AuthProvider } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
-import { ROLE_GROUPS, NAV_ACCESS } from './utils/accessControl'
+import { ROLE_GROUPS } from './utils/accessControl'
 import LandingPage from './pages/LandingPage.jsx'
 import AboutPage from './pages/AboutPage.jsx'
 import FeaturesPage from './pages/FeaturesPage.jsx'
@@ -65,7 +71,6 @@ export default function App() {
         <ScrollToTop />
         <EnterToNextField />
         <Routes>
-        {/* Public & Auth Routes (Centralized Header) */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -111,7 +116,6 @@ export default function App() {
           <Route path="/support" element={<ProtectedRoute permission="tickets"><SupportList /></ProtectedRoute>} />
           <Route path="/support/:id" element={<ProtectedRoute permission="tickets"><TicketDetail /></ProtectedRoute>} />
 
-
           <Route
             element={
               <ProtectedRoute permission="users">
@@ -120,10 +124,34 @@ export default function App() {
             }
           >
             <Route path="/users" element={<UsersList />} />
-            <Route path="/demo-users" element={<DemoUsersList />} />
             <Route path="/users/new" element={<UserForm mode="create" />} />
             <Route path="/users/:id" element={<UserDetail />} />
             <Route path="/users/:id/edit" element={<UserForm mode="edit" />} />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permission="payments">
+                <Outlet />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/payments" element={<PaymentsList />} />
+            <Route path="/payments/new" element={<PaymentForm mode="create" />} />
+            <Route path="/payments/:id" element={<PaymentDetail />} />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permission="invoices">
+                <Outlet />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/invoices" element={<InvoicesList />} />
+            <Route path="/invoices/new" element={<InvoiceForm mode="create" />} />
+            <Route path="/invoices/:id" element={<InvoiceDetail />} />
+            <Route path="/invoices/:id/edit" element={<InvoiceForm mode="edit" />} />
           </Route>
 
           <Route
@@ -167,22 +195,8 @@ export default function App() {
             <Route path="/pagination" element={<PaginationSettings />} />
           </Route>
 
-
-          <Route
-            element={
-              <ProtectedRoute permission="tasks">
-                <Outlet />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/tasks" element={<TasksList />} />
-            <Route path="/followups" element={<FollowupsModule />} />
-          </Route>
-
-
-
-
           <Route path="/trash" element={<TrashList />} />
+          <Route path="/attendance" element={<ProtectedRoute permission="attendance"><Attendance /></ProtectedRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

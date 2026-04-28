@@ -1,5 +1,6 @@
 const { moveDocumentToTrash } = require('../utils/trash');
 const Customer = require('../models/Customer');
+const SupportTicket = require('../models/SupportTicket');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const mongoose = require('mongoose');
 
@@ -17,7 +18,6 @@ exports.getTickets = asyncHandler(async (req, res) => {
     sortField = 'created_at',
     sortOrder = 'desc',
     customer_is_vip,
-    all
   } = req.query;
 
   const pageNum = Math.max(1, Number(page) || 1);
@@ -37,14 +37,11 @@ exports.getTickets = asyncHandler(async (req, res) => {
     filter.customer_id = { $in: vipIds };
   }
 
-  // Employees see only assigned, Admin/Manager see all company tickets
-  if (req.user.role === 'Employee') {
+  // Role-based visibility
+  if (req.user.role === 'Employee' || req.user.role === 'Support') {
     filter.assigned_to = req.user.id;
-  }
-
-  // Accountants default to Billing category if not specified
-  if (req.user.role === 'Accountant' && !category && !q) {
-    filter.category = 'Billing';
+  } else if (req.user.role === 'Customer') {
+    filter.user_customer_id = req.user.id;
   }
 
   if (q && q.trim()) {
@@ -55,6 +52,7 @@ exports.getTickets = asyncHandler(async (req, res) => {
   const [items, total] = await Promise.all([
     SupportTicket.find(filter)
       .populate('customer_id', 'name email')
+      .populate('user_customer_id', 'name email')
       .populate('assigned_to', 'name email')
       .sort(sort)
       .skip((pageNum - 1) * limitNum)
@@ -72,10 +70,24 @@ exports.getTicketById = asyncHandler(async (req, res) => {
   const ticket = await SupportTicket.findOne({
     _id: req.params.id,
     company_id: req.user.company_id
-  }).populate('customer_id').populate('assigned_to', 'name email');
+  })
+  .populate('customer_id')
+  .populate('user_customer_id', 'name email role')
+  .populate('assigned_to', 'name email')
+  .populate('messages.sender_id', 'name email role profile_photo');
 
   if (!ticket) {
     return res.fail('Ticket not found', 404);
+  }
+
+  // Authorization check for Customer/Employee
+  if (req.user.role === 'Customer' && String(ticket.user_customer_id?._id) !== String(req.user.id)) {
+    return res.fail('Access denied', 403);
+  }
+  if ((req.user.role === 'Employee' || req.user.role === 'Support') && String(ticket.assigned_to?._id) !== String(req.user.id)) {
+     // Admin/Manager can see all, Support/Employee only assigned
+     const isAdminOrManager = ['Admin', 'Manager'].includes(req.user.role);
+     if (!isAdminOrManager) return res.fail('Access denied', 403);
   }
 
   res.ok(ticket);
@@ -85,22 +97,32 @@ exports.getTicketById = asyncHandler(async (req, res) => {
 // @route   POST /api/support
 // @access  Protected
 exports.createTicket = asyncHandler(async (req, res) => {
-  const { customer_id, subject, description, priority, category, assigned_to } = req.body;
+  const { customer_id, user_customer_id, subject, description, priority, category, assigned_to } = req.body;
 
-  if (!customer_id || !subject || !description) {
-    return res.fail('Customer, subject, and description are required', 400);
+  if (!subject || !description) {
+    return res.fail('Subject and description are required', 400);
   }
 
-  const ticket = await SupportTicket.create({
+  const ticketData = {
     company_id: req.user.company_id,
-    customer_id,
     subject,
     description,
     priority: priority || 'medium',
     category,
-    assigned_to: assigned_to || (req.user.role === 'Admin' ? null : req.user.id),
     status: 'open'
-  });
+  };
+
+  // If raised by a logged-in Customer
+  if (req.user.role === 'Customer') {
+    ticketData.user_customer_id = req.user.id;
+  } else {
+    // Raised by Admin/Manager for a customer
+    ticketData.customer_id = customer_id;
+    ticketData.user_customer_id = user_customer_id;
+    ticketData.assigned_to = assigned_to;
+  }
+
+  const ticket = await SupportTicket.create(ticketData);
 
   const { logActivity } = require('../utils/activityLogger');
   await logActivity({
@@ -112,11 +134,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     related_type: 'SupportTicket'
   });
 
-  const populatedTicket = await SupportTicket.findById(ticket._id)
-    .populate('customer_id', 'name email')
-    .populate('assigned_to', 'name email');
-
-  res.created(populatedTicket, 'Support ticket created successfully');
+  res.created(ticket, 'Support ticket created successfully');
 });
 
 // @desc    Update a support ticket
@@ -128,7 +146,7 @@ exports.updateTicket = asyncHandler(async (req, res) => {
 
   // Authorization: Only Admin / Manager can set status to 'closed'
   if (req.body.status === 'closed' && !isAdmin && !isManager) {
-    return res.fail('Verification required: Only Admins or Managers can permanently close tickets. Please use "Resolved" to signal completion.', 403);
+    return res.fail('Verification required: Only Admins or Managers can permanently close tickets.', 403);
   }
 
   const ticket = await SupportTicket.findOneAndUpdate(
@@ -142,6 +160,37 @@ exports.updateTicket = asyncHandler(async (req, res) => {
   }
 
   res.ok(ticket, 'Ticket updated successfully');
+});
+
+// @desc    Add a message/reply to a support ticket
+// @route   POST /api/support/:id/reply
+// @access  Protected
+exports.replyToTicket = asyncHandler(async (req, res) => {
+    const { text } = req.body;
+    if (!text) return res.fail('Message text is required', 400);
+
+    const ticket = await SupportTicket.findOne({ _id: req.params.id, company_id: req.user.company_id });
+    if (!ticket) return res.fail('Ticket not found', 404);
+
+    // Auto-update status to in-progress if an Employee/Admin replies to an open ticket
+    if (ticket.status === 'open' && req.user.role !== 'Customer') {
+        ticket.status = 'in-progress';
+    }
+
+    ticket.messages.push({
+        sender_id: req.user.id,
+        sender_name: req.user.name || req.user.username,
+        sender_role: req.user.role,
+        text,
+        created_at: new Date()
+    });
+
+    await ticket.save();
+    
+    const populated = await SupportTicket.findById(ticket._id)
+        .populate('messages.sender_id', 'name email role profile_photo');
+
+    res.ok(populated, 'Reply transmitted successfully');
 });
 
 // @desc    Delete a support ticket

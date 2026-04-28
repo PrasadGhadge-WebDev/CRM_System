@@ -53,13 +53,15 @@ export default function Profile() {
 
     try {
       const res = await authApi.updateProfile(form)
-      updateUser(res.user)
-      setForm({
-        username: res.user.username || '',
-        email: res.user.email || '',
-        profile_photo: res.user.profile_photo || '',
-      })
-      setMessage(res.message || 'Profile updated successfully')
+      if (res?.user) {
+        updateUser(res.user)
+        setForm({
+          username: res.user.username || '',
+          email: res.user.email || '',
+          profile_photo: res.user.profile_photo || '',
+        })
+      }
+      setMessage(res?.message || 'Profile updated successfully')
     } catch (err) {
       setError(err.message || 'Failed to update profile')
     } finally {

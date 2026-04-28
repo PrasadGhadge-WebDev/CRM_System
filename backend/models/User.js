@@ -23,6 +23,13 @@ const userSchema = new mongoose.Schema(
     joining_date: {
       type: Date,
     },
+    date_of_birth: {
+      type: Date,
+    },
+    basic_salary: {
+      type: Number,
+      default: 0,
+    },
     manager_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
