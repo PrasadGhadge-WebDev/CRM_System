@@ -214,7 +214,7 @@ export default function TaskFormModal({ isOpen, onClose, onSave, task = null, is
 
             <div className="crm-form-actions" style={{ marginTop: '24px', display: 'flex', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
               <button type="button" className="btn secondary" onClick={onClose} style={{ borderRadius: '16px', padding: '12px 24px', border: '1px solid rgba(148,163,184,0.2)', background: 'rgba(255,255,255,0.04)', color: '#f8fafc' }}>Close</button>
-              <button type="submit" className="btn primary" disabled={saving} style={{ borderRadius: '16px', padding: '12px 26px', background: '#3b82f6', color: 'white', fontWeight: '700' }}>
+              <button type="submit" className="btn primary" disabled={saving} style={{ borderRadius: '16px', padding: '12px 26px', background: '#3b82f6', color: 'var(--text)', fontWeight: '700' }}>
                 {saving ? 'Saving...' : (isFollowUp ? 'Save Follow-up' : 'Record Activity')}
               </button>
             </div>

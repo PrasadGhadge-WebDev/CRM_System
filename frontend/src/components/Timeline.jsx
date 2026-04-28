@@ -308,15 +308,15 @@ export default function Timeline({ relatedId, relatedType, defaultView = 'feed' 
               })}
             </div>
           ) : (
-            <div className="activity-table-container animate-slide-down">
-              <table className="premium-activity-table">
+            <div className="crm-table-wrap animate-slide-down">
+              <table className="crm-table">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Staff</th>
-                    <th>Outcome / Note</th>
-                    <th>Next Schedule</th>
+                    <th>DATE</th>
+                    <th>TYPE</th>
+                    <th>STAFF</th>
+                    <th>OUTCOME / NOTE</th>
+                    <th>NEXT SCHEDULE</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -324,39 +324,39 @@ export default function Timeline({ relatedId, relatedType, defaultView = 'feed' 
                     const isNote = item.type === 'note';
                     const iconMap = { call: '📞', meeting: '🤝', email: '📧', task: '✅', 'follow-up': '🔁' };
                     const content = cleanDescription(isNote ? item.note : item.description);
-                    const outcomeColorClass = item.status_after_call === 'Converted' || item.status_after_call === 'Interested' ? 'success' : 'danger';
+                    const outcomeBadgeClass = item.status_after_call === 'Converted' || item.status_after_call === 'Interested' ? 'badge-success-vibrant' : 'badge-danger-vibrant';
                     
                     return (
-                      <tr key={item.id}>
+                      <tr key={item.id} className="crm-table-row">
                         <td>
                           <div className="cell-date">
-                            <strong>{new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</strong>
-                            <span className="muted">{new Date(item.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                            <strong style={{ color: 'var(--text)', fontWeight: 800 }}>{new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</strong>
+                            <span className="muted" style={{ fontSize: '0.7rem' }}>{new Date(item.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         </td>
                         <td>
-                          <div className="cell-type">
-                            <span>{isNote ? '📝' : (iconMap[item.activity_type] || '📅')}</span>
-                            <span className="type-label">{isNote ? 'Note' : item.activity_type}</span>
+                          <div className="cell-type" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '1rem' }}>{isNote ? '📝' : (iconMap[item.activity_type] || '📅')}</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{isNote ? 'Note' : item.activity_type}</span>
                           </div>
                         </td>
                         <td>
-                          <div className="cell-staff">
-                            <div className="avatar-xs">{item.created_by?.name?.charAt(0) || 'S'}</div>
-                            <span>{item.created_by?.name || 'System'}</span>
+                          <div className="cell-staff" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div className="user-avatar-mini" style={{ width: '24px', height: '24px', fontSize: '0.65rem' }}>{item.created_by?.name?.charAt(0) || 'S'}</div>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{item.created_by?.name || 'System'}</span>
                           </div>
                         </td>
                         <td>
                           <div className="cell-content">
                             {item.status_after_call && (
-                              <span className={`outcome-badge ${outcomeColorClass}`}>{item.status_after_call}</span>
+                              <span className={`status-pill ${outcomeBadgeClass}`} style={{ fontSize: '0.55rem', padding: '2px 8px', marginBottom: '4px', display: 'inline-block' }}>{item.status_after_call}</span>
                             )}
-                            <p className="note-text-row">{content || '—'}</p>
+                            <p className="note-text-row" style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{content || '—'}</p>
                           </div>
                         </td>
                         <td>
                           {item.due_date ? (
-                            <div className="cell-next">
+                            <div className="cell-next" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontWeight: 800, fontSize: '0.8rem' }}>
                               <Icon name="bell" size={12} />
                               <span>{new Date(item.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
                             </div>
@@ -392,14 +392,14 @@ export default function Timeline({ relatedId, relatedType, defaultView = 'feed' 
         .timeline-orchestrator-wrap { position: relative; }
         .orchestrator-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
         .header-title-wrap { display: flex; align-items: center; gap: 12px; }
-        .header-title-wrap h3 { margin: 0; font-size: 1.15rem; font-weight: 800; color: white; letter-spacing: -0.02em; }
+        .header-title-wrap h3 { margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
         .header-title-wrap svg { color: var(--primary); width: 20px; height: 20px; }
         .header-actions-row { display: flex; align-items: center; gap: 16px; }
 
         .view-mode-toggle { display: flex; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 3px; }
         .view-mode-toggle button { background: transparent; border: none; color: var(--text-dimmed); padding: 8px 14px; border-radius: 9px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.75rem; font-weight: 800; transition: 0.2s; }
         .view-mode-toggle button.active { background: var(--primary); color: white; box-shadow: 0 4px 10px var(--primary-soft); }
-        .view-mode-toggle button:hover:not(.active) { color: white; background: rgba(255,255,255,0.05); }
+        .view-mode-toggle button:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.05); }
 
         .filter-segmented-control { display: flex; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 3px; }
         .filter-segmented-control button { background: transparent; border: none; color: var(--text-muted); font-size: 0.72rem; font-weight: 800; padding: 8px 12px; border-radius: 9px; cursor: pointer; transition: 0.2s; }
@@ -411,12 +411,12 @@ export default function Timeline({ relatedId, relatedType, defaultView = 'feed' 
         .premium-activity-table td { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; }
         
         .cell-date { display: flex; flex-direction: column; gap: 4px; }
-        .cell-date strong { font-size: 0.9rem; color: white; font-weight: 800; }
+        .cell-date strong { font-size: 0.9rem; color: var(--text); font-weight: 800; }
         .cell-date .muted { font-size: 0.7rem; color: var(--text-dimmed); }
 
         .cell-type { display: flex; align-items: center; gap: 10px; }
         .cell-type span { font-size: 1.1rem; }
-        .type-label { font-size: 0.85rem; font-weight: 700; color: white; text-transform: capitalize; }
+        .type-label { font-size: 0.85rem; font-weight: 700; color: var(--text); text-transform: capitalize; }
 
         .cell-staff { display: flex; align-items: center; gap: 10px; }
         .avatar-xs { width: 24px; height: 24px; background: var(--primary-soft); color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 900; }

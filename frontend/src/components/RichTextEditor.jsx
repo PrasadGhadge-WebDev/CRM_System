@@ -62,7 +62,7 @@ export default function RichTextEditor({ value, onChange, placeholder, height = 
         .ql-editor {
           min-height: 120px;
           padding: 12px 16px;
-          color: white;
+          color: var(--text);
         }
 
         .ql-editor.ql-blank::before {
@@ -106,14 +106,14 @@ export default function RichTextEditor({ value, onChange, placeholder, height = 
         .ql-snow .ql-tooltip {
           background-color: #1e293b;
           border: 1px solid var(--border);
-          color: white;
+          color: var(--text);
           box-shadow: var(--shadow-lg);
         }
 
         .ql-snow .ql-tooltip input[type=text] {
           background: #0f172a;
           border: 1px solid var(--border);
-          color: white;
+          color: var(--text);
           border-radius: 4px;
         }
       `}</style>

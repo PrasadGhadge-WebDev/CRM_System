@@ -237,7 +237,7 @@ export default function LostReasonModal({ onConfirm, onCancel }) {
           border-radius: 10px;
           border: none;
           background: linear-gradient(135deg, #dc2626, #b91c1c);
-          color: white;
+          color: var(--text);
           font-size: 0.88rem;
           font-weight: 700;
           cursor: pointer;

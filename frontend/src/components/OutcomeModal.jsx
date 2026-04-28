@@ -259,7 +259,7 @@ export default function OutcomeModal({ type, currentStatus, onConfirm, onCancel 
 
         .btn-premium-primary {
           background: var(--primary);
-          color: white;
+          color: var(--text);
           border: none;
           border-radius: 14px;
           padding: 12px 24px;
@@ -309,7 +309,7 @@ export default function OutcomeModal({ type, currentStatus, onConfirm, onCancel 
 
         .close-btn:hover {
           background: rgba(255,255,255,0.05);
-          color: white;
+          color: var(--text);
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }

@@ -95,112 +95,144 @@ export default function Profile() {
   }
 
   return (
-    <div className="accountPage stack">
-      <div className="accountHero">
-        <div>
-          <h1>Profile</h1>
-          <p className="muted">Manage your account identity and contact details.</p>
+    <div className="crm-fullscreen-shell">
+      <section className="crm-hero-shell">
+        <div className="crm-hero-glow crm-hero-glow-1" />
+        <div className="crm-hero-glow crm-hero-glow-2" />
+
+        <div className="crm-hero-topline">
+          <span className="status-pill badge-info-vibrant">Account Identity</span>
+          <span className="hero-meta-chip">System Access Level: {user?.role || 'Admin'}</span>
         </div>
 
-        <div className="accountBadge">
-          {form.profile_photo ? (
-            <img
-              className="accountAvatar"
-              src={form.profile_photo}
-              alt={user?.username || 'Profile'}
-              style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '50%' }}
-            />
-          ) : (
-            <div className="avatar accountAvatar">
-              {user?.username?.charAt(0)?.toUpperCase() || 'A'}
+        <div className="crm-hero-main-row">
+          <div className="crm-hero-avatar">
+            {form.profile_photo ? (
+              <img
+                src={form.profile_photo}
+                alt={user?.username || 'Profile'}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+              />
+            ) : (
+              <span style={{ fontSize: '40px', fontWeight: 900 }}>{user?.username?.charAt(0)?.toUpperCase() || 'A'}</span>
+            )}
+          </div>
+
+          <div className="crm-hero-copy">
+            <h1 className="crm-hero-name">{user?.username || 'Admin'}</h1>
+            <div className="crm-hero-subline">
+              <div className="crm-hero-subline-item">
+                <Icon name="mail" />
+                <span>{user?.email || 'No email associated'}</span>
+              </div>
+              <div className="crm-hero-divider" />
+              <div className="crm-hero-subline-item">
+                <Icon name="user" />
+                <span>Role: {user?.role || 'Administrator'}</span>
+              </div>
             </div>
-          )}
-          <div>
-            <div className="accountBadgeTitle">{user?.username || 'Admin'}</div>
-            <div className="muted">{user?.role || 'Admin'}</div>
+          </div>
+
+          <div className="crm-hero-side-stack">
+            <div className="crm-hero-stat-card vibrant-border">
+              <span className="crm-hero-stat-label">Member Since</span>
+              <span className="crm-hero-stat-value">April 2026</span>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {error ? <div className="alert error">{error}</div> : null}
       {message ? <div className="alert">{message}</div> : null}
 
-      <div className="accountGrid">
-        <form className="card stack" onSubmit={handleSubmit}>
-          <div className="row">
-            <h2>Edit Details</h2>
-            <button className="btn primary" type="submit" disabled={saving}>
-              {saving ? 'Saving...' : 'Save Profile'}
-            </button>
-          </div>
+      <div className="crm-detail-grid">
+        <div className="crm-detail-main">
+          <form className="crm-detail-card" onSubmit={handleSubmit}>
+            <div className="crm-detail-card-header">
+              <div className="crm-detail-card-title">
+                <Icon name="edit" />
+                <h3>Personal Intelligence</h3>
+              </div>
+              <button className="crm-btn-premium vibrant" type="submit" disabled={saving}>
+                <Icon name="save" />
+                <span>{saving ? 'Saving...' : 'Save Profile'}</span>
+              </button>
+            </div>
 
-          <div className="accountFormGrid">
-            <label className="accountField">
-              <span>Profile Image</span>
-              <input className="input" type="file" accept="image/*" onChange={handleProfileImageChange} />
-            </label>
+            <div className="crm-intel-grid">
+              <div className="crm-intel-field">
+                <label>Display Name</label>
+                <input
+                  className="crm-input"
+                  value={form.username}
+                  onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
+                  placeholder="Enter username"
+                />
+              </div>
 
-            <label className="accountField">
-              <span>Username</span>
-              <input
-                className="input"
-                value={form.username}
-                onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
-                placeholder="Enter username"
-              />
-            </label>
+              <div className="crm-intel-field">
+                <label>Email Address</label>
+                <input
+                  className="crm-input"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                  placeholder="Enter email"
+                />
+              </div>
 
-            <label className="accountField">
-              <span>Email</span>
-              <input
-                className="input"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-                placeholder="Enter email"
-              />
-            </label>
-          </div>
-
-          {form.profile_photo ? (
-            <div className="stack">
-              <img
-                src={form.profile_photo}
-                alt={form.username || 'Profile preview'}
-                style={{ width: '88px', height: '88px', objectFit: 'cover', borderRadius: '50%' }}
-              />
-              <div>
-                <button
-                  className="btn"
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, profile_photo: '' }))}
-                >
-                  Remove Image
-                </button>
+              <div className="crm-intel-field full-width">
+                <label>Update Profile Photo</label>
+                <input className="crm-input" type="file" accept="image/*" onChange={handleProfileImageChange} />
               </div>
             </div>
-          ) : null}
-        </form>
 
-        <div className="card stack">
-          <h2>Account Summary</h2>
-          <div className="kv">
-            <span className="k">Profile Image</span>
-            <span className="v">{form.profile_photo ? 'Updated' : 'Not set'}</span>
-          </div>
-          <div className="kv">
-            <span className="k">Username</span>
-            <span className="v">{user?.username || '-'}</span>
-          </div>
-          <div className="kv">
-            <span className="k">Email</span>
-            <span className="v">{user?.email || '-'}</span>
-          </div>
-          <div className="kv">
-            <span className="k">Role</span>
-            <span className="v">{user?.role || 'Admin'}</span>
-          </div>
+            {form.profile_photo ? (
+              <div className="stack margin-top-24">
+                <img
+                  src={form.profile_photo}
+                  alt={form.username || 'Profile preview'}
+                  style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '32px', border: '2px solid var(--primary)' }}
+                />
+                <div className="margin-top-12">
+                  <button
+                    className="crm-btn-premium glass"
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, profile_photo: '' }))}
+                  >
+                    <span>Remove Image</span>
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </form>
         </div>
+
+        <aside className="crm-detail-side">
+          <div className="crm-detail-card accent-card">
+            <div className="crm-detail-card-header">
+              <div className="crm-detail-card-title">
+                <Icon name="info" />
+                <h3>Account Summary</h3>
+              </div>
+            </div>
+            
+            <div className="snapshot-list">
+              <div className="snapshot-row">
+                <span className="snapshot-label">System Role</span>
+                <span className="snapshot-value">{user?.role || 'Admin'}</span>
+              </div>
+              <div className="snapshot-row">
+                <span className="snapshot-label">Permissions</span>
+                <span className="snapshot-value">Full Access</span>
+              </div>
+              <div className="snapshot-row">
+                <span className="snapshot-label">Last Login</span>
+                <span className="snapshot-value">Today</span>
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   )

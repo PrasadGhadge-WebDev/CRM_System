@@ -33,9 +33,6 @@ export default function DealDetail() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false)
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false)
-  const [newNote, setNewNote] = useState('')
-  const [postingNote, setPostingNote] = useState(false)
-  const [notes, setNotes] = useState([])
 
   useToastFeedback({ error })
 
@@ -74,7 +71,7 @@ export default function DealDetail() {
   const canEdit = isManagement || isOwner
 
   return (
-    <div className="stack gap-32 user-profile-container">
+    <div className="crm-fullscreen-shell crm-detail-container">
       <PageHeader
         title="Deal Details"
         description={deal.name}
@@ -97,11 +94,11 @@ export default function DealDetail() {
         }
       />
 
-      <section className="user-hero-shell">
-        <div className="hero-glow hero-glow-a" />
-        <div className="hero-glow hero-glow-b" />
+      <section className="crm-hero-shell">
+        <div className="crm-hero-glow crm-hero-glow-1" />
+        <div className="crm-hero-glow crm-hero-glow-2" />
 
-        <div className="hero-topline">
+        <div className="crm-hero-topline">
           <span className={`status-pill ${deal.stage === 'Won' ? 'badge-success-vibrant' : deal.stage === 'Lost' ? 'badge-danger-vibrant' : 'badge-info-vibrant'}`}>
             {deal.stage}
           </span>
@@ -113,32 +110,32 @@ export default function DealDetail() {
           <span className="hero-meta-chip">ID: {deal.readable_id || 'OPP-100'}</span>
         </div>
 
-        <div className="hero-main-row">
-          <div className="hero-avatar-modern" aria-hidden="true" style={{ background: 'linear-gradient(135deg, #4f46e5, #9333ea)' }}>
-            <Icon name="deals" size={40} />
+        <div className="crm-hero-main-row">
+          <div className="crm-hero-avatar" aria-hidden="true">
+            <Icon name="deals" size={48} />
           </div>
 
-          <div className="hero-copy">
-            <h1 className="hero-name-modern">{deal.name}</h1>
-            <div className="hero-subline">
-              <div className="hero-subline-item">
+          <div className="crm-hero-copy">
+            <h1 className="crm-hero-name">{deal.name}</h1>
+            <div className="crm-hero-subline">
+              <div className="crm-hero-subline-item">
                 <Icon name="users" />
                 <Link to={`/customers/${deal.customer_id?._id || deal.customer_id}`} className="link-standard" style={{ color: 'inherit' }}>
                   {deal.customer_id?.name || 'Unknown Customer'}
                 </Link>
               </div>
-              <div className="hero-divider" />
-              <div className="hero-subline-item">
+              <div className="crm-hero-divider" />
+              <div className="crm-hero-subline-item">
                 <Icon name="user" />
                 <span>Assigned to: {deal.assigned_to?.name || 'Unassigned'}</span>
               </div>
             </div>
           </div>
 
-          <div className="hero-side-stack">
-            <div className="hero-stat-card vibrant-border">
-              <span className="hero-stat-label">Deal Value</span>
-              <span className="hero-stat-value success-text" style={{ fontSize: '1.4rem' }}>
+          <div className="crm-hero-side-stack">
+            <div className="crm-hero-stat-card vibrant-border">
+              <span className="crm-hero-stat-label">Deal Value</span>
+              <span className="crm-hero-stat-value success">
                 ₹{(deal.value || 0).toLocaleString()}
               </span>
             </div>
@@ -146,7 +143,7 @@ export default function DealDetail() {
         </div>
       </section>
 
-      <div className="hub-navigation">
+      <div className="crm-hub-nav">
         {[
           { id: 'info', label: 'Details', icon: 'dashboard' },
           { id: 'activity', label: 'Activity History', icon: 'reports' },
@@ -156,7 +153,7 @@ export default function DealDetail() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`hub-tab ${activeTab === tab.id ? 'active' : ''}`}
+            className={`crm-hub-tab ${activeTab === tab.id ? 'active' : ''}`}
           >
             <Icon name={tab.icon} size={14} />
             <span>{tab.label}</span>
@@ -164,115 +161,116 @@ export default function DealDetail() {
         ))}
       </div>
 
-      <div className="user-detail-grid">
-        <div className="user-detail-main">
+      <div className="crm-detail-grid">
+        <div className="crm-detail-main">
           {activeTab === 'info' && (
-            <section className="detail-card">
-              <div className="detail-card-header">
-                <div className="detail-card-title">
+            <section className="crm-detail-card">
+              <div className="crm-detail-card-header">
+                <div className="crm-detail-card-title">
                   <Icon name="info" />
                   <h3>Deal Summary</h3>
                 </div>
-                <span className="detail-card-badge subtle">Basic Info</span>
               </div>
-              <div className="detail-card-body detail-grid-2">
-                <div className="intel-field">
-                  <label>Current Stage</label>
-                  <div className="intel-value highlight">{deal.stage}</div>
-                </div>
-                <div className="intel-field">
-                  <label>Deal Value</label>
-                  <div className="intel-value">₹{(deal.value || 0).toLocaleString()}</div>
-                </div>
-                <div className="intel-field">
-                  <label>Assigned to</label>
-                  <div className="intel-value">{deal.assigned_to?.name || 'Unassigned'}</div>
-                </div>
-                <div className="intel-field">
-                  <label>Created Date</label>
-                  <div className="intel-value">{new Date(deal.created_at).toLocaleDateString()}</div>
-                </div>
-                <div className="intel-field full-width">
-                  <label>Description</label>
-                  <div className="intel-value" style={{ fontSize: '0.95rem', fontWeight: 400, opacity: 0.8, lineHeight: 1.6 }}>
-                    {stripHtml(deal.description) || 'No description added.'}
+              <div className="crm-detail-card-body">
+                <div className="crm-intel-grid">
+                  <div className="crm-intel-field">
+                    <label>Current Stage</label>
+                    <div className="crm-intel-value highlight">{deal.stage}</div>
                   </div>
-                </div>
-
-                {invoices.length > 0 && (
-                  <div className="intel-field full-width" style={{ marginTop: '24px', padding: '24px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '24px', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                      <label style={{ color: 'var(--primary)', fontWeight: 900, margin: 0 }}>Billing Information</label>
-                      <span className={`status-pill ${invoices[0].status === 'Paid' ? 'badge-success-vibrant' : 'badge-info-vibrant'}`} style={{ fontSize: '0.6rem' }}>
-                        {invoices[0].status}
-                      </span>
+                  <div className="crm-intel-field">
+                    <label>Deal Value</label>
+                    <div className="crm-intel-value">₹{(deal.value || 0).toLocaleString()}</div>
+                  </div>
+                  <div className="crm-intel-field">
+                    <label>Assigned to</label>
+                    <div className="crm-intel-value">{deal.assigned_to?.name || 'Unassigned'}</div>
+                  </div>
+                  <div className="crm-intel-field">
+                    <label>Created Date</label>
+                    <div className="crm-intel-value">{new Date(deal.created_at).toLocaleDateString()}</div>
+                  </div>
+                  <div className="crm-intel-field full-width">
+                    <label>Description</label>
+                    <div className="crm-intel-value" style={{ fontSize: '0.95rem', fontWeight: 400, opacity: 0.8, lineHeight: 1.6 }}>
+                      {stripHtml(deal.description) || 'No description added.'}
                     </div>
-                    <div className="detail-grid-2">
-                      <div className="intel-field">
-                        <label>Bill Number</label>
-                        <div className="intel-value">{invoices[0].invoice_number}</div>
+                  </div>
+
+                  {invoices.length > 0 && (
+                    <div className="crm-intel-field full-width" style={{ marginTop: '24px', padding: '24px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '24px', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <label style={{ color: 'var(--primary)', fontWeight: 900, margin: 0 }}>Billing Information</label>
+                        <span className={`status-pill ${invoices[0].status === 'Paid' ? 'badge-success-vibrant' : 'badge-info-vibrant'}`} style={{ fontSize: '0.6rem' }}>
+                          {invoices[0].status}
+                        </span>
                       </div>
-                      <div className="intel-field">
-                        <label>Total Bill Amount</label>
-                        <div className="intel-value">₹{invoices[0].total_amount?.toLocaleString()}</div>
-                      </div>
-                      <div className="intel-field">
-                        <label>Paid Amount</label>
-                        <div className="intel-value success-text">₹{invoices[0].paid_amount?.toLocaleString()}</div>
-                      </div>
-                      <div className="intel-field">
-                        <label>Pending Amount</label>
-                        <div className="intel-value" style={{ color: '#f87171' }}>
-                          ₹{(invoices[0].total_amount - invoices[0].paid_amount).toLocaleString()}
+                      <div className="crm-intel-grid">
+                        <div className="crm-intel-field">
+                          <label>Bill Number</label>
+                          <div className="crm-intel-value">{invoices[0].invoice_number}</div>
+                        </div>
+                        <div className="crm-intel-field">
+                          <label>Total Bill Amount</label>
+                          <div className="crm-intel-value">₹{invoices[0].total_amount?.toLocaleString()}</div>
+                        </div>
+                        <div className="crm-intel-field">
+                          <label>Paid Amount</label>
+                          <div className="crm-intel-value success">₹{invoices[0].paid_amount?.toLocaleString()}</div>
+                        </div>
+                        <div className="crm-intel-field">
+                          <label>Pending Amount</label>
+                          <div className="crm-intel-value" style={{ color: '#f87171' }}>
+                            ₹{(invoices[0].total_amount - invoices[0].paid_amount).toLocaleString()}
+                          </div>
                         </div>
                       </div>
+                      {invoices[0].status !== 'Paid' && (isManagement || isOwner) && (
+                        <button 
+                          className="btn-modern-vibrant" 
+                          onClick={() => setIsTransactionModalOpen(true)}
+                          style={{ marginTop: '24px', width: '100%', justifyContent: 'center' }}
+                        >
+                          <Icon name="plus" />
+                          <span>Add Payment</span>
+                        </button>
+                      )}
                     </div>
-                    {invoices[0].status !== 'Paid' && (isManagement || isOwner) && (
-                      <button 
-                        className="btn-premium action-vibrant" 
-                        onClick={() => setIsTransactionModalOpen(true)}
-                        style={{ marginTop: '24px', width: '100%', justifyContent: 'center' }}
-                      >
-                        <Icon name="plus" />
-                        <span>Add Payment</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-                {deal.stage === 'Lost' && (
-                  <div className="intel-field full-width" style={{ padding: '20px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                    <label style={{ color: '#ef4444', fontWeight: 900 }}>Lost Reason</label>
-                    <div className="intel-value" style={{ color: 'white', marginTop: '8px' }}>{deal.lost_reason}</div>
-                  </div>
-                )}
+                  )}
+                  {deal.stage === 'Lost' && (
+                    <div className="crm-intel-field full-width" style={{ padding: '20px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                      <label style={{ color: '#ef4444', fontWeight: 900 }}>Lost Reason</label>
+                      <div className="crm-intel-value" style={{ color: 'var(--text)', marginTop: '8px' }}>{deal.lost_reason}</div>
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
           )}
 
           {activeTab === 'activity' && (
-            <section className="detail-card">
-              <div className="detail-card-header">
-                <div className="detail-card-title">
+            <section className="crm-detail-card">
+              <div className="crm-detail-card-header">
+                <div className="crm-detail-card-title">
                   <Icon name="reports" />
                   <h3>Activity History</h3>
                 </div>
               </div>
-              <div className="detail-card-body">
+              <div className="crm-detail-card-body">
                 <Timeline relatedId={id} relatedType="Deal" defaultView="table" />
               </div>
             </section>
           )}
 
           {activeTab === 'notes' && (
-            <section className="detail-card">
-              <div className="detail-card-header">
-                <div className="detail-card-title">
+            <section className="crm-detail-card">
+              <div className="crm-detail-card-header">
+                <div className="crm-detail-card-title">
                   <Icon name="notes" />
                   <h3>General Notes</h3>
                 </div>
               </div>
-              <div className="detail-card-body">
-                 <div className="intel-value" style={{ whiteSpace: 'pre-wrap', fontSize: '1rem', fontWeight: 400, opacity: 0.9 }}>
+              <div className="crm-detail-card-body">
+                 <div className="crm-intel-value" style={{ whiteSpace: 'pre-wrap', fontSize: '1rem', fontWeight: 400, opacity: 0.9 }}>
                    {stripHtml(deal.notes) || 'No notes added yet.'}
                  </div>
               </div>
@@ -280,37 +278,37 @@ export default function DealDetail() {
           )}
 
           {activeTab === 'payments' && (
-            <section className="detail-card">
-              <div className="detail-card-header">
-                <div className="detail-card-title">
+            <section className="crm-detail-card">
+              <div className="crm-detail-card-header">
+                <div className="crm-detail-card-title">
                   <Icon name="activity" />
                   <h3>Payment History</h3>
                 </div>
                 {invoices.length > 0 && invoices[0].status !== 'Paid' && (isManagement || isOwner) && (
-                  <button className="btn-premium secondary" style={{ fontSize: '0.7rem', padding: '6px 14px' }} onClick={() => setIsTransactionModalOpen(true)}>
+                  <button className="btn-premium action-secondary" style={{ padding: '8px 16px' }} onClick={() => setIsTransactionModalOpen(true)}>
                     <Icon name="plus" />
                     <span>Add Payment</span>
                   </button>
                 )}
               </div>
-              <div className="detail-card-body">
+              <div className="crm-detail-card-body">
                 {payments.length > 0 ? (
-                  <div className="high-density-table-wrap">
-                    <table className="table-minimal-premium">
+                  <div className="crm-table-wrap" style={{ borderRadius: '16px', overflow: 'hidden' }}>
+                    <table className="crm-table">
                       <thead>
                         <tr>
-                          <th>Bill #</th>
-                          <th>Amount</th>
-                          <th>Method</th>
-                          <th>Date</th>
+                          <th>BILL #</th>
+                          <th>AMOUNT</th>
+                          <th>METHOD</th>
+                          <th>DATE</th>
                         </tr>
                       </thead>
                       <tbody>
                         {payments.map(p => (
-                          <tr key={p.id}>
+                          <tr key={p.id} className="crm-table-row">
                             <td><span className="muted">{p.payment_number}</span></td>
-                            <td className="font-numeric success-text">₹{p.amount?.toLocaleString()}</td>
-                            <td>{p.payment_method}</td>
+                            <td className="font-numeric success">₹{p.amount?.toLocaleString()}</td>
+                            <td><span className="badge-info-vibrant" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>{p.payment_method}</span></td>
                             <td>{new Date(p.payment_date).toLocaleDateString()}</td>
                           </tr>
                         ))}
@@ -324,7 +322,72 @@ export default function DealDetail() {
             </section>
           )}
         </div>
+
+        <aside className="crm-detail-side">
+          <section className="crm-detail-card accent-card">
+            <div className="crm-detail-card-header">
+              <div className="crm-detail-card-title">
+                <Icon name="dashboard" />
+                <h3>Snapshot</h3>
+              </div>
+            </div>
+            <div className="crm-detail-card-body">
+              <div className="milestone-panel">
+                <div className="milestone-label">Remaining Balance</div>
+                <div className="milestone-value danger" style={{ color: '#f87171' }}>
+                  ₹{invoices.length > 0 ? (invoices[0].total_amount - invoices[0].paid_amount).toLocaleString() : (deal.value || 0).toLocaleString()}
+                </div>
+              </div>
+
+              <div className="snapshot-list">
+                <div className="snapshot-row">
+                  <span className="snapshot-label">Deal Owner</span>
+                  <span className="snapshot-value">{deal.assigned_to?.name || 'Unassigned'}</span>
+                </div>
+                <div className="snapshot-row">
+                  <span className="snapshot-label">Customer</span>
+                  <span className="snapshot-value">{deal.customer_id?.name || 'N/A'}</span>
+                </div>
+              </div>
+
+              {deal.stage !== 'Won' && (
+                <button className="btn-modern-vibrant full-width" onClick={() => setIsEditModalOpen(true)}>
+                  <Icon name="edit" />
+                  <span>Update Stage</span>
+                </button>
+              )}
+            </div>
+          </section>
+
+          {invoices.length > 0 && (
+            <section className="crm-detail-card">
+              <div className="crm-detail-card-header">
+                <div className="crm-detail-card-title">
+                  <Icon name="reports" />
+                  <h3>Billing Summary</h3>
+                </div>
+              </div>
+              <div className="crm-detail-card-body">
+                <div className="snapshot-list">
+                  <div className="snapshot-row">
+                    <span className="snapshot-label">Bill No</span>
+                    <span className="snapshot-value" style={{ fontWeight: 800 }}>{invoices[0].invoice_number}</span>
+                  </div>
+                  <div className="snapshot-row">
+                    <span className="snapshot-label">Total</span>
+                    <span className="snapshot-value">₹{invoices[0].total_amount?.toLocaleString()}</span>
+                  </div>
+                  <div className="snapshot-row">
+                    <span className="snapshot-label">Paid</span>
+                    <span className="snapshot-value success-text">₹{invoices[0].paid_amount?.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+        </aside>
       </div>
+
 
       <DealModal 
         isOpen={isEditModalOpen}
@@ -347,63 +410,6 @@ export default function DealDetail() {
         onClose={() => setIsTransactionModalOpen(false)}
         onSave={() => loadDealData()}
       />
-
-      <style>{`
-        .user-profile-container { padding-bottom: 60px; }
-        .user-hero-shell { position: relative; overflow: hidden; background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.15), transparent 40%), linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(15, 23, 42, 0.95)); border: 1px solid var(--border); border-radius: 32px; padding: 32px; box-shadow: var(--shadow-xl); backdrop-filter: blur(14px); margin-bottom: 32px; }
-        .hero-glow { position: absolute; border-radius: 999px; filter: blur(40px); pointer-events: none; opacity: 0.5; }
-        .hero-glow-a { top: -80px; left: -40px; width: 300px; height: 300px; background: rgba(59, 130, 246, 0.2); }
-        .hero-glow-b { right: -70px; bottom: -100px; width: 350px; height: 350px; background: rgba(99, 102, 241, 0.15); }
-
-        .hero-topline { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; position: relative; z-index: 1; }
-        .status-pill, .hero-meta-chip { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; padding: 7px 14px; text-transform: uppercase; }
-        .badge-success-vibrant { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .badge-danger-vibrant { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.28); }
-        .badge-info-vibrant { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); }
-        .hero-meta-chip { background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.85); border: 1px solid rgba(255, 255, 255, 0.15); }
-
-        .hero-main-row { display: flex; align-items: center; gap: 32px; justify-content: space-between; position: relative; z-index: 1; }
-        .hero-avatar-modern { width: 100px; height: 100px; flex: 0 0 auto; border-radius: 30px; border: 2px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4); overflow: hidden; }
-        .hero-name-modern { margin: 0 0 12px; font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1; letter-spacing: -0.04em; color: white; font-weight: 900; }
-        .hero-subline { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
-        .hero-subline-item { display: inline-flex; align-items: center; gap: 8px; color: rgba(255, 255, 255, 0.75); font-size: 0.95rem; font-weight: 500; }
-        .hero-subline-item svg { color: var(--primary); width: 18px; }
-        .hero-divider { width: 1px; height: 14px; background: rgba(255, 255, 255, 0.1); }
-
-        .hero-side-stack { display: grid; gap: 14px; min-width: 280px; grid-template-columns: 1fr; }
-        .hero-stat-card { padding: 16px 18px; border-radius: 18px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.24); }
-        .hero-stat-label { display: block; color: rgba(255, 255, 255, 0.72); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 6px; }
-        .hero-stat-value { color: white; font-weight: 700; line-height: 1.3; }
-
-        .hub-navigation { display: flex; gap: 12px; margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 2px; overflow-x: auto; }
-        .hub-tab { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border: none; background: none; color: var(--text-dimmed); font-size: 0.9rem; font-weight: 700; cursor: pointer; position: relative; white-space: nowrap; transition: all 0.2s; }
-        .hub-tab:hover { color: white; }
-        .hub-tab.active { color: var(--primary); }
-        .hub-tab.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: var(--primary); box-shadow: 0 0 12px var(--primary); }
-
-        .user-detail-grid { display: flex; gap: 24px; align-items: start; }
-        .user-detail-main { display: flex; flex-direction: column; gap: 24px; flex: 1 1 auto; min-width: 0; }
-        
-        .detail-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 24px; overflow: hidden; padding: 24px; }
-        .detail-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-        .detail-card-title { display: flex; align-items: center; gap: 12px; }
-        .detail-card-title h3 { margin: 0; font-size: 1.05rem; font-weight: 800; color: white; }
-        .detail-card-title svg { color: var(--primary); }
-        .detail-card-badge { display: inline-flex; align-items: center; justify-content: center; padding: 6px 12px; border-radius: 999px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.82); }
-        .detail-card-badge.subtle { background: rgba(59, 130, 246, 0.08); color: #93c5fd; border-color: rgba(59, 130, 246, 0.18); }
-
-        .detail-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-        .intel-field label { display: block; font-size: 0.65rem; font-weight: 900; color: var(--text-dimmed); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.08em; }
-        .intel-value { font-size: 1.05rem; font-weight: 700; color: white; }
-        .intel-value.highlight { color: var(--primary); }
-        .full-width { grid-column: 1 / -1; }
-        
-        @media (max-width: 768px) {
-          .hero-main-row { flex-direction: column; align-items: flex-start; gap: 24px; }
-          .hero-side-stack { width: 100%; min-width: auto; }
-          .detail-grid-2 { grid-template-columns: 1fr; }
-        }
-      `}</style>
     </div>
-  )
+  );
 }

@@ -71,7 +71,7 @@ const TrialStatusBar = () => {
           display: flex;
           align-items: center;
           gap: 12px;
-          color: white;
+          color: var(--text);
         }
 
         .trial-icon {
@@ -94,7 +94,7 @@ const TrialStatusBar = () => {
         .upgrade-button {
           position: relative;
           background: #3b82f6;
-          color: white;
+          color: var(--text);
           border: none;
           padding: 8px 18px;
           border-radius: 99px;

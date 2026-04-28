@@ -156,7 +156,7 @@ export default function Pagination({ page: rawPage, limit: rawLimit, total: rawT
         .pg-btn.active {
           background: var(--primary-color);
           border-color: var(--primary-color);
-          color: white;
+          color: var(--text);
           box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
 

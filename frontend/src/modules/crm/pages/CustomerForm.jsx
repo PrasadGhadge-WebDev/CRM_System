@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { customersApi } from '../../../services/customers.js'
@@ -26,11 +26,8 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
   const navigate = useNavigate()
   const { user } = useAuth()
   
-  const isAdmin = user?.role === 'Admin'
-  const isManager = user?.role === 'Manager'
-  const isAccountant = user?.role === 'Accountant'
   const isHR = user?.role === 'HR'
-  
+  const isAccountant = user?.role === 'Accountant'
   const isReadOnly = isHR || isAccountant
   const isEdit = mode === 'edit' || (!!id && id !== 'new')
 
@@ -78,147 +75,176 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
         const matches = field === 'email' ? c.email?.toLowerCase() === value.trim().toLowerCase() : c.phone === value.trim()
         return matches && (isEdit ? c.id !== id : true)
       })
-      if (conflict) setFieldErrors(prev => ({ ...prev, [field]: `Assigned to "${conflict.name}"` }))
+      if (conflict) setFieldErrors(prev => ({ ...prev, [field]: `Already assigned to "${conflict.name}"` }))
       else setFieldErrors(prev => { const next = { ...prev }; delete next[field]; return next })
     } catch { } finally { setChecking(false) }
   }, [id, isEdit])
 
-  async function onSubmit(e) {
-    e.preventDefault()
+  async function handleSubmit(e) {
+    if (e) e.preventDefault()
     if (isReadOnly) return
-    if (!model.name || !model.email || !model.phone) return toast.warn('All required identifiers needed')
-    if (!/^\d{10}$/.test(model.phone.trim())) return setFieldErrors(prev => ({ ...prev, phone: '10 digits required' }))
-    if (Object.keys(fieldErrors).length > 0) return toast.warn('Resolve validation conflicts')
+    if (!model.name || !model.email || !model.phone) return toast.warn('Please fill required fields')
+    if (Object.keys(fieldErrors).length > 0) return toast.warn('Please fix validation errors')
 
     setSaving(true)
     try {
       const saved = isEdit ? await customersApi.update(id, model) : await customersApi.create(model)
-      toast.success(`Client ${isEdit ? 'updated' : 'onboarded'}`)
+      toast.success(`Customer ${isEdit ? 'updated' : 'created'}`)
       if (onSuccess) onSuccess(saved); else navigate(`/customers/${saved.id || id}`)
-    } catch (err) { toast.error(err.response?.data?.message || 'Transaction error') } finally { setSaving(false) }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed to save') } finally { setSaving(false) }
   }
 
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') {
+      const form = e.target.form
+      if (!form || e.target.tagName === 'TEXTAREA' || e.target.type === 'submit') return
+      e.preventDefault()
+      const index = Array.from(form.elements).indexOf(e.target)
+      const nextElement = form.elements[index + 1]
+      if (nextElement && nextElement.tagName !== 'BUTTON') nextElement.focus()
+      else handleSubmit(e)
+    }
+  }
+
+  if (loading) return <div className="p-40 text-center text-dimmed">Loading customer details...</div>
+
   return (
-    <div className="crm-form-page crmContent page-enter">
-      <div className="lead-form-page">
-        <header className="leadsHeader">
-          <div>
-            <h1 className="leadsTitle">{isEdit ? 'Refine Client Intel' : 'Onboard New Entity'}</h1>
-            <p className="leadsDescription">Manage institutional metadata, firmographic details, and account governance.</p>
+    <div className="crm-modal-portal-overlay">
+      <div className="crm-modal-sheet animate-sheet-in">
+        <div className="crm-modal-sheet-header">
+          <div className="sheet-title-area">
+            <h2 className="sheet-title">{isEdit ? 'Update Customer' : 'Add New Customer'}</h2>
+            <p className="sheet-subtitle">{isEdit ? `Editing record for ${model.name}` : 'Onboard a new institutional client'}</p>
           </div>
-          <div className="leadsHeaderActions">
-            <button className="btn-premium secondary" onClick={() => (onCancel ? onCancel() : navigate(-1))}>
-              <Icon name="close" />
-              <span>Cancel</span>
-            </button>
-            <button className="btn-premium action-vibrant" onClick={onSubmit} disabled={saving || checking}>
-              <Icon name={saving ? 'spinner' : 'check'} className={saving ? 'spinner' : ''} />
-              <span>{saving ? 'Processing...' : isEdit ? 'Commit Profile' : 'Authorize Entity'}</span>
-            </button>
-          </div>
-        </header>
+        </div>
 
-        <div className="intelligence-form-grid">
-          <div className="intel-form-card glass-panel">
-            <div className="card-header-premium">
-              <Icon name="user" />
-              <h3>Core Identity</h3>
-            </div>
-            <div className="card-body-premium">
-              <div className="grid-2">
-                <div className="intel-field-group span-2">
-                  <label className="intel-label">Full Entity Name / Organization</label>
-                  <input className="input-premium" value={model.name} onChange={e => setModel({ ...model, name: e.target.value })} placeholder="e.g. Acme Corporation" autoFocus />
+        <form className="crm-modal-sheet-body custom-scrollbar" onKeyDown={handleKeyDown} onSubmit={handleSubmit}>
+          <div className="sheet-content-container">
+            {/* Core Identity */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="user" />
+                <span>Core Identity</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field full-width">
+                  <label>Full Entity Name / Organization</label>
+                  <input 
+                    className="crm-input" 
+                    autoFocus 
+                    value={model.name} 
+                    onChange={e => setModel({ ...model, name: e.target.value })} 
+                    placeholder="e.g. Acme Corporation" 
+                  />
                 </div>
-                <div className="intel-field-group">
-                  <label className="intel-label">Primary Email</label>
-                  <input className="input-premium" type="email" value={model.email} onBlur={e => checkDuplicate('email', e.target.value)} onChange={e => setModel({ ...model, email: e.target.value })} placeholder="contact@entity.com" />
-                  {fieldErrors.email && <span className="intel-error-msg">{fieldErrors.email}</span>}
+                <div className="sheet-field">
+                  <label>Primary Email</label>
+                  <input 
+                    className="crm-input" 
+                    type="email" 
+                    value={model.email} 
+                    onBlur={e => checkDuplicate('email', e.target.value)} 
+                    onChange={e => setModel({ ...model, email: e.target.value })} 
+                    placeholder="contact@entity.com" 
+                  />
+                  {fieldErrors.email && <span className="error-text">{fieldErrors.email}</span>}
                 </div>
-                <div className="intel-field-group">
-                  <label className="intel-label">Secure Phone</label>
-                  <input className="input-premium" value={model.phone} onBlur={e => checkDuplicate('phone', e.target.value)} onChange={e => setModel({ ...model, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="10-digit number" />
-                  {fieldErrors.phone && <span className="intel-error-msg">{fieldErrors.phone}</span>}
+                <div className="sheet-field">
+                  <label>Secure Phone</label>
+                  <input 
+                    className="crm-input" 
+                    value={model.phone} 
+                    onBlur={e => checkDuplicate('phone', e.target.value)} 
+                    onChange={e => setModel({ ...model, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} 
+                    placeholder="10-digit number" 
+                  />
+                  {fieldErrors.phone && <span className="error-text">{fieldErrors.phone}</span>}
                 </div>
               </div>
-            </div>
-          </div>
+            </section>
 
-          <div className="intel-form-card glass-panel">
-            <div className="card-header-premium">
-              <Icon name="briefcase" />
-              <h3>Firmographic Metadata</h3>
-            </div>
-            <div className="card-body-premium">
-              <div className="grid-2">
-                <div className="intel-field-group">
-                  <label className="intel-label">Business Sector</label>
-                  <input className="input-premium" value={model.industry} onChange={e => setModel({ ...model, industry: e.target.value })} placeholder="e.g. Technology, Finance" />
+            {/* Firmographic Info */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="briefcase" />
+                <span>Firmographic Details</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field">
+                  <label>Business Sector</label>
+                  <input 
+                    className="crm-input" 
+                    value={model.industry} 
+                    onChange={e => setModel({ ...model, industry: e.target.value })} 
+                    placeholder="e.g. Technology, Finance" 
+                  />
                 </div>
-                <div className="intel-field-group">
-                  <label className="intel-label">Geographic Hub (City)</label>
-                  <input className="input-premium" value={model.city} onChange={e => setModel({ ...model, city: e.target.value })} placeholder="e.g. Mumbai" />
+                <div className="sheet-field">
+                  <label>Geographic Hub (City)</label>
+                  <input 
+                    className="crm-input" 
+                    value={model.city} 
+                    onChange={e => setModel({ ...model, city: e.target.value })} 
+                    placeholder="e.g. Mumbai" 
+                  />
                 </div>
-                <div className="intel-field-group span-2">
-                  <label className="intel-label">Registered Office Address</label>
-                  <input className="input-premium" value={model.address} onChange={e => setModel({ ...model, address: e.target.value })} placeholder="Complete street address" />
+                <div className="sheet-field full-width">
+                  <label>Registered Office Address</label>
+                  <input 
+                    className="crm-input" 
+                    value={model.address} 
+                    onChange={e => setModel({ ...model, address: e.target.value })} 
+                    placeholder="Complete street address" 
+                  />
                 </div>
               </div>
-            </div>
-          </div>
+            </section>
 
-          <div className="intel-form-card glass-panel">
-            <div className="card-header-premium">
-              <Icon name="settings" />
-              <h3>Account Governance</h3>
-            </div>
-            <div className="card-body-premium">
-              <div className="grid-2">
-                <div className="intel-field-group">
-                  <label className="intel-label">Operational Status</label>
-                  <select className="input-premium" value={model.status} onChange={e => setModel({ ...model, status: e.target.value })}>
+            {/* Account Governance */}
+            <section className="form-sheet-section no-border">
+              <div className="form-sheet-section-header">
+                <Icon name="shield" />
+                <span>Account Governance</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field">
+                  <label>Operational Status</label>
+                  <select className="crm-input" value={model.status} onChange={e => setModel({ ...model, status: e.target.value })}>
                     {availableStatuses.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                    {!availableStatuses.length && <option value="Active">Active</option>}
+                    {!availableStatuses.length && <option value="active">Active</option>}
                   </select>
                 </div>
-                <div className="intel-field-group">
-                  <label className="intel-label">Strategic Tier</label>
-                  <div style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', display: 'flex', alignItems: 'center', height: '48px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                <div className="sheet-field">
+                  <label>Strategic Tier</label>
+                  <div style={{ 
+                    padding: '12px 16px', 
+                    background: 'var(--bg-surface)', 
+                    borderRadius: '12px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    border: '2px solid rgba(0,0,0,0.1)' 
+                  }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.85rem', margin: 0, textTransform: 'none' }}>
                       <input type="checkbox" checked={model.is_vip} onChange={e => setModel({ ...model, is_vip: e.target.checked })} />
                       <span>Elevate to VIP Account</span>
                     </label>
                   </div>
                 </div>
               </div>
-            </div>
+            </section>
+          </div>
+        </form>
+
+        <div className="crm-modal-sheet-footer">
+          <p className="footer-hint">All institutional records are encrypted and audit-logged.</p>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <button className="btn-premium secondary" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
+            <button className="btn-premium action-vibrant" disabled={saving || checking} onClick={handleSubmit}>
+              {saving ? 'Processing...' : isEdit ? 'Save Changes' : 'Create Customer'}
+            </button>
           </div>
         </div>
-
-        <div className="form-action-footer">
-          <button className="btn-premium action-secondary" type="button" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
-          <button className="btn-premium action-vibrant" onClick={onSubmit} disabled={saving || checking}>
-            {saving ? 'Processing Intel...' : isEdit ? 'Commit Record' : 'Finalize Authorization'}
-          </button>
-        </div>
       </div>
-
-      <style>{`
-        .lead-form-page { padding-bottom: 80px; }
-        .intelligence-form-grid { display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 32px; max-width: 1000px; }
-        .intel-form-card { border-radius: 24px; overflow: hidden; }
-        .card-header-premium { padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.02); }
-        .card-header-premium h3 { margin: 0; font-size: 1rem; font-weight: 800; }
-        .card-header-premium svg { color: var(--primary); }
-        .card-body-premium { padding: 24px; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .span-2 { grid-column: span 2; }
-        .intel-field-group { display: flex; flex-direction: column; gap: 8px; }
-        .intel-label { font-size: 0.65rem; font-weight: 900; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.08em; }
-        .intel-error-msg { font-size: 0.7rem; color: #ef4444; margin-top: 4px; font-weight: 600; }
-        .form-action-footer { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 32px; padding: 24px; background: rgba(15, 23, 42, 0.4); border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
-        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } .span-2 { grid-column: span 1; } }
-      `}</style>
     </div>
   )
 }

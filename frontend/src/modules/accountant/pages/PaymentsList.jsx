@@ -129,7 +129,7 @@ export default function PaymentsList() {
                         <tr key={pay.id} className="crm-table-row clickable" onClick={() => navigate(`/payments/${pay.id}`)}>
                           <td><span className="font-numeric" style={{ color: 'var(--primary)', fontWeight: 800 }}>#{pay.payment_number}</span></td>
                           <td><span className="text-sm">{new Date(pay.payment_date).toLocaleDateString()}</span></td>
-                          <td><span className="font-bold" style={{ color: 'white' }}>{pay.customer_id?.name || 'Customer'}</span></td>
+                          <td><span className="font-bold" style={{ color: 'var(--text)' }}>{pay.customer_id?.name || 'Customer'}</span></td>
                           <td>
                             {pay.invoice_id?.invoice_number ? (
                               <Link to={`/invoices/${pay.invoice_id.id}`} className="text-sm" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>

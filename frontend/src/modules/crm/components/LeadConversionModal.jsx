@@ -147,9 +147,9 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
         .header-glow { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%); pointer-events: none; }
         .header-main { display: flex; align-items: center; gap: 20px; position: relative; z-index: 1; }
         .header-icon-box { width: 48px; height: 48px; background: var(--primary); color: white; border-radius: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4); }
-        .header-text h2 { margin: 0; font-size: 1.5rem; font-weight: 900; color: white; }
+        .header-text h2 { margin: 0; font-size: 1.5rem; font-weight: 900; color: var(--text); }
         .header-text p { margin: 4px 0 0; font-size: 0.9rem; color: var(--text-dimmed); }
-        .header-text strong { color: white; }
+        .header-text strong { color: var(--text); }
 
         .conversion-body { padding: 32px; display: grid; gap: 24px; }
         .conversion-field label { display: block; font-size: 0.72rem; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
@@ -160,12 +160,12 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
         .input-premium-select option { background: var(--bg-surface); color: var(--text); }
         .select-arrow { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-dimmed); }
         
-        .textarea-premium { width: 100%; min-height: 100px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 16px; color: white; font-size: 0.95rem; outline: none; resize: none; transition: all 0.2s ease; }
+        .textarea-premium { width: 100%; min-height: 100px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 16px; color: var(--text); font-size: 0.95rem; outline: none; resize: none; transition: all 0.2s ease; }
         .textarea-premium:focus { border-color: var(--primary); background: rgba(255, 255, 255, 0.08); }
 
         .conversion-footer { padding: 24px 32px; background: rgba(0, 0, 0, 0.2); border-top: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: flex-end; gap: 16px; }
         .btn-modern-ghost { background: none; border: none; color: var(--text-muted); font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: color 0.2s ease; }
-        .btn-modern-ghost:hover { color: white; }
+        .btn-modern-ghost:hover { color: var(--text); }
         .btn-modern-vibrant { background: var(--primary); color: white; border: none; border-radius: 12px; padding: 12px 28px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2); }
         .btn-modern-vibrant:hover { transform: translateY(-2px); filter: brightness(1.1); }
         .btn-modern-vibrant:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }

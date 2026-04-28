@@ -213,7 +213,7 @@ export default function SearchableSelect({
 
         .option-item-premium.selected {
           background: var(--primary);
-          color: white;
+          color: var(--text);
         }
 
         .check-icon {

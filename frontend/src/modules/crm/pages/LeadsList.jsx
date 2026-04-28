@@ -459,20 +459,20 @@ export default function LeadsList() {
       <style>{`
         .tableAvatarFallback { width: 44px; height: 44px; border-radius: 12px; background: rgba(59, 130, 246, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; }
         .leadsIdentityCell { display: flex; flex-direction: column; gap: 2px; }
-        .leadsPrimaryText { color: white; font-size: 1rem; font-weight: 700; }
+        .leadsPrimaryText { color: var(--text); font-size: 1rem; font-weight: 700; }
         .leadsSecondaryText { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
         
         .leadsContactCell { display: flex; flex-direction: column; gap: 2px; }
-        .contactMain { color: white; font-size: 0.9rem; font-weight: 700; }
+        .contactMain { color: var(--text); font-size: 0.9rem; font-weight: 700; }
         .contactSub { color: var(--text-muted); font-size: 0.8rem; font-weight: 500; }
 
         .leadsOwnerCell { display: flex; flex-direction: column; gap: 2px; }
-        .ownerName { color: white; font-size: 0.9rem; font-weight: 700; }
+        .ownerName { color: var(--text); font-size: 0.9rem; font-weight: 700; }
         .ownerRole { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
 
         .leadsFollowupCell { display: flex; flex-direction: column; gap: 2px; }
         .leadsFollowupCell.is-overdue .followupDate { color: var(--danger); font-weight: 800; }
-        .followupDate { color: white; font-size: 0.9rem; font-weight: 700; }
+        .followupDate { color: var(--text); font-size: 0.9rem; font-weight: 700; }
         .followupTime { color: var(--text-dimmed); font-size: 0.75rem; }
 
         .crm-action-group { display: flex; gap: 8px; justify-content: flex-end; }

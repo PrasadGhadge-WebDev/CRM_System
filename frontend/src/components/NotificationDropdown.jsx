@@ -97,7 +97,7 @@ export default function NotificationDropdown() {
           top: -2px;
           right: -2px;
           background: #ef4444;
-          color: white;
+          color: var(--text);
           font-size: 10px;
           padding: 2px 6px;
           border-radius: 10px;
@@ -150,7 +150,7 @@ export default function NotificationDropdown() {
           flex-shrink: 0;
           color: #64748b;
         }
-        .notificationItem.unread .notificationIcon { background: #2563eb; color: white; }
+        .notificationItem.unread .notificationIcon { background: #2563eb; color: var(--text); }
         .notificationTitle { font-weight: 700; font-size: 0.875rem; color: var(--text); }
         .notificationMessage { font-size: 0.825rem; margin-top: 2px; color: var(--text-muted); }
         .notificationTime { font-size: 0.7rem; margin-top: 6px; color: #94a3b8; }

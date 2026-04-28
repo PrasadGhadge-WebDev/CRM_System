@@ -70,6 +70,7 @@ export default function Dashboard() {
   const recentActivities = metrics?.activities?.recent || []
   const summary = metrics?.summary || {}
   const employee = metrics?.employee || {}
+  const financials = metrics?.financials || {}
   
   const formatCurrency = (val) => new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -168,6 +169,37 @@ export default function Dashboard() {
         { to: '/deals', code: 'DE', label: 'Deals (Won)', value: summary.dealsWon ?? 0 },
         { to: '/deals', code: 'RV', label: 'Total Revenue', value: formatCurrency(summary.totalRevenue) },
       ]
+  const financeHighlights = [
+    {
+      label: 'Outstanding value',
+      value: formatCurrency(financials.unpaidValue),
+      tone: 'warning',
+      note: `${financials.unpaidCount || 0} deals waiting for settlement`,
+    },
+    {
+      label: 'Awaiting billing',
+      value: `${(financials.awaitingBillingDeals || []).length}`,
+      tone: 'info',
+      note: 'Won deals still pending invoice flow',
+    },
+    {
+      label: 'Billing tickets',
+      value: `${financials.billingTicketsOutstanding || 0}`,
+      tone: 'success',
+      note: 'Open finance-related support requests',
+    },
+    {
+      label: 'Overdue orders',
+      value: `${financials.overdueCount || 0}`,
+      tone: 'danger',
+      note: formatCurrency(financials.overdueValue),
+    },
+  ]
+  const accountantQuickLinks = [
+    { to: '/invoices', label: 'Open invoices', value: `${financials.unpaidCount || 0} unpaid` },
+    { to: '/payments', label: 'Recent payments', value: 'Track collections' },
+    { to: '/reports', label: 'Finance reports', value: 'Review performance' },
+  ]
   return (
     <div className="stack">
       <section className="crm-fullscreen-shell">
@@ -194,7 +226,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {isEmployee || isHR ? null : (
+        {isEmployee || isHR || isAccountant ? null : (
           <div className="chartsGrid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
             {canAccess('leads') ? (
               <div className="card chartCard glass-panel" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '24px', padding: '24px' }}>
@@ -384,7 +416,79 @@ export default function Dashboard() {
           </div>
         )}
 
-        {!isEmployee && !isHR && (
+        {isAccountant && (
+          <section className="accountantShowcase">
+            <div className="accountantHero glass-panel">
+              <div className="accountantHeroCopy">
+                <span className="accountantEyebrow">Finance Command Center</span>
+                <h2>Keep collections moving and billing clean.</h2>
+                <p>
+                  Watch outstanding revenue, stay ahead of billing gaps, and keep the settlement pipeline healthy.
+                </p>
+              </div>
+
+              <div className="accountantQuickLinks">
+                {accountantQuickLinks.map((link) => (
+                  <Link key={link.to} to={link.to} className="accountantQuickLink">
+                    <span>{link.label}</span>
+                    <strong>{link.value}</strong>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="accountantInsightGrid">
+              {financeHighlights.map((item) => (
+                <div key={item.label} className={`accountantInsightCard accountant-${item.tone}`}>
+                  <span className="accountantInsightLabel">{item.label}</span>
+                  <strong className="accountantInsightValue">{item.value}</strong>
+                  <p>{item.note}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="accountantFeedGrid">
+              <RecentActivity activities={recentActivities} loading={loading} />
+
+              <section className="accountantSummaryPanel glass-panel">
+                <div className="accountantPanelHead">
+                  <div>
+                    <h3>Finance snapshot</h3>
+                    <p>High-priority numbers you should keep an eye on today.</p>
+                  </div>
+                </div>
+
+                <div className="accountantSummaryList">
+                  <div className="accountantSummaryRow">
+                    <span>Total revenue</span>
+                    <strong>{formatCurrency(summary.totalRevenue)}</strong>
+                  </div>
+                  <div className="accountantSummaryRow">
+                    <span>Won deals</span>
+                    <strong>{summary.dealsWon ?? 0}</strong>
+                  </div>
+                  <div className="accountantSummaryRow">
+                    <span>Pending tasks</span>
+                    <strong>{summary.pendingTasks ?? 0}</strong>
+                  </div>
+                  <div className="accountantSummaryRow">
+                    <span>Unread alerts</span>
+                    <strong>{notificationsUnread}</strong>
+                  </div>
+                </div>
+
+                <div className="accountantCallout">
+                  <span className="accountantCalloutLabel">Next best move</span>
+                  <p>
+                    Focus first on unpaid deals and overdue orders. That is the fastest path to improving cash flow.
+                  </p>
+                </div>
+              </section>
+            </div>
+          </section>
+        )}
+
+        {!isEmployee && !isHR && !isAccountant && (
           <div style={{ marginTop: '24px' }}>
             <RecentActivity activities={recentActivities} loading={loading} />
           </div>

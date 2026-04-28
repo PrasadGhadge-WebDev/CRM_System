@@ -63,8 +63,38 @@ export default function DealsList() {
     if (filters.assigned_to) next.set('assigned_to', filters.assigned_to)
     if (filters.page > 1) next.set('page', String(filters.page))
     if (viewMode !== 'list') next.set('view', viewMode)
+    
+    // Preserve modal state in URL
+    const addDeal = searchParams.get('addDeal')
+    const editDeal = searchParams.get('editDeal')
+    if (addDeal) next.set('addDeal', addDeal)
+    if (editDeal) next.set('editDeal', editDeal)
+
     setSearchParams(next, { replace: true })
-  }, [debouncedQ, filters, setSearchParams, viewMode])
+  }, [debouncedQ, filters, setSearchParams, viewMode, searchParams])
+
+  useEffect(() => {
+    const addDeal = searchParams.get('addDeal')
+    const editDeal = searchParams.get('editDeal')
+    if (addDeal === 'true') {
+      setSelectedDeal(null)
+      setIsModalOpen(true)
+    } else if (editDeal) {
+      // If editDeal is ID, we need to find the deal or fetch it
+      // But for simplicity, if it's already in the list:
+      const deal = items.find(d => String(d.id) === editDeal)
+      if (deal) {
+        setSelectedDeal(deal)
+        setIsModalOpen(true)
+      } else if (items.length > 0) {
+        // If not found in current items (e.g. after refresh), the modal will load it via deal.id
+        setSelectedDeal({ id: editDeal })
+        setIsModalOpen(true)
+      }
+    } else {
+      setIsModalOpen(false)
+    }
+  }, [searchParams, items])
 
   const loadDeals = useCallback(async () => {
     setLoading(true)
@@ -125,13 +155,15 @@ export default function DealsList() {
   }
 
   const handleOpenCreateModal = () => {
-    setSelectedDeal(null)
-    setIsModalOpen(true)
+    const next = new URLSearchParams(searchParams)
+    next.set('addDeal', 'true')
+    setSearchParams(next)
   }
 
   const handleOpenEditModal = (deal) => {
-    setSelectedDeal(deal)
-    setIsModalOpen(true)
+    const next = new URLSearchParams(searchParams)
+    next.set('editDeal', String(deal.id))
+    setSearchParams(next)
   }
 
   return (
@@ -221,9 +253,9 @@ export default function DealsList() {
                 <tbody>
                   {items.map((item) => (
                     <tr key={item.id} className="crm-table-row" onClick={() => navigate(`/deals/${item.id}`)}>
-                      <td className="text-left font-bold" style={{ color: 'white' }}>{item.name}</td>
+                      <td className="text-left font-bold" style={{ color: 'var(--text)' }}>{item.name}</td>
                       <td className="text-left">{item.customer_id?.name || '—'}</td>
-                      <td className="text-center" style={{ fontWeight: 800, color: 'white' }}>₹{item.value?.toLocaleString()}</td>
+                      <td className="text-center" style={{ fontWeight: 800, color: 'var(--text)' }}>₹{item.value?.toLocaleString()}</td>
                       <td className="text-center" onClick={stopRowNavigation}>
                         {isAccountant ? (
                           <span className={`crm-status-pill ${item.stage === 'Won' ? 'success' : item.stage === 'Lost' ? 'danger' : 'info'}`}>{item.stage}</span>
@@ -265,8 +297,19 @@ export default function DealsList() {
       <DealModal 
         isOpen={isModalOpen}
         deal={selectedDeal}
-        onClose={() => setIsModalOpen(false)}
-        onSave={() => loadDeals()}
+        onClose={() => {
+          const next = new URLSearchParams(searchParams)
+          next.delete('addDeal')
+          next.delete('editDeal')
+          setSearchParams(next)
+        }}
+        onSave={() => {
+          const next = new URLSearchParams(searchParams)
+          next.delete('addDeal')
+          next.delete('editDeal')
+          setSearchParams(next)
+          loadDeals()
+        }}
       />
 
       <style>{`

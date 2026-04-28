@@ -148,7 +148,7 @@ export default function DuplicateLeadModal({ duplicate, onClose, onUpdate, match
           transition: all 0.2s;
           flex-shrink: 0;
         }
-        .dlm-close-btn:hover { background: rgba(255,255,255,0.08); color: white; }
+        .dlm-close-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); }
 
         /* Lead Card */
         .dlm-lead-card {
@@ -166,7 +166,7 @@ export default function DuplicateLeadModal({ duplicate, onClose, onUpdate, match
           width: 44px; height: 44px;
           border-radius: 12px;
           background: linear-gradient(135deg, #6366f1, #2563eb);
-          color: white;
+          color: var(--text);
           font-size: 1.2rem;
           font-weight: 800;
           display: flex; align-items: center; justify-content: center;
@@ -179,7 +179,7 @@ export default function DuplicateLeadModal({ duplicate, onClose, onUpdate, match
         .dlm-lead-name {
           font-size: 1rem;
           font-weight: 700;
-          color: white;
+          color: var(--text);
         }
 
         .dlm-lead-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -251,7 +251,7 @@ export default function DuplicateLeadModal({ duplicate, onClose, onUpdate, match
 
         .dlm-btn-primary {
           background: linear-gradient(135deg, #3b82f6, #6366f1);
-          color: white;
+          color: var(--text);
           box-shadow: 0 6px 20px rgba(59,130,246,0.35);
         }
         .dlm-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(59,130,246,0.45); }

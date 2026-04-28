@@ -125,8 +125,8 @@ export default function DealsKanban({ deals = [], loading, onStatusChange }) {
         .kanban-column-title { display: flex; align-items: center; gap: 10px; }
         .kanban-column-title .dot { width: 8px; height: 8px; border-radius: 50%; }
         .kanban-column-title h3 { margin: 0; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dimmed); }
-        .kanban-column-title .count { background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 99px; font-size: 0.7rem; font-weight: 900; color: white; }
-        .kanban-column-total { font-size: 0.9rem; font-weight: 900; color: white; opacity: 0.8; }
+        .kanban-column-title .count { background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 99px; font-size: 0.7rem; font-weight: 900; color: var(--text); }
+        .kanban-column-total { font-size: 0.9rem; font-weight: 900; color: var(--text); opacity: 0.8; }
 
         .stage-info .dot { background: #3b82f6; }
         .stage-warning .dot { background: #eab308; }
@@ -142,7 +142,7 @@ export default function DealsKanban({ deals = [], loading, onStatusChange }) {
         .kanban-card:active { cursor: grabbing; opacity: 0.8; }
 
         .card-top { display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 12px; }
-        .card-title { font-size: 0.9rem; font-weight: 800; color: white; text-decoration: none; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .card-title { font-size: 0.9rem; font-weight: 800; color: var(--text); text-decoration: none; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .card-title:hover { color: var(--primary); }
         
         .priority-tag { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; padding: 2px 8px; border-radius: 6px; }
@@ -152,7 +152,7 @@ export default function DealsKanban({ deals = [], loading, onStatusChange }) {
 
         .card-client { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-dimmed); margin-bottom: 16px; }
         .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); }
-        .card-value { font-size: 1rem; font-weight: 900; color: white; }
+        .card-value { font-size: 1rem; font-weight: 900; color: var(--text); }
         
         .card-meta { display: flex; align-items: center; gap: 10px; }
         .card-assignee { width: 24px; height: 24px; border-radius: 8px; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 900; }

@@ -238,7 +238,7 @@ export default function DelegateModal({ employee, onConfirm, onCancel }) {
         .work-dot.ticket { background: #f59e0b; }
 
         .work-info { display: flex; flex-direction: column; }
-        .work-name { font-weight: 700; color: white; font-size: 0.9rem; }
+        .work-name { font-weight: 700; color: var(--text); font-size: 0.9rem; }
         .work-sub { font-size: 0.75rem; color: var(--text-dimmed); }
 
         .checked-icon { position: absolute; right: 16px; color: var(--primary); font-size: 1.2rem; }

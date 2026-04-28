@@ -78,7 +78,7 @@ export default function TrashList() {
                       <tr key={item.id} className="crm-table-row">
                         <td>
                           <div className="stack gap-4">
-                            <div className="font-bold" style={{ color: 'white' }}>{item.title}</div>
+                            <div className="font-bold" style={{ color: 'var(--text)' }}>{item.title}</div>
                             <div className="text-xs muted font-mono uppercase">{item.id}</div>
                           </div>
                         </td>
@@ -95,7 +95,7 @@ export default function TrashList() {
                         </td>
                         <td className="tablet-hide">
                           <div className="stack gap-2">
-                            <span className="font-numeric" style={{ color: 'white', fontWeight: 700 }}>{new Date(item.deleted_at).toLocaleDateString()}</span>
+                            <span className="font-numeric" style={{ color: 'var(--text)', fontWeight: 700 }}>{new Date(item.deleted_at).toLocaleDateString()}</span>
                             <span className="text-xs muted">{new Date(item.deleted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         </td>

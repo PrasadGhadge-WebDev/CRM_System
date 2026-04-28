@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { invoicesApi } from '../../../services/invoices'
 import { api } from '../../../services/api'
 import { toast } from 'react-toastify'
 import { Icon } from '../../../layouts/icons'
 
-export default function InvoiceForm({ mode = 'create' }) {
+export default function InvoiceForm({ mode = 'create', onCancel, onSuccess }) {
   const { id } = useParams()
   const navigate = useNavigate()
   
@@ -26,317 +26,184 @@ export default function InvoiceForm({ mode = 'create' }) {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    // Load customers for dropdown
-    api.get('/api/customers?limit=100').then(res => {
-      setCustomers(res.items || [])
-    }).catch(err => {
-      console.error('Failed to load customers', err)
-    })
-
+    api.get('/api/customers?limit=100').then(res => setCustomers(res.items || [])).catch(console.error)
     if (mode === 'edit' && id) {
       invoicesApi.get(id).then(res => {
-        if (res) {
-          setModel({
-            ...res,
-            customer_id: res.customer_id?._id || res.customer_id || '',
-            due_date: res.due_date ? res.due_date.split('T')[0] : ''
-          })
-        }
-      }).catch(err => {
-        toast.error('Failed to load invoice')
-        console.error(err)
-      }).finally(() => setLoading(false))
+        if (res) setModel({ ...res, customer_id: res.customer_id?._id || res.customer_id || '', due_date: res.due_date ? res.due_date.split('T')[0] : '' })
+      }).catch(() => toast.error('Failed to load invoice')).finally(() => setLoading(false))
     }
   }, [id, mode])
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...model.items]
     newItems[index][field] = value
-    
-    if (field === 'quantity' || field === 'price') {
-      newItems[index].amount = Number(newItems[index].quantity || 0) * Number(newItems[index].price || 0)
-    }
-    
+    if (field === 'quantity' || field === 'price') newItems[index].amount = Number(newItems[index].quantity || 0) * Number(newItems[index].price || 0)
     setModel({ ...model, items: newItems })
   }
 
-  const addItem = () => {
-    setModel({
-      ...model,
-      items: [...model.items, { description: '', quantity: 1, price: 0, amount: 0 }]
-    })
-  }
+  const addItem = () => setModel({ ...model, items: [...model.items, { description: '', quantity: 1, price: 0, amount: 0 }] })
+  const removeItem = (index) => { if (model.items.length <= 1) return; const newItems = [...model.items]; newItems.splice(index, 1); setModel({ ...model, items: newItems }) }
 
-  const removeItem = (index) => {
-    if (model.items.length <= 1) return
-    const newItems = [...model.items]
-    newItems.splice(index, 1)
-    setModel({ ...model, items: newItems })
-  }
-
-  const calculateSubtotal = () => {
-    return model.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
-  }
-
-  const subtotal = calculateSubtotal()
+  const subtotal = model.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
   const taxAmount = (subtotal * (Number(model.tax_rate) || 0)) / 100
-  const total = subtotal + taxAmount
+  const total = subtotal + taxAmount - (Number(model.discount) || 0)
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!model.customer_id) {
-      toast.error('Please select a customer')
-      return
-    }
-
+    if (e) e.preventDefault()
+    if (!model.customer_id) return toast.warn('Please select a customer')
     setSaving(true)
     try {
       const payload = { ...model, subtotal, tax_amount: taxAmount, total_amount: total }
-      if (mode === 'create') {
-        await invoicesApi.create(payload)
-        toast.success('Invoice created successfully')
-      } else {
-        await invoicesApi.update(id, payload)
-        toast.success('Invoice updated successfully')
-      }
-      navigate('/invoices')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save invoice')
-    } finally {
-      setSaving(false)
+      if (mode === 'create') await invoicesApi.create(payload); else await invoicesApi.update(id, payload)
+      toast.success(`Invoice ${mode === 'create' ? 'created' : 'updated'}`)
+      if (onSuccess) onSuccess(); else navigate('/invoices')
+    } catch (err) { toast.error('Failed to save invoice') } finally { setSaving(false) }
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') {
+      const form = e.target.form
+      if (!form || e.target.tagName === 'TEXTAREA' || e.target.type === 'submit') return
+      e.preventDefault()
+      const index = Array.from(form.elements).indexOf(e.target)
+      const nextElement = form.elements[index + 1]
+      if (nextElement && nextElement.tagName !== 'BUTTON' && !nextElement.classList.contains('crm-input')) nextElement.focus()
     }
   }
 
-  if (loading) return <div className="p-8 muted">Loading...</div>
+  if (loading) return <div className="p-40 text-center text-dimmed">Preparing financial document...</div>
 
   return (
-    <div className="invoice-form-page stack gap-24">
-      <header className="page-header row align-center justify-between">
-        <div className="row align-center gap-16">
-          <button className="btn small" onClick={() => navigate(-1)}>
-            <Icon name="arrowLeft" size={16} /> Back
-          </button>
-          <h1 className="text-2xl font-bold">{mode === 'create' ? 'Create Invoice' : `Edit Invoice ${model.invoice_number || ''}`}</h1>
-        </div>
-        {mode === 'edit' && (
-          <button className="btn" onClick={() => window.print()}>
-            <Icon name="reports" size={16} /> Print / PDF
-          </button>
-        )}
-      </header>
-
-      <form className="card stack gap-24" onSubmit={handleSubmit}>
-        <div className="grid2">
-          <div className="stack tiny-gap">
-            <label>Customer *</label>
-            <select
-              className="input"
-              value={model.customer_id}
-              onChange={(e) => setModel({ ...model, customer_id: e.target.value })}
-              required
-            >
-              <option value="">Select Customer...</option>
-              {customers.map(c => (
-                <option key={c._id || c.id} value={c._id || c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="stack tiny-gap">
-            <label>Bill Date *</label>
-            <input
-              type="date"
-              className="input"
-              value={model.invoice_date}
-              onChange={(e) => setModel({ ...model, invoice_date: e.target.value })}
-              required
-            />
-          </div>
-          <div className="stack tiny-gap">
-            <label>Due Date *</label>
-            <input
-              type="date"
-              className="input"
-              value={model.due_date}
-              onChange={(e) => setModel({ ...model, due_date: e.target.value })}
-              required
-            />
-          </div>
-          <div className="stack tiny-gap">
-            <label>GST Number (Optional)</label>
-            <input
-              type="text"
-              className="input"
-              value={model.gst_number}
-              onChange={(e) => setModel({ ...model, gst_number: e.target.value })}
-              placeholder="e.g. 27AAAAA0000A1Z5"
-            />
+    <div className="crm-modal-portal-overlay">
+      <div className="crm-modal-sheet animate-sheet-in" style={{ maxWidth: '1100px' }}>
+        <div className="crm-modal-sheet-header">
+          <div className="sheet-title-area">
+            <h2 className="sheet-title">{mode === 'create' ? 'Generate Invoice' : `Edit Invoice ${model.invoice_number || ''}`}</h2>
+            <p className="sheet-subtitle">{mode === 'create' ? 'Draft a new billing document for your customer' : 'Modify existing billing information'}</p>
           </div>
         </div>
 
-        {mode === 'edit' && (
-          <div className="grid2">
-            <div className="stack tiny-gap">
-              <label>Status</label>
-              <select
-                className="input"
-                value={model.status}
-                onChange={(e) => setModel({ ...model, status: e.target.value })}
-              >
-                <option value="Unpaid">Unpaid</option>
-                <option value="Partially Paid">Partially Paid</option>
-                <option value="Paid">Paid</option>
-                <option value="Overdue">Overdue</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
-            </div>
-            <div className="stack tiny-gap">
-              <label>Invoice Number</label>
-              <input type="text" className="input" value={model.invoice_number || ''} disabled />
-            </div>
+        <form className="crm-modal-sheet-body custom-scrollbar" onKeyDown={handleKeyDown} onSubmit={handleSubmit}>
+          <div className="sheet-content-container">
+            {/* Header Details */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="reports" />
+                <span>Document Information</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field">
+                  <label>Customer Account</label>
+                  <select className="crm-input" value={model.customer_id} onChange={e => setModel({ ...model, customer_id: e.target.value })} required>
+                    <option value="">Select Customer Account...</option>
+                    {customers.map(c => <option key={c._id || c.id} value={c._id || c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="sheet-field">
+                  <label>Billing Date</label>
+                  <input type="date" className="crm-input" value={model.invoice_date} onChange={e => setModel({ ...model, invoice_date: e.target.value })} required />
+                </div>
+                <div className="sheet-field">
+                  <label>Due Date</label>
+                  <input type="date" className="crm-input" value={model.due_date} onChange={e => setModel({ ...model, due_date: e.target.value })} required />
+                </div>
+                <div className="sheet-field">
+                  <label>GST / Tax Number</label>
+                  <input className="crm-input" value={model.gst_number} onChange={e => setModel({ ...model, gst_number: e.target.value })} placeholder="e.g. 27AAAAA0000A1Z5" />
+                </div>
+              </div>
+            </section>
+
+            {/* Line Items */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="activity" />
+                <span>Line Items</span>
+              </div>
+              <div style={{ overflowX: 'auto', marginBottom: '24px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid rgba(0,0,0,0.1)' }}>
+                      <th style={{ textAlign: 'left', padding: '12px 0', fontSize: '0.75rem', color: 'var(--text-dimmed)' }}>DESCRIPTION</th>
+                      <th style={{ textAlign: 'center', padding: '12px 0', fontSize: '0.75rem', color: 'var(--text-dimmed)', width: '100px' }}>QTY</th>
+                      <th style={{ textAlign: 'right', padding: '12px 0', fontSize: '0.75rem', color: 'var(--text-dimmed)', width: '150px' }}>PRICE (₹)</th>
+                      <th style={{ textAlign: 'right', padding: '12px 0', fontSize: '0.75rem', color: 'var(--text-dimmed)', width: '150px' }}>AMOUNT</th>
+                      <th style={{ width: '50px' }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {model.items.map((item, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                        <td style={{ padding: '16px 8px 16px 0' }}>
+                          <input className="crm-input" value={item.description} onChange={e => handleItemChange(idx, 'description', e.target.value)} placeholder="Service or product description" required />
+                        </td>
+                        <td style={{ padding: '16px 8px' }}>
+                          <input type="number" className="crm-input" style={{ textAlign: 'center' }} value={item.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} min="1" required />
+                        </td>
+                        <td style={{ padding: '16px 8px' }}>
+                          <input type="number" className="crm-input" style={{ textAlign: 'right' }} value={item.price} onChange={e => handleItemChange(idx, 'price', e.target.value)} min="0" step="0.01" required />
+                        </td>
+                        <td style={{ padding: '16px 8px', textAlign: 'right', fontWeight: '800', color: 'var(--text)' }}>
+                          ₹{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ padding: '16px 0 16px 8px', textAlign: 'center' }}>
+                          <button type="button" onClick={() => removeItem(idx)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '8px' }}>
+                            <Icon name="trash" size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <button type="button" className="btn-premium secondary" onClick={addItem} style={{ padding: '10px 20px' }}>
+                <Icon name="plus" size={14} /> Add Line Item
+              </button>
+            </section>
+
+            {/* Totals & Notes */}
+            <section className="form-sheet-section no-border">
+              <div className="form-sheet-grid">
+                <div className="sheet-field full-width">
+                  <label>Legal Terms & Notes</label>
+                  <textarea className="crm-input" style={{ minHeight: '100px' }} value={model.terms_and_conditions} onChange={e => setModel({ ...model, terms_and_conditions: e.target.value })} placeholder="Bank details, payment terms, or custom notes..." />
+                </div>
+                <div style={{ gridColumn: '2', background: 'var(--bg-surface)', padding: '32px', borderRadius: '24px', border: '2px solid rgba(0,0,0,0.1)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-dimmed)' }}>
+                      <span>Subtotal</span>
+                      <span>₹{subtotal.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: 'var(--text-dimmed)' }}>Discount (₹)</span>
+                      <input type="number" className="crm-input" style={{ width: '120px', textAlign: 'right' }} value={model.discount} onChange={e => setModel({ ...model, discount: e.target.value })} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: 'var(--text-dimmed)' }}>Tax (%)</span>
+                      <input type="number" className="crm-input" style={{ width: '80px', textAlign: 'right' }} value={model.tax_rate} onChange={e => setModel({ ...model, tax_rate: e.target.value })} />
+                    </div>
+                    <div style={{ height: '2px', background: 'rgba(0,0,0,0.1)', margin: '8px 0' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.4rem', fontWeight: '900', color: 'var(--text)' }}>
+                      <span>Total</span>
+                      <span>₹{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
-        )}
+        </form>
 
-        <hr />
-
-        <div className="items-section stack gap-16">
-          <div className="row align-center justify-between">
-            <h3 className="text-lg font-bold">Item Details</h3>
-          </div>
-          
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th style={{ width: '100px' }}>Quantity</th>
-                <th style={{ width: '150px' }}>Price</th>
-                <th style={{ width: '150px' }}>Amount</th>
-                <th style={{ width: '50px' }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {model.items.map((item, idx) => (
-                <tr key={idx}>
-                  <td>
-                    <input
-                      type="text"
-                      className="input"
-                      value={item.description}
-                      onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                      placeholder="Item description"
-                      required
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      className="input"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
-                      min="1"
-                      required
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      className="input"
-                      value={item.price}
-                      onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
-                      min="0"
-                      step="0.01"
-                      required
-                    />
-                  </td>
-                  <td>
-                    <div className="p-8 font-mono">₹{item.amount.toFixed(2)}</div>
-                  </td>
-                  <td>
-                    <button type="button" className="iconBtn text-danger" onClick={() => removeItem(idx)} disabled={model.items.length <= 1}>
-                      <Icon name="trash" size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <button type="button" className="btn small self-start" onClick={addItem}>
-            <Icon name="plus" size={14} /> Add Item
-          </button>
-        </div>
-
-        <hr />
-
-        <div className="totals-section row justify-between">
-          <div className="notes-box stack gap-16" style={{ width: '50%' }}>
-            <div className="stack tiny-gap">
-              <label>Billing Notes (Internal)</label>
-              <textarea
-                className="input"
-                value={model.notes}
-                onChange={(e) => setModel({ ...model, notes: e.target.value })}
-                rows={2}
-                placeholder="Internal notes for this bill..."
-              />
-            </div>
-            <div className="stack tiny-gap">
-              <label>Terms & Conditions (Visible on Bill)</label>
-              <textarea
-                className="input"
-                value={model.terms_and_conditions}
-                onChange={(e) => setModel({ ...model, terms_and_conditions: e.target.value })}
-                rows={3}
-                placeholder="Payment terms, bank details, etc."
-              />
-            </div>
-          </div>
-          <div className="summary-box stack gap-8" style={{ width: '300px' }}>
-            <div className="row justify-between">
-              <span className="muted">Total before tax:</span>
-              <span>₹{subtotal.toFixed(2)}</span>
-            </div>
-            <div className="row justify-between align-center">
-              <span className="muted">Discount Amount:</span>
-              <input
-                type="number"
-                className="input"
-                style={{ width: '100px', textAlign: 'right' }}
-                value={model.discount}
-                onChange={(e) => setModel({ ...model, discount: e.target.value })}
-                min="0"
-                step="0.01"
-              />
-            </div>
-            <div className="row justify-between align-center">
-               <span className="muted">Tax %:</span>
-              <input
-                type="number"
-                className="input"
-                style={{ width: '80px', textAlign: 'right' }}
-                value={model.tax_rate}
-                onChange={(e) => setModel({ ...model, tax_rate: e.target.value })}
-                min="0"
-                step="0.1"
-              />
-            </div>
-            <div className="row justify-between">
-              <span className="muted">Tax Amount:</span>
-               <span>₹{taxAmount.toFixed(2)}</span>
-            </div>
-            <hr />
-            <div className="row justify-between font-bold text-lg">
-              <span>Total:</span>
-               <span>₹{(subtotal + taxAmount - (Number(model.discount) || 0)).toFixed(2)}</span>
-            </div>
+        <div className="crm-modal-sheet-footer">
+          <p className="footer-hint">Invoices are generated as legally-compliant PDF documents.</p>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <button className="btn-premium secondary" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
+            <button className="btn-premium action-vibrant" disabled={saving} onClick={handleSubmit}>
+              {saving ? 'Processing...' : (mode === 'create' ? 'Generate Invoice' : 'Commit Changes')}
+            </button>
           </div>
         </div>
-
-        <div className="form-actions mt-16 row justify-end gap-16">
-          <button type="button" className="btn" onClick={() => navigate('/invoices')} disabled={saving}>Cancel</button>
-          <button type="submit" className="btn primary" disabled={saving}>
-            {saving ? 'Saving...' : (mode === 'create' ? 'Create Invoice' : 'Save Changes')}
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   )
 }

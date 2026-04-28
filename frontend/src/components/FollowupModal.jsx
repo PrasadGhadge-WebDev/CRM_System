@@ -830,7 +830,7 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
 
           .fu-btn-primary {
             background: var(--primary, #3b82f6);
-            color: white;
+            color: var(--text);
             border: none;
             box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
           }

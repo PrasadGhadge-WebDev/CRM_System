@@ -196,12 +196,12 @@ export default function Reports() {
            transition: transform 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .conversion-radial-center { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .big-percent { font-size: 1.8rem; font-weight: 900; color: white; line-height: 1; }
+        .big-percent { font-size: 1.8rem; font-weight: 900; color: var(--text); line-height: 1; }
         
         .performer-row { display: flex; align-items: center; gap: 16px; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
         .performer-rank { width: 28px; height: 28px; background: var(--bg-dark); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--primary); font-size: 0.8rem; }
         .performer-info { flex: 1; }
-        .performer-info .name { font-weight: 700; color: white; }
+        .performer-info .name { font-weight: 700; color: var(--text); }
         .performer-value { font-weight: 800; }
       `}</style>
     </div>

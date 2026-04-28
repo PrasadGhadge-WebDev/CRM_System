@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { usersApi } from '../../../services/users.js'
@@ -7,13 +8,8 @@ import { useAuth } from '../../../context/AuthContext'
 import { rolesApi } from '../../../services/roles.js'
 import {
   normalizeDigits,
-  normalizeName,
-  validateEmail,
-  validateName,
-  validatePhone,
-  validateRequired
+  normalizeName
 } from '../../../utils/formValidation.js'
-import '../../../styles/userForm.css'
 
 const COUNTRY_CODES = [
   { code: '+1', label: 'US/CA (+1)' },
@@ -27,23 +23,9 @@ const DEPARTMENTS = [
   'HR', 'Marketing', 'Operations', 'Management',
 ]
 
-
 function toDateInput(dateStr) {
   if (!dateStr) return ''
   try { return new Date(dateStr).toISOString().split('T')[0] } catch { return '' }
-}
-
-function calculatePasswordStrength(pass) {
-  if (!pass) return { score: 0, label: 'None', color: 'transparent' }
-  let score = 0
-  if (pass.length > 5) score++
-  if (pass.length > 8) score++
-  if (/[A-Z]/.test(pass)) score++
-  if (/[0-9]/.test(pass)) score++
-  if (/[^A-Za-z0-9]/.test(pass)) score++
-  if (score <= 2) return { score, label: 'Weak', color: '#ef4444' }
-  if (score <= 4) return { score, label: 'Medium', color: '#f59e0b' }
-  return { score, label: 'Strong', color: '#10b981' }
 }
 
 const today = new Date().toISOString().split('T')[0]
@@ -87,21 +69,25 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
   const [loading, setLoading] = useState(isEdit && !!id)
   const [saving, setSaving] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
-  const [tagInput, setTagInput] = useState('')
   const fileInputRef = useRef(null)
 
-  // Fetch manager list for dropdown
-  useEffect(() => {
-    usersApi.list({ role: 'Manager', limit: 'all' })
-      .then(res => setManagers(res.items || []))
-      .catch(() => { })
-
-    rolesApi.list()
-      .then((data) => setAvailableRoles(Array.isArray(data) ? data : []))
-      .catch(() => { })
+  const loadData = useCallback(async () => {
+    try {
+      const [mRes, rRes] = await Promise.all([
+        usersApi.list({ role: 'Manager', limit: 'all' }),
+        rolesApi.list()
+      ])
+      setManagers(mRes.items || [])
+      setAvailableRoles(Array.isArray(rRes) ? rRes : [])
+    } catch (err) {
+      console.error('Failed to load setup data', err)
+    }
   }, [])
 
-  // Load existing user in Edit mode
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
   useEffect(() => {
     if (!isEdit || !id) return
     setLoading(true)
@@ -122,7 +108,6 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
           lastName: rest.join(' ') || '',
           countryCode: cCode,
           phone: pNum,
-          confirmEmail: data.email || '',
           profile_photo: data.profile_photo || '',
           date_of_birth: toDateInput(data.date_of_birth),
           department: data.department || '',
@@ -131,7 +116,7 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
         })
       })
       .catch(() => {
-        toast.error('Identity record lookup failed')
+        toast.error('Failed to load user profile')
         if (onCancel) onCancel(); else navigate('/users')
       })
       .finally(() => setLoading(false))
@@ -147,24 +132,19 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
 
     setModel(prev => ({ ...prev, [field]: normalized }))
 
-    // Live validation per field
     let err = ''
     if (field === 'phone') {
-      if (normalized && normalized.length > 10) err = 'Phone cannot exceed 10 digits'
-      else if (normalized && normalized.length < 10) err = 'Enter exactly 10 digits'
+      if (normalized && normalized.length > 10) err = 'Max 10 digits allowed'
+      else if (normalized && normalized.length < 10) err = 'Enter 10 digits'
     } else if (field === 'firstName' || field === 'lastName') {
       if (normalized && !/^[A-Za-z\s'-]+$/.test(normalized)) err = 'Only letters allowed'
     } else if (field === 'email') {
       const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,})+$/
       if (normalized && !emailRegex.test(normalized)) err = 'Invalid email address'
     } else if (field === 'password') {
-      // Backend pattern: at least 6 chars, letters and numbers
-      if (normalized && normalized.length < 6) err = 'At least 6 characters'
-      else if (normalized && !/(?=.*[A-Za-z])(?=.*\d)/.test(normalized)) err = 'Include both letters and numbers'
+      if (normalized && normalized.length < 6) err = 'Min 6 characters'
     } else if (field === 'confirmPassword') {
       if (normalized && normalized !== model.password) err = 'Passwords do not match'
-    } else if (field === 'date_of_birth') {
-      if (normalized && normalized > today) err = 'Birth date cannot be in future'
     }
 
     setFieldErrors(p => ({ ...p, [field]: err }))
@@ -173,55 +153,42 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (!file) return
-    if (file.size > 2 * 1024 * 1024) { toast.warn('Max image size is 2 MB'); return }
+    if (file.size > 2 * 1024 * 1024) { toast.warn('Max photo size is 2MB'); return }
     const reader = new FileReader()
     reader.onloadend = () => handleChange('profile_photo', reader.result)
     reader.readAsDataURL(file)
   }
 
-  const handleAddTag = (e) => {
-    if (e.key !== 'Enter') return
-    e.preventDefault()
-    const t = tagInput.trim()
-    if (t && !model.tags.includes(t)) handleChange('tags', [...model.tags, t])
-    setTagInput('')
-  }
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') {
+      const form = e.target.form
+      if (!form) return
+      
+      // If it's a textarea or a submit button, allow default Enter behavior
+      if (e.target.tagName === 'TEXTAREA' || e.target.type === 'submit') return
 
-  function formatMetaDate(d) {
-    if (!d) return 'N/A'
-    const date = new Date(d)
-    if (isNaN(date.getTime())) return 'N/A'
-    return date.toLocaleString()
+      e.preventDefault()
+      const index = Array.from(form.elements).indexOf(e.target)
+      const nextElement = form.elements[index + 1]
+
+      if (nextElement && nextElement.tagName !== 'BUTTON') {
+        nextElement.focus()
+      } else {
+        handleSubmit(e)
+      }
+    }
   }
 
   async function handleSubmit(e) {
-    e.preventDefault()
+    if (e) e.preventDefault()
 
     const errors = {
-      firstName:
-        !model.firstName.trim() ? 'First Name is required'
-          : !/^[A-Za-z\s'-]+$/.test(model.firstName) ? 'Only letters allowed'
-            : '',
-      lastName:
-        !model.lastName.trim() ? 'Last Name is required'
-          : !/^[A-Za-z\s'-]+$/.test(model.lastName) ? 'Only letters allowed'
-            : '',
-      email:
-        !model.email.trim() ? 'Email is required'
-          : !/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,})+$/.test(model.email) ? 'Invalid email address'
-            : '',
-      phone:
-        !model.phone ? 'Phone is required' : model.phone.length !== 10 ? 'Phone must be exactly 10 digits' : '',
-      password:
-        !isEdit && !model.password ? 'Password is required'
-          : model.password && model.password.length < 6 ? 'Password must be at least 6 characters'
-            : '',
-      confirmPassword:
-        (!isEdit || model.password) && model.password !== model.confirmPassword ? 'Passwords do not match' : '',
-      date_of_birth:
-        model.date_of_birth && model.date_of_birth > today ? 'Date of Birth cannot be in the future' : '',
-      joining_date:
-        !isEmployeeView && !model.joining_date ? 'Join Date is required' : '',
+      firstName: !model.firstName.trim() ? 'First name is required' : '',
+      lastName: !model.lastName.trim() ? 'Last name is required' : '',
+      email: !model.email.trim() ? 'Email is required' : '',
+      phone: !model.phone ? 'Phone is required' : model.phone.length !== 10 ? 'Phone must be 10 digits' : '',
+      password: !isEdit && !model.password ? 'Password is required' : '',
+      confirmPassword: (!isEdit || model.password) && model.password !== model.confirmPassword ? 'Passwords do not match' : '',
     }
 
     const firstError = Object.values(errors).find(v => v)
@@ -242,34 +209,10 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
         ? await usersApi.update(id, payload)
         : await usersApi.create(payload)
 
-      // Update model with server response (to get created_at, updated IDs, etc.)
-      const [first, ...rest] = (saved.name || '').split(' ')
-      let cCode = '+91'
-      let pNum = saved.phone || ''
-      if (pNum.startsWith('+')) {
-        const match = COUNTRY_CODES.find(c => pNum.startsWith(c.code))
-        if (match) { cCode = match.code; pNum = pNum.slice(cCode.length).trim() }
-      }
-
-      setModel({
-        ...emptyUser,
-        ...saved,
-        password: '',
-        firstName: first || '',
-        lastName: rest.join(' ') || '',
-        countryCode: cCode,
-        phone: pNum,
-        profile_photo: saved.profile_photo || '',
-        date_of_birth: toDateInput(saved.date_of_birth),
-        department: saved.department || '',
-        manager_id: saved.manager_id || '',
-        joining_date: toDateInput(saved.joining_date) || today,
-      })
-
       toast.success(`User ${isEdit ? 'updated' : 'created'} successfully`)
       if (onSuccess) onSuccess(saved); else navigate(`/users/${saved.id || saved._id}`)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Save failed')
+      toast.error(err.response?.data?.message || 'Failed to save user')
     } finally {
       setSaving(false)
     }
@@ -277,263 +220,215 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
 
   function handleCancel() { if (onCancel) onCancel(); else navigate('/users') }
 
-  if (loading) return <div className="crm-loader-state">Loading user profile…</div>
+  if (loading) return null
 
-  const passStrength = calculatePasswordStrength(model.password)
-
-  function handleBack() {
-    if (window.history.length > 1) {
-      navigate(-1)
-      return
-    }
-
-    navigate('/users')
-  }
-
-  return (
-    <div className="crm-form-page crmContent page-enter">
-      <div className="lead-form-page">
-        <header className="leadsHeader">
-          <div>
-            <h1 className="leadsTitle">{isEdit ? 'Refine Identity' : 'Onboard Personnel'}</h1>
-            <p className="leadsDescription">Configure system access, organizational role, and personnel profile metadata.</p>
+  const modalContent = (
+    <div className="crm-modal-portal-overlay">
+      <div className="crm-modal-sheet animate-sheet-in">
+        <div className="crm-modal-sheet-header">
+          <div className="sheet-title-area">
+            <h2 className="sheet-title">{isEdit ? 'Update User' : 'Add New User'}</h2>
+            <p className="sheet-subtitle">{isEdit ? `Editing profile for ${model.firstName}` : 'Onboard a new team member to your system'}</p>
           </div>
-          <div className="leadsHeaderActions">
-            <button className="btn-premium secondary" onClick={handleCancel}>
-              <Icon name="close" />
-              <span>Cancel</span>
-            </button>
-            <button 
-              className="btn-premium action-vibrant" 
-              onClick={handleSubmit}
-              disabled={saving}
-            >
-              <Icon name={saving ? 'spinner' : 'check'} className={saving ? 'spinner' : ''} />
-              <span>{saving ? 'Processing...' : isEdit ? 'Update Identity' : 'Authorize User'}</span>
-            </button>
-          </div>
-        </header>
+        </div>
 
-        <div className="intelligence-form-grid">
-          {/* Personnel Identity */}
-          <div className="intel-form-card glass-panel">
-            <div className="card-header-premium">
-              <Icon name="user" />
-              <h3>Personnel Identity</h3>
-            </div>
-            <div className="card-body-premium">
-              <div className="grid-2">
-                <div className="intel-field-group">
-                  <label className="intel-label">First Name</label>
+        <form className="crm-modal-sheet-body custom-scrollbar" onKeyDown={handleKeyDown} onSubmit={handleSubmit}>
+          <div className="sheet-content-container">
+            {/* Personal Information */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="user" />
+                <span>Personal Information</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field">
+                  <label>First Name</label>
                   <input
-                    className="input-premium"
+                    className="crm-input"
+                    autoFocus
                     value={model.firstName}
                     onChange={e => handleChange('firstName', e.target.value)}
-                    placeholder="e.g. Alexander"
+                    placeholder="Enter first name"
                   />
-                  {fieldErrors.firstName && <span className="intel-error-msg">{fieldErrors.firstName}</span>}
+                  {fieldErrors.firstName && <span className="error-text">{fieldErrors.firstName}</span>}
                 </div>
-                <div className="intel-field-group">
-                  <label className="intel-label">Last Name</label>
+                <div className="sheet-field">
+                  <label>Last Name</label>
                   <input
-                    className="input-premium"
+                    className="crm-input"
                     value={model.lastName}
                     onChange={e => handleChange('lastName', e.target.value)}
-                    placeholder="e.g. Hamilton"
+                    placeholder="Enter last name"
                   />
-                  {fieldErrors.lastName && <span className="intel-error-msg">{fieldErrors.lastName}</span>}
+                  {fieldErrors.lastName && <span className="error-text">{fieldErrors.lastName}</span>}
                 </div>
-                <div className="intel-field-group">
-                  <label className="intel-label">Contact Intelligence (Phone)</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <select className="input-premium" style={{ width: '90px' }} value={model.countryCode} onChange={e => handleChange('countryCode', e.target.value)}>
+                <div className="sheet-field">
+                  <label>Phone Number</label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <select 
+                      className="crm-input" 
+                      style={{ width: '75px', flexShrink: 0, paddingRight: '10px' }} 
+                      value={model.countryCode} 
+                      onChange={e => handleChange('countryCode', e.target.value)}
+                    >
                       {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                     </select>
                     <input
-                      className="input-premium"
-                      style={{ flex: 1 }}
+                      className="crm-input"
+                      style={{ flex: 1, minWidth: 0 }}
                       value={model.phone}
                       onChange={e => handleChange('phone', e.target.value)}
-                      placeholder="98765 43210"
+                      placeholder="9876543210"
                     />
                   </div>
-                  {fieldErrors.phone && <span className="intel-error-msg">{fieldErrors.phone}</span>}
+                  {fieldErrors.phone && <span className="error-text">{fieldErrors.phone}</span>}
                 </div>
-                <div className="intel-field-group">
-                  <label className="intel-label">Date of Birth</label>
-                  <input
-                    className="input-premium"
-                    type="date"
-                    value={model.date_of_birth}
-                    onChange={e => handleChange('date_of_birth', e.target.value)}
-                  />
-                  {fieldErrors.date_of_birth && <span className="intel-error-msg">{fieldErrors.date_of_birth}</span>}
+                <div className="sheet-field">
+                  <label>Date of Birth</label>
+                  <input className="crm-input" type="date" value={model.date_of_birth} onChange={e => handleChange('date_of_birth', e.target.value)} />
                 </div>
               </div>
-            </div>
-          </div>
+            </section>
 
-          {/* System Security */}
-          {!isEmployeeView && (isAdmin || isHR) && (
-            <div className="intel-form-card glass-panel">
-              <div className="card-header-premium">
-                <Icon name="shield" />
-                <h3>System Security & Credentials</h3>
-              </div>
-              <div className="card-body-premium">
-                <div className="grid-2">
-                  <div className="intel-field-group span-2">
-                    <label className="intel-label">Primary Access Email</label>
+            {/* Login & Security */}
+            {!isEmployeeView && (isAdmin || isHR) && (
+              <section className="form-sheet-section">
+                <div className="form-sheet-section-header">
+                  <Icon name="shield" />
+                  <span>Login & Security</span>
+                </div>
+                <div className="form-sheet-grid">
+                  <div className="sheet-field full-width">
+                    <label>Email Address</label>
                     <input
-                      className="input-premium"
+                      className="crm-input"
                       type="email"
+                      autoComplete="off"
                       value={model.email}
                       onChange={e => handleChange('email', e.target.value)}
-                      placeholder="personnel@institutional.com"
+                      placeholder="user@company.com"
                     />
-                    {fieldErrors.email && <span className="intel-error-msg">{fieldErrors.email}</span>}
+                    {fieldErrors.email && <span className="error-text">{fieldErrors.email}</span>}
                   </div>
-                  <div className="intel-field-group">
-                    <label className="intel-label">Secure Passphrase {isEdit && '(Leave blank to retain)'}</label>
+                  <div className="sheet-field">
+                    <label>Password {isEdit && '(Leave blank to keep current)'}</label>
                     <input
-                      className="input-premium"
+                      className="crm-input"
                       type="password"
+                      autoComplete="new-password"
                       value={model.password}
                       onChange={e => handleChange('password', e.target.value)}
                       placeholder="••••••••"
                     />
-                    {fieldErrors.password && <span className="intel-error-msg">{fieldErrors.password}</span>}
+                    {fieldErrors.password && <span className="error-text">{fieldErrors.password}</span>}
                   </div>
-                  <div className="intel-field-group">
-                    <label className="intel-label">Verify Passphrase</label>
+                  <div className="sheet-field">
+                    <label>Confirm Password</label>
                     <input
-                      className="input-premium"
+                      className="crm-input"
                       type="password"
+                      autoComplete="new-password"
                       value={model.confirmPassword}
                       onChange={e => handleChange('confirmPassword', e.target.value)}
                       placeholder="••••••••"
                     />
-                    {fieldErrors.confirmPassword && <span className="intel-error-msg">{fieldErrors.confirmPassword}</span>}
+                    {fieldErrors.confirmPassword && <span className="error-text">{fieldErrors.confirmPassword}</span>}
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </section>
+            )}
 
-          {/* Organizational Setup */}
-          {!isEmployeeView && (
-            <div className="intel-form-card glass-panel">
-              <div className="card-header-premium">
-                <Icon name="briefcase" />
-                <h3>Organizational Setup</h3>
-              </div>
-              <div className="card-body-premium">
-                <div className="grid-3">
-                  <div className="intel-field-group">
-                    <label className="intel-label">Institutional Role</label>
-                    <select className="input-premium" value={model.role} onChange={e => handleChange('role', e.target.value)}>
-                      {!isHR && <option value="Admin">Administrator</option>}
-                      {!isHR && <option value="Manager">Manager</option>}
-                      {!isHR && !visibleRoleChoices.some(r => r.name === 'HR') && <option value="HR">HR</option>}
-                      {visibleRoleChoices.map(r => <option key={r.id || r._id} value={r.name}>{r.name}</option>)}
-                      {!visibleRoleChoices.some(r => r.name === 'Employee') && <option value="Employee">Employee</option>}
+            {/* Work Details */}
+            {!isEmployeeView && (
+              <section className="form-sheet-section">
+                <div className="form-sheet-section-header">
+                  <Icon name="briefcase" />
+                  <span>Work Details</span>
+                </div>
+                <div className="form-sheet-grid">
+                  <div className="sheet-field">
+                    <label>Role</label>
+                    <select className="crm-input" value={model.role} onChange={e => handleChange('role', e.target.value)}>
+                      {['HR', 'Accountant', 'Manager', 'Employee'].map(roleName => (
+                        <option key={roleName} value={roleName}>{roleName}</option>
+                      ))}
                     </select>
                   </div>
-                  <div className="intel-field-group">
-                    <label className="intel-label">Deployment Status</label>
-                    <select className="input-premium" value={model.status} onChange={e => handleChange('status', e.target.value)}>
-                      <option value="active">Active Service</option>
-                      <option value="inactive">Suspended</option>
-                      <option value="pending">Awaiting Auth</option>
+                  <div className="sheet-field">
+                    <label>Status</label>
+                    <select className="crm-input" value={model.status} onChange={e => handleChange('status', e.target.value)}>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="pending">Pending</option>
                     </select>
                   </div>
-                  <div className="intel-field-group">
-                    <label className="intel-label">Onboarding Date</label>
-                    <input className="input-premium" type="date" value={model.joining_date} onChange={e => handleChange('joining_date', e.target.value)} />
+                  <div className="sheet-field">
+                    <label>Joining Date</label>
+                    <input className="crm-input" type="date" value={model.joining_date} onChange={e => handleChange('joining_date', e.target.value)} />
                   </div>
-                  <div className="intel-field-group">
-                    <label className="intel-label">Department</label>
-                    <select className="input-premium" value={model.department} onChange={e => handleChange('department', e.target.value)}>
-                      <option value="">Select Dept</option>
+                  <div className="sheet-field">
+                    <label>Department</label>
+                    <select className="crm-input" value={model.department} onChange={e => handleChange('department', e.target.value)}>
+                      <option value="">Select Department</option>
                       {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
                   {!isHR && (
-                    <div className="intel-field-group span-2">
-                      <label className="intel-label">Reporting Authority</label>
-                      <select className="input-premium" value={model.manager_id} onChange={e => handleChange('manager_id', e.target.value)}>
-                        <option value="">Direct Accountability</option>
-                        {managers.map(m => <option key={m.id} value={m.id}>{m.name || m.username} ({m.department || 'Lead'})</option>)}
+                    <div className="sheet-field full-width">
+                      <label>Manager</label>
+                      <select className="crm-input" value={model.manager_id} onChange={e => handleChange('manager_id', e.target.value)}>
+                        <option value="">None (Self)</option>
+                        {managers.map(m => <option key={m.id} value={m.id}>{m.name || m.username}</option>)}
                       </select>
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-          )}
+              </section>
+            )}
 
-          {/* Profile Visual */}
-          <div className="intel-form-card glass-panel">
-            <div className="card-header-premium">
-              <Icon name="image" />
-              <h3>Personnel Visual Identity</h3>
-            </div>
-            <div className="card-body-premium">
-              <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+            {/* Profile Photo */}
+            <section className="form-sheet-section no-border">
+              <div className="form-sheet-section-header">
+                <Icon name="image" />
+                <span>Profile Photo</span>
+              </div>
+              <div className="photo-section-layout">
                 <div 
-                  style={{ width: '120px', height: '120px', borderRadius: '32px', background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden' }}
+                  className="sheet-avatar-upload"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {model.profile_photo ? (
-                    <img src={model.profile_photo} alt="Identity" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={model.profile_photo} alt="User" />
                   ) : (
-                    <Icon name="user" size={40} style={{ opacity: 0.2 }} />
+                    <Icon name="user" size={40} />
                   )}
+                  <div className="upload-overlay"><Icon name="edit" size={20} /></div>
+                </div>
+                <div className="photo-controls">
+                  <button type="button" className="crm-btn-premium glass" onClick={() => fileInputRef.current?.click()}>
+                    <Icon name="edit" size={16} />
+                    <span>Change Profile Photo</span>
+                  </button>
+                  <p className="footer-hint" style={{ fontStyle: 'normal' }}>Recommended: JPG or PNG, max 2MB</p>
                 </div>
                 <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImageUpload} />
-                <div className="stack gap-8">
-                  <button type="button" className="btn-premium action-secondary" onClick={() => fileInputRef.current?.click()}>
-                    <Icon name="image" />
-                    <span>Upload New Visual</span>
-                  </button>
-                  <p className="text-xs muted">Supported: PNG, JPG (Max 2MB)</p>
-                </div>
               </div>
-            </div>
+            </section>
+          </div>
+        </form>
+
+        <div className="crm-modal-sheet-footer">
+          <p className="footer-hint">All fields are securely encrypted.</p>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <button className="crm-btn-premium glass" onClick={handleCancel}>Cancel</button>
+            <button className="crm-btn-premium vibrant" disabled={saving} onClick={handleSubmit}>
+              {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create User'}
+            </button>
           </div>
         </div>
-
-        <div className="form-action-footer">
-          <button className="btn-premium action-secondary" type="button" onClick={handleCancel}>Cancel</button>
-          <button className="btn-premium action-vibrant" type="submit" disabled={saving} onClick={handleSubmit}>
-            {saving ? 'Processing Identity...' : isEdit ? 'Commit Changes' : 'Finalize Onboarding'}
-          </button>
-        </div>
       </div>
-
-      <style>{`
-        .lead-form-page { padding-bottom: 80px; }
-        .intelligence-form-grid { display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 32px; max-width: 1000px; }
-        .intel-form-card { border-radius: 24px; overflow: hidden; }
-        .card-header-premium { padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.02); }
-        .card-header-premium h3 { margin: 0; font-size: 1rem; font-weight: 800; }
-        .card-header-premium svg { color: var(--primary); }
-        .card-body-premium { padding: 24px; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
-        .span-2 { grid-column: span 2; }
-        
-        .intel-field-group { display: flex; flex-direction: column; gap: 8px; }
-        .intel-label { font-size: 0.65rem; font-weight: 900; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.08em; }
-        .intel-error-msg { font-size: 0.7rem; color: #ef4444; margin-top: 4px; font-weight: 600; }
-
-        .form-action-footer { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 32px; padding: 24px; background: rgba(15, 23, 42, 0.4); border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
-        
-        @media (max-width: 768px) {
-          .grid-2, .grid-3 { grid-template-columns: 1fr; }
-          .span-2 { grid-column: span 1; }
-        }
-      `}</style>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

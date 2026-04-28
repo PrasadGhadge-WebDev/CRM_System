@@ -20,32 +20,32 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('customers')
 
   return (
-    <div className="stack leadsListPage crmContent">
-      <section className="leadsFullscreenShell">
-        <PageHeader 
-          title="Intelligence Configurator" 
-          description="Global parameter management, security protocols, and institutional governance." 
-        />
+    <div className="crm-fullscreen-shell">
+      <PageHeader 
+        title="Intelligence Configurator" 
+        description="Global parameter management, security protocols, and institutional governance." 
+      />
 
-        <div className="glass-panel intelligence-tab-bar">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              className={`tab-intel ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <Icon name={tab.icon} size={14} />
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
+      <div className="crm-hub-nav">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            className={`crm-hub-tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <Icon name={tab.icon} size={14} />
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
 
-        <div className="intelligence-settings-stage page-enter">
+      <div className="crm-detail-grid page-enter">
+        <div className="crm-detail-main">
           {activeTab === 'general' && (
-            <div className="glass-panel empty-intel-state">
-              <Icon name="settings" size={48} />
-              <h3>System Core Parameters</h3>
-              <p className="muted">Global configuration nodes are currently under maintenance by Root Authority.</p>
+            <div className="crm-detail-card center padding-60">
+              <Icon name="settings" size={64} style={{ opacity: 0.2, color: 'var(--primary)', marginBottom: '24px' }} />
+              <h3 className="hero-name-modern" style={{ fontSize: '1.5rem' }}>System Core Parameters</h3>
+              <p className="muted" style={{ maxWidth: '450px', margin: '0 auto' }}>Global configuration nodes are currently under maintenance by Root Authority.</p>
             </div>
           )}
 
@@ -55,25 +55,14 @@ export default function Settings() {
           {activeTab === 'sources' && <LeadSourcesTab />}
 
           {activeTab === 'security' && (
-            <div className="glass-panel empty-intel-state">
-              <Icon name="lock" size={48} />
-              <h3>Security Protocols</h3>
-              <p className="muted">Multi-factor encryption and firewall policies are synchronized with external security nodes.</p>
+            <div className="crm-detail-card center padding-60">
+              <Icon name="lock" size={64} style={{ opacity: 0.2, color: 'var(--primary)', marginBottom: '24px' }} />
+              <h3 className="hero-name-modern" style={{ fontSize: '1.5rem' }}>Security Protocols</h3>
+              <p className="muted" style={{ maxWidth: '450px', margin: '0 auto' }}>Multi-factor encryption and firewall policies are synchronized with external security nodes.</p>
             </div>
           )}
         </div>
-      </section>
-
-      <style>{`
-        .intelligence-tab-bar { display: flex; background: rgba(255, 255, 255, 0.03); padding: 4px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); margin: 32px 0; overflow-x: auto; gap: 4px; }
-        .tab-intel { flex: 1; min-width: 140px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 800; color: var(--text-dimmed); background: transparent; border: none; cursor: pointer; transition: all 0.2s ease; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-        .tab-intel:hover { color: var(--text); background: rgba(255,255,255,0.02); }
-        .tab-intel.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
-        .empty-intel-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 100px 40px; text-align: center; border-radius: 24px; }
-        .empty-intel-state svg { opacity: 0.1; margin-bottom: 24px; color: var(--primary); }
-        .empty-intel-state h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 8px; }
-        .empty-intel-state p { font-size: 0.85rem; max-width: 400px; margin: 0 auto; }
-      `}</style>
+      </div>
     </div>
   )
 }

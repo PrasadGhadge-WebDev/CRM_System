@@ -753,7 +753,7 @@ export default function LeadsKanban({ leads = [], loading, onStatusChange, onRef
           white-space: nowrap;
         }
 
-        .kb2-act-btn:hover { transform: translateY(-1px); color: white; }
+        .kb2-act-btn:hover { transform: translateY(-1px); color: var(--text); }
 
         .kb2-act-btn.edit:hover {
           background: var(--primary);

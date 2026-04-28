@@ -1172,27 +1172,32 @@
 .btn-modern-back {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px 8px 12px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--bg-elevated) 94%, white 6%);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 700;
+  gap: 8px;
+  padding: 10px 20px 10px 16px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
   text-decoration: none;
 }
 
 .btn-modern-back:hover {
-  background: var(--bg-elevated);
-  border-color: var(--border-strong);
-  color: var(--text);
-  transform: translateX(-4px);
-  box-shadow: var(--shadow-md);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  transform: translateX(-6px);
+  box-shadow: 0 8px 20px -6px var(--primary-soft);
+}
+
+.btn-modern-back:active {
+  transform: translateX(-2px) scale(0.98);
 }
 
 @media (max-width: 760px) {
@@ -1208,8 +1213,4 @@
   .pageHeaderHeroDescription {
     font-size: 0.95rem;
   }
-}
-
-.btn-modern-back:active {
-  transform: translateX(-2px) scale(0.98);
 }

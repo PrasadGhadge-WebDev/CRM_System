@@ -379,12 +379,12 @@ export default function LeadsTable({
         .lt-bulk-btns { display: flex; align-items: center; gap: 16px; }
         .lt-bulk-group { display: flex; align-items: center; gap: 8px; }
         .lt-bulk-group label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 800; }
-        .lt-bulk-group select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; }
+        .lt-bulk-group select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text); padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; }
         
         .lt-bulk-del { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; padding: 6px 12px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; }
         .lt-bulk-del:hover { background: #ef4444; color: white; }
         .lt-bulk-esc { background: none; border: 0; color: #64748b; font-size: 1.2rem; cursor: pointer; padding: 4px; }
-        .lt-bulk-esc:hover { color: white; }
+        .lt-bulk-esc:hover { color: var(--text); }
 
         /* Table Styles */
         .lt-table-container { 
@@ -407,7 +407,7 @@ export default function LeadsTable({
         
         .lt-table td { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.02); vertical-align: middle; color: #cbd5e1; font-size: 0.9rem; transition: all 0.2s; }
         .lt-row { cursor: pointer; }
-        .lt-row:hover td { background: rgba(255,255,255,0.02); color: white; }
+        .lt-row:hover td { background: rgba(255,255,255,0.02); color: var(--text); }
         .lt-row-sel td { background: rgba(59, 130, 246, 0.05) !important; border-top: 1px solid rgba(59, 130, 246, 0.1); border-bottom: 1px solid rgba(59, 130, 246, 0.1); }
         
         .lt-lead-cell { display: flex; align-items: center; gap: 14px; }
@@ -455,7 +455,7 @@ export default function LeadsTable({
         .lt-card-actions button { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); padding: 8px; border-radius: 10px; color: #94a3b8; }
         .lt-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
         .lt-card-av { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 900; color: white; }
-        .lt-card-name { font-weight: 800; font-size: 1.1rem; color: white; margin-bottom: 2px; }
+        .lt-card-name { font-weight: 800; font-size: 1.1rem; color: var(--text); margin-bottom: 2px; }
         .lt-card-sub { font-size: 0.85rem; color: #94a3b8; }
         .lt-card-row { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05); }
         .lt-date-mini { font-size: 0.75rem; font-weight: 700; }

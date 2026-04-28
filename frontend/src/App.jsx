@@ -64,6 +64,11 @@ const Home = () => {
   return user ? <Navigate to="/dashboard" replace /> : <LandingPage />
 }
 
+const UserEditRedirect = () => {
+  const { id } = useParams()
+  return <Navigate to={`/users?edit=${id}`} replace />
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -124,9 +129,12 @@ export default function App() {
             }
           >
             <Route path="/users" element={<UsersList />} />
-            <Route path="/users/new" element={<UserForm mode="create" />} />
+            <Route path="/users/new" element={<Navigate to="/users?add=true" replace />} />
             <Route path="/users/:id" element={<UserDetail />} />
-            <Route path="/users/:id/edit" element={<UserForm mode="edit" />} />
+            <Route 
+              path="/users/:id/edit" 
+              element={<UserEditRedirect />} 
+            />
           </Route>
 
           <Route

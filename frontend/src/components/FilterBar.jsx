@@ -216,7 +216,7 @@ export default function FilterBar({
           padding: 8px 20px;
           background: var(--primary);
           border: none;
-          color: white;
+          color: var(--text);
           border-radius: 8px;
           cursor: pointer;
           font-size: 0.875rem;

@@ -10,6 +10,7 @@ import { confirmToast } from '../../../utils/confirmToast.jsx'
 import { useAuth } from '../../../context/AuthContext'
 import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
 import { useToastFeedback } from '../../../utils/useToastFeedback.js'
+import UserForm from './UserForm.jsx'
 
 function stopRowNavigation(event) {
   event.stopPropagation()
@@ -45,6 +46,26 @@ export default function UsersList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedUsers, setSelectedUsers] = useState([])
+  const [formModal, setFormModal] = useState({ open: false, mode: 'create', userId: null })
+
+  const closeFormModal = () => {
+    const newParams = new URLSearchParams(searchParams)
+    newParams.delete('add')
+    newParams.delete('edit')
+    setSearchParams(newParams)
+  }
+
+  useEffect(() => {
+    const add = searchParams.get('add')
+    const edit = searchParams.get('edit')
+    if (add === 'true') {
+      setFormModal({ open: true, mode: 'create', userId: null })
+    } else if (edit) {
+      setFormModal({ open: true, mode: 'edit', userId: edit })
+    } else {
+      setFormModal({ open: false, mode: 'create', userId: null })
+    }
+  }, [searchParams])
 
   useToastFeedback({ error })
   const debouncedQ = useDebouncedValue(q, 250)
@@ -60,8 +81,15 @@ export default function UsersList() {
     if (role.trim()) next.set('role', role.trim())
     if (page > 1) next.set('page', String(page))
     if (String(limit) !== '20') next.set('limit', String(limit))
+    
+    // Preserve modal state
+    const add = searchParams.get('add')
+    const edit = searchParams.get('edit')
+    if (add) next.set('add', add)
+    if (edit) next.set('edit', edit)
+
     return next
-  }, [debouncedQ, status, role, page, limit])
+  }, [debouncedQ, status, role, page, limit, searchParams])
 
   useEffect(() => {
     if (desiredParams.toString() !== searchParams.toString()) {
@@ -93,15 +121,28 @@ export default function UsersList() {
         if (canceled) return
         setError(e.message || 'Failed to load users')
       })
-      .finally(() => {
-        if (canceled) return
-        setLoading(false)
-      })
+       .finally(() => {
+         if (canceled) return
+         setLoading(false)
+       })
+ 
+     return () => { canceled = true }
+   }, [debouncedQ, status, role, page, limit, isAdmin])
 
-    return () => {
-      canceled = true
-    }
-  }, [debouncedQ, status, role, page, limit, isAdmin])
+   const refreshList = () => {
+     setLoading(true)
+     usersApi.list({
+       ...(debouncedQ.trim() ? { q: debouncedQ.trim() } : null),
+       ...(status.trim() ? { status: status.trim() } : null),
+       ...(role.trim() ? { role: role.trim() } : null),
+       ...(isAdmin ? { all: true } : null),
+       page,
+       limit
+     }).then(res => {
+       setItems(res.items || [])
+       setTotal(Number(res.total) || 0)
+     }).finally(() => setLoading(false))
+   }
 
   const handleSelectAll = (checked) =>
     setSelectedUsers(checked ? items.map((u) => String(u.id || u._id || '')) : [])
@@ -171,32 +212,39 @@ export default function UsersList() {
       <section className="crm-fullscreen-shell">
         <PageHeader
           title="Users"
-          description="Manage organizational access, system roles, and personnel profiles."
+          description="View and manage all your team members and their account settings."
           backTo="/"
           actions={
             <div className="crm-flex-end crm-gap-12">
               {isAdmin && selectedUsers.length > 0 && (
                 <button className="btn-premium action-secondary text-danger" onClick={onBulkDelete}>
                   <Icon name="trash" size={16} />
-                  <span>Purge ({selectedUsers.length})</span>
+                  <span>Delete ({selectedUsers.length})</span>
                 </button>
               )}
-              <button className="btn-premium action-vibrant" onClick={() => navigate('/users/new')}>
-                <Icon name="plus" size={16} />
-                <span>Add New User</span>
-              </button>
+               <button 
+                 className="btn-premium action-vibrant" 
+                 onClick={() => {
+                   const next = new URLSearchParams(searchParams)
+                   next.set('add', 'true')
+                   setSearchParams(next)
+                 }}
+               >
+                 <Icon name="plus" size={16} />
+                 <span>Add New User</span>
+               </button>
             </div>
           }
         />
 
         <div className="crm-filter-panel">
           <div className="crm-filter-cell">
-            <label className="crm-filter-label">Search Identity</label>
+            <label className="crm-filter-label">Search Users</label>
             <div className="crm-search-input-wrap">
               <Icon name="search" className="search-icon" />
               <input
                 type="text"
-                placeholder="Name, Email, Phone..."
+                placeholder="Search by name, email..."
                 value={q}
                 onChange={(e) => {
                   setQ(e.target.value)
@@ -207,7 +255,7 @@ export default function UsersList() {
           </div>
           {!isHR && (
             <div className="crm-filter-cell">
-              <label className="crm-filter-label">Access Level</label>
+              <label className="crm-filter-label">Role</label>
               <select
                 className="crm-input"
                 value={role}
@@ -226,7 +274,7 @@ export default function UsersList() {
             </div>
           )}
           <div className="crm-filter-cell">
-            <label className="crm-filter-label">Operational Status</label>
+            <label className="crm-filter-label">Status</label>
             <select
               className="crm-input"
               value={status}
@@ -236,9 +284,9 @@ export default function UsersList() {
               }}
             >
               <option value="">All Statuses</option>
-              <option value="pending">Pending Onboarding</option>
-              <option value="active">Active Service</option>
-              <option value="inactive">Suspended</option>
+              <option value="pending">Pending</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
         </div>
@@ -346,7 +394,11 @@ export default function UsersList() {
                               <div className="crm-action-group">
                                 <button
                                   className="crm-action-btn"
-                                  onClick={() => navigate(`/users/${id}/edit`)}
+                                  onClick={() => {
+                                    const next = new URLSearchParams(searchParams)
+                                    next.set('edit', String(id))
+                                    setSearchParams(next)
+                                  }}
                                   title="Edit Identity"
                                 >
                                   <Icon name="edit" size={14} />
@@ -394,22 +446,34 @@ export default function UsersList() {
         )}
       </section>
       
-      <style>{`
-        .tableAvatarFallback { width: 44px; height: 44px; border-radius: 12px; background: rgba(59, 130, 246, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; }
-        .usersIdentityCell { display: flex; flex-direction: column; gap: 2px; }
-        .usersPrimaryText { color: white; font-size: 1rem; font-weight: 700; }
-        .usersSecondaryText { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-        .usersEmailText { color: var(--text-muted); font-size: 0.9rem; font-weight: 600; }
-        .usersDateCell { display: flex; flex-direction: column; gap: 2px; }
-        .usersDateMain { color: white; font-size: 0.9rem; font-weight: 700; }
-        .usersDateSub { color: var(--text-dimmed); font-size: 0.75rem; }
-
-        .crm-action-group { display: flex; gap: 8px; justify-content: flex-end; }
-        .crm-action-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-        .crm-action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px var(--primary-soft); }
-        .crm-action-btn.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
-        .crm-action-btn svg { width: 16px; height: 16px; }
-      `}</style>
-    </div>
-  )
-}
+       <style>{`
+         .tableAvatarFallback { width: 44px; height: 44px; border-radius: 12px; background: rgba(59, 130, 246, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; }
+         .usersIdentityCell { display: flex; flex-direction: column; gap: 2px; }
+         .usersPrimaryText { color: var(--text); font-size: 1rem; font-weight: 700; }
+         .usersSecondaryText { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+         .usersEmailText { color: var(--text-muted); font-size: 0.9rem; font-weight: 600; }
+         .usersDateCell { display: flex; flex-direction: column; gap: 2px; }
+         .usersDateMain { color: var(--text); font-size: 0.9rem; font-weight: 700; }
+         .usersDateSub { color: var(--text-dimmed); font-size: 0.75rem; }
+ 
+         .crm-action-group { display: flex; gap: 8px; justify-content: flex-end; }
+         .crm-action-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+         .crm-action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px var(--primary-soft); }
+         .crm-action-btn.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
+         .crm-action-btn svg { width: 16px; height: 16px; }
+       `}</style>
+ 
+       {formModal.open && (
+         <UserForm 
+           mode={formModal.mode} 
+           userId={formModal.userId} 
+           onCancel={closeFormModal}
+           onSuccess={() => {
+             closeFormModal()
+             refreshList()
+           }}
+         />
+       )}
+     </div>
+   )
+ }

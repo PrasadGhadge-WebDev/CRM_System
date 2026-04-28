@@ -99,7 +99,7 @@ export default function LeadSummaryBar({ summary = {}, loading }) {
         .lsb-red .lsb-icon { background: rgba(239, 68, 68, 0.15); color: #f87171; }
 
         .lsb-info { display: flex; flex-direction: column; gap: 2px; }
-        .lsb-val { font-size: 1.6rem; font-weight: 800; color: white; line-height: 1; }
+        .lsb-val { font-size: 1.6rem; font-weight: 800; color: var(--text); line-height: 1; }
         .lsb-label { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
 
         .lsb-hint {

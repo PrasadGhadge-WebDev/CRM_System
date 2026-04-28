@@ -212,7 +212,7 @@ export default function SupportList() {
                             {t.customer_id?.is_vip ? '★' : (t.subject || 'S').charAt(0).toUpperCase()}
                           </div>
                           <div className="support-info">
-                            <div className="support-subject" style={{ fontWeight: 800, color: 'white' }}>{t.subject}</div>
+                            <div className="support-subject" style={{ fontWeight: 800, color: 'var(--text)' }}>{t.subject}</div>
                             <div className="support-meta">#{t.ticket_id} • {t.category || 'General'}</div>
                           </div>
                         </div>

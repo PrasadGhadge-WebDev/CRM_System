@@ -13,6 +13,31 @@ function getActivityIcon(type) {
   return <FiClock />
 }
 
+function formatActivityTitle(activity) {
+  const description = activity.description?.trim()
+  if (description) return description
+
+  const kind = activity.activity_type || 'activity'
+  return kind.charAt(0).toUpperCase() + kind.slice(1)
+}
+
+function formatActivityDate(activity) {
+  const sourceDate = activity.activity_date || activity.due_date || activity.created_at
+  if (!sourceDate) return 'No date'
+  return new Date(sourceDate).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function getStatusTone(status) {
+  const value = String(status || '').toLowerCase()
+  if (value === 'completed') return 'badge-success'
+  if (value === 'planned' || value === 'pending') return 'badge-info'
+  return 'badge-secondary'
+}
+
 export default function RecentActivity({ activities, loading }) {
   if (loading) {
     return (
@@ -56,9 +81,9 @@ export default function RecentActivity({ activities, loading }) {
               </div>
               <div className="lead-info">
                 <div className="lead-name-row">
-                  <span className="lead-name" style={{ marginRight: '12px' }}>{activity.description || 'Activity'}</span>
-                  {(!activity.activity_type?.includes(' ') && activity.status) && (
-                    <span className={`status-badge ${activity.status === 'completed' ? 'badge-success' : 'badge-info'}`} style={{ textTransform: 'capitalize' }}>
+                  <span className="lead-name">{formatActivityTitle(activity)}</span>
+                  {activity.status && (
+                    <span className={`status-badge ${getStatusTone(activity.status)}`} style={{ textTransform: 'capitalize' }}>
                       {activity.status}
                     </span>
                   )}
@@ -66,7 +91,7 @@ export default function RecentActivity({ activities, loading }) {
                 <div className="lead-meta-row">
                   <span className="lead-source">{activity.activity_type || 'Activity'}</span>
                   <span className="lead-date">
-                    <FiClock size={12} /> {new Date(activity.created_at).toLocaleDateString()}
+                    <FiClock size={12} /> {formatActivityDate(activity)}
                   </span>
                 </div>
               </div>

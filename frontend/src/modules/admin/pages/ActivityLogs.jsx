@@ -75,7 +75,7 @@ export default function ActivityLogs() {
                     <tr key={activity.id || activity._id} className="crm-table-row">
                       <td>
                         <div className="stack gap-2">
-                          <span className="font-numeric" style={{ color: 'white', fontWeight: 700 }}>
+                          <span className="font-numeric" style={{ color: 'var(--text)', fontWeight: 700 }}>
                             {new Date(activity.created_at || Date.now()).toLocaleDateString()}
                           </span>
                           <span className="text-xs muted">
@@ -90,7 +90,7 @@ export default function ActivityLogs() {
                         <div className="crm-user-mention">
                             <div className="crm-user-dot" />
                             <div className="stack">
-                                <span style={{ color: 'white', fontWeight: 600 }}>{activity.user_name || activity.user?.name || 'System'}</span>
+                                <span style={{ color: 'var(--text)', fontWeight: 600 }}>{activity.user_name || activity.user?.name || 'System'}</span>
                                 <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-dimmed)' }}>{activity.user_role || 'Core'}</span>
                             </div>
                         </div>

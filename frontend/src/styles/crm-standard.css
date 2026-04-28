@@ -73,7 +73,7 @@
 .crm-input,
 .crm-search-input-wrap input {
   width: 100%;
-  padding: 14px 16px;
+  padding: 11px 14px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--crm-radius-input);

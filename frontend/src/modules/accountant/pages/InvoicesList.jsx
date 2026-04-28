@@ -118,7 +118,7 @@ export default function InvoicesList() {
                           <td><span className="text-sm">{new Date(inv.invoice_date).toLocaleDateString()}</span></td>
                           <td>
                             <div className="stack gap-2">
-                              <span className="font-bold" style={{ color: 'white' }}>{inv.customer_id?.name || 'Customer'}</span>
+                              <span className="font-bold" style={{ color: 'var(--text)' }}>{inv.customer_id?.name || 'Customer'}</span>
                               <span className="text-xs muted uppercase">{inv.customer_id?.company || 'Personal'}</span>
                             </div>
                           </td>

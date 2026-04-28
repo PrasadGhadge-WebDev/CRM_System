@@ -130,20 +130,20 @@ export default function TicketDetail() {
   const canReply = ticket.status !== 'closed'
 
   return (
-    <div className="ticket-immersive-layout">
+    <div className="crm-fullscreen-shell">
       <PageHeader 
         title={`#${ticket.ticket_id}: ${ticket.subject}`} 
         backTo="/tickets"
         actions={
           <div className="flex gap-12">
             {canManage && (
-              <button onClick={() => updateStatus(ticket.status === 'closed' ? 'open' : 'closed')} className={`btn-premium ${ticket.status === 'closed' ? 'action-vibrant' : 'action-danger'}`}>
+              <button onClick={() => updateStatus(ticket.status === 'closed' ? 'open' : 'closed')} className={`crm-btn-premium ${ticket.status === 'closed' ? 'vibrant' : 'danger'}`}>
                 <Icon name={ticket.status === 'closed' ? 'activity' : 'check'} />
                 <span>{ticket.status === 'closed' ? 'Reopen Ticket' : 'Close Ticket'}</span>
               </button>
             )}
             {!ticket.is_escalated && (isAdmin || isEmployee) && (
-              <button onClick={handleEscalate} className="btn-premium action-warning" disabled={escalating}>
+              <button onClick={handleEscalate} className="crm-btn-premium vibrant" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }} disabled={escalating}>
                 <Icon name="bell" />
                 <span>{escalating ? 'Escalating...' : 'Escalate'}</span>
               </button>
@@ -152,88 +152,107 @@ export default function TicketDetail() {
         }
       />
 
-      <div className="ticket-grid">
+      <div className="crm-detail-grid" style={{ marginTop: '32px', height: 'calc(100vh - 250px)' }}>
         {/* Main Conversation Column */}
-        <div className="ticket-conversation card-premium">
-          <div className="chat-header">
-            <div className="chat-meta">
-              <span className={`status-pill ${ticket.status}`}>{ticket.status}</span>
-              <span className={`priority-pill ${ticket.priority}`}>{ticket.priority} Priority</span>
-              <span className="date-pill">Created on {new Date(ticket.created_at).toLocaleDateString()}</span>
+        <div className="crm-detail-main" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div className="crm-detail-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: 0, overflow: 'hidden' }}>
+            <div className="chat-header" style={{ padding: '24px', borderBottom: '1px solid var(--border-subtle)' }}>
+              <div className="flex align-center gap-12 margin-bottom-12">
+                <span className={`status-pill ${ticket.status}`}>{ticket.status}</span>
+                <span className="hero-meta-chip">{ticket.priority} Priority</span>
+                <span className="muted" style={{ marginLeft: 'auto', fontSize: '0.8rem' }}>Opened on {new Date(ticket.created_at).toLocaleDateString()}</span>
+              </div>
+              <h2 className="crm-hero-name" style={{ fontSize: '1.6rem', margin: 0 }}>{ticket.subject}</h2>
             </div>
-            <div className="chat-subject">{ticket.subject}</div>
-          </div>
 
-          <div className="messages-scroll">
-             <div className="message-node system-node">
-                <div className="message-content">
-                   <div className="message-label">First Message</div>
-                   <div className="message-text">{ticket.description}</div>
-                   <div className="message-time">{new Date(ticket.created_at).toLocaleString()}</div>
-                </div>
-             </div>
-
-             {ticket.messages?.map((msg, idx) => (
-               <div key={idx} className={`message-node ${String(msg.sender_id?._id || msg.sender_id) === String(user.id) ? 'self-node' : 'other-node'}`}>
+            <div className="messages-scroll" style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', background: 'rgba(0,0,0,0.1)' }}>
+               <div className="message-node system-node">
                   <div className="message-content">
-                    <div className="message-author">
-                      {msg.sender_name} <span className="author-role">({msg.sender_role})</span>
-                    </div>
-                    <div className="message-text">{msg.text}</div>
-                    <div className="message-time">{new Date(msg.created_at).toLocaleString()}</div>
+                     <div className="message-label">Problem Intelligence</div>
+                     <div className="message-text">{ticket.description}</div>
+                     <div className="message-time">{new Date(ticket.created_at).toLocaleString()}</div>
                   </div>
                </div>
-             ))}
-             <div ref={chatEndRef} />
-          </div>
 
-          {canReply && (
-            <form className="chat-footer" onSubmit={handleReply}>
-              <textarea 
-                placeholder="Type your reply here..." 
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleReply(e); } }}
-              />
-              <button className="btn-send" disabled={sendingReply || !replyText.trim()}>
-                <Icon name="activity" />
-                <span>{sendingReply ? '...' : 'Send'}</span>
-              </button>
-            </form>
-          )}
-          {ticket.status === 'closed' && (
-            <div className="chat-closed-notice">
-               <Icon name="check" />
-               <span>This ticket is closed. No further replies are permitted.</span>
+               {ticket.messages?.map((msg, idx) => (
+                 <div key={idx} className={`message-node ${String(msg.sender_id?._id || msg.sender_id) === String(user.id) ? 'self-node' : 'other-node'}`}>
+                    <div className="message-content">
+                      <div className="message-author">
+                        {msg.sender_name} <span className="author-role">({msg.sender_role})</span>
+                      </div>
+                      <div className="message-text">{msg.text}</div>
+                      <div className="message-time">{new Date(msg.created_at).toLocaleString()}</div>
+                    </div>
+                 </div>
+               ))}
+               <div ref={chatEndRef} />
             </div>
-          )}
+
+            {canReply && (
+              <form className="chat-footer" onSubmit={handleReply} style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: '16px' }}>
+                <textarea 
+                  className="crm-input"
+                  style={{ flex: 1, minHeight: '80px', maxHeight: '200px', resize: 'none' }}
+                  placeholder="Type your response intelligence..." 
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleReply(e); } }}
+                />
+                <button className="crm-btn-premium vibrant" disabled={sendingReply || !replyText.trim()} style={{ height: 'auto', padding: '0 32px' }}>
+                  <Icon name="activity" />
+                  <span>{sendingReply ? '...' : 'Send'}</span>
+                </button>
+              </form>
+            )}
+            {ticket.status === 'closed' && (
+              <div className="center padding-32 muted" style={{ background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
+                 <Icon name="check" size={20} style={{ color: 'var(--primary)', marginBottom: '8px' }} />
+                 <div style={{ fontWeight: 800 }}>Resolution Synchronized</div>
+                 <div style={{ fontSize: '0.85rem' }}>This communication node is locked. No further inputs are permitted.</div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Sidebar Info Column */}
-        <div className="ticket-sidebar stack gap-20">
-          <section className="card-premium">
-            <div className="sidebar-section-header">Customer Details</div>
-            <div className="sidebar-body">
-               <div className="profile-hero">
-                  <div className="profile-avatar">{(ticket.customer_id?.name || ticket.user_customer_id?.name || 'U').charAt(0)}</div>
-                  <div className="profile-info">
-                     <div className="profile-name">{ticket.customer_id?.name || ticket.user_customer_id?.name}</div>
-                     <div className="profile-role">{ticket.user_customer_id ? 'System User' : 'Customer'}</div>
+        <aside className="crm-detail-side">
+          <section className="crm-detail-card accent-card">
+            <div className="crm-detail-card-header">
+              <div className="crm-detail-card-title">
+                <Icon name="user" />
+                <h3>Customer Intel</h3>
+              </div>
+            </div>
+            <div className="crm-detail-card-body">
+               <div className="profile-hero" style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '20px' }}>
+                  <div className="crm-hero-avatar" style={{ width: '48px', height: '48px', borderRadius: '14px' }}>
+                    {(ticket.customer_id?.name || ticket.user_customer_id?.name || 'U').charAt(0)}
+                  </div>
+                  <div>
+                     <div style={{ fontWeight: 800, color: 'var(--text)' }}>{ticket.customer_id?.name || ticket.user_customer_id?.name}</div>
+                     <div className="muted" style={{ fontSize: '0.8rem' }}>{ticket.user_customer_id ? 'System Member' : 'Institutional Client'}</div>
                   </div>
                </div>
                {ticket.customer_id && (
-                 <Link to={`/customers/${ticket.customer_id._id}`} className="btn-secondary-outline full-width margin-top-12">View Customer</Link>
+                 <Link to={`/customers/${ticket.customer_id._id}`} className="crm-btn-premium glass full-width" style={{ justifyContent: 'center' }}>
+                   <span>Analyze Profile</span>
+                 </Link>
                )}
             </div>
           </section>
 
-          <section className="card-premium">
-             <div className="sidebar-section-header">Assignment</div>
-             <div className="sidebar-body stack gap-12">
-                <div className="intel-field">
-                   <label>Assigned To</label>
+          <section className="crm-detail-card">
+             <div className="crm-detail-card-header">
+                <div className="crm-detail-card-title">
+                   <Icon name="settings" />
+                   <h3>Ownership</h3>
+                </div>
+             </div>
+             <div className="crm-detail-card-body">
+                <div className="crm-intel-field">
+                   <label>Designated Handler</label>
                    <select 
-                     className="select-premium" 
+                     className="crm-input" 
                      value={ticket.assigned_to?._id || ''} 
                      disabled={!canManage}
                      onChange={(e) => assignTicket(e.target.value)}
@@ -245,47 +264,46 @@ export default function TicketDetail() {
                    </select>
                 </div>
                 {ticket.assigned_to && (
-                  <div className="assignee-display">
-                     <Icon name="user" />
-                     <span>{ticket.assigned_to.name} is handling this.</span>
+                  <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#34d399', fontSize: '0.85rem', fontWeight: 800 }}>
+                     <Icon name="check" size={14} />
+                     <span>Active assignment synchronization.</span>
                   </div>
                 )}
              </div>
           </section>
 
-          <section className="card-premium">
-             <div className="sidebar-section-header">Change Status</div>
-             <div className="sidebar-body flex-wrap gap-8">
-                {STATUS_OPTIONS.map(opt => (
-                  <button 
-                    key={opt.value} 
-                    className={`status-btn ${ticket.status === opt.value ? 'active' : ''}`}
-                    onClick={() => updateStatus(opt.value)}
-                    disabled={opt.value === 'closed' && !canManage}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+          <section className="crm-detail-card">
+             <div className="crm-detail-card-header">
+                <div className="crm-detail-card-title">
+                   <Icon name="activity" />
+                   <h3>Status Protocol</h3>
+                </div>
+             </div>
+             <div className="crm-detail-card-body">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  {STATUS_OPTIONS.map(opt => (
+                    <button 
+                      key={opt.value} 
+                      className={`crm-btn-premium ${ticket.status === opt.value ? 'vibrant' : 'glass'}`}
+                      style={{ padding: '8px 4px', fontSize: '0.7rem', justifyContent: 'center' }}
+                      onClick={() => updateStatus(opt.value)}
+                      disabled={opt.value === 'closed' && !canManage}
+                    >
+                      <span>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
              </div>
           </section>
-        </div>
+        </aside>
       </div>
 
       <style>{`
-        .ticket-immersive-layout { display: flex; flex-direction: column; height: calc(100vh - 100px); padding-bottom: 20px; }
-        .ticket-grid { display: grid; grid-template-columns: 1fr 300px; gap: 24px; flex: 1; overflow: hidden; margin-top: 24px; }
-        
-        .ticket-conversation { display: flex; flex-direction: column; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 24px; overflow: hidden; }
-        .chat-header { padding: 24px; border-bottom: 1px solid var(--border-subtle); background: rgba(255,255,255,0.02); }
-        .chat-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-        .status-pill { padding: 6px 14px; border-radius: 999px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); }
-        .status-pill.closed { background: rgba(16,185,129,0.1); color: #10b981; border-color: rgba(16,185,129,0.2); }
-        .priority-pill { padding: 6px 14px; border-radius: 999px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; background: rgba(255,255,255,0.05); color: var(--text-dimmed); border: 1px solid rgba(255,255,255,0.1); }
-        .priority-pill.high, .priority-pill.urgent { background: rgba(239,68,68,0.1); color: #ef4444; border-color: rgba(239,68,68,0.2); }
-        .date-pill { margin-left: auto; font-size: 0.8rem; color: var(--text-dimmed); font-weight: 600; }
-        .chat-subject { font-size: 1.4rem; font-weight: 900; color: white; line-height: 1.2; }
+        .messages-scroll::-webkit-scrollbar { width: 6px; }
+        .messages-scroll::-webkit-scrollbar-track { background: transparent; }
+        .messages-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .messages-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
-        .messages-scroll { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 24px; background: rgba(0,0,0,0.1); }
         .message-node { display: flex; max-width: 85%; }
         .system-node { align-self: center; max-width: 95%; width: 100%; }
         .other-node { align-self: flex-start; }
@@ -296,37 +314,15 @@ export default function TicketDetail() {
         .system-node .message-content { background: rgba(255,255,255,0.01); border-style: dashed; padding: 16px; }
         
         .message-label { font-size: 0.65rem; font-weight: 900; text-transform: uppercase; color: var(--primary); margin-bottom: 8px; letter-spacing: 0.05em; }
-        .message-author { font-size: 0.9rem; font-weight: 800; margin-bottom: 6px; color: white; }
+        .message-author { font-size: 0.9rem; font-weight: 800; margin-bottom: 6px; color: var(--text); }
         .author-role { font-weight: 600; font-size: 0.75rem; color: var(--text-dimmed); }
-        .message-text { font-size: 1rem; line-height: 1.6; white-space: pre-wrap; color: var(--text-muted); }
+        .message-text { font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; color: var(--text-muted); }
         .message-time { font-size: 0.7rem; color: var(--text-dimmed); margin-top: 12px; text-align: right; font-weight: 600; }
 
-        .chat-footer { padding: 24px; background: rgba(255,255,255,0.02); border-top: 1px solid var(--border-subtle); display: flex; gap: 16px; align-items: stretch; }
-        .chat-footer textarea { flex: 1; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; color: white; padding: 16px; min-height: 80px; max-height: 200px; resize: none; font-size: 1rem; outline: none; line-height: 1.5; transition: border-color 0.2s; }
-        .chat-footer textarea:focus { border-color: var(--primary); }
-        .btn-send { background: var(--primary); color: white; border: none; padding: 0 28px; border-radius: 16px; font-weight: 800; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; min-width: 100px; }
-        .btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-send:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 8px 20px rgba(59,130,246,0.3); }
-
-        .chat-closed-notice { padding: 32px; text-align: center; color: var(--text-dimmed); background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; gap: 12px; font-weight: 700; }
-
-        .sidebar-section-header { padding: 18px 20px; border-bottom: 1px solid var(--border-subtle); font-size: 0.65rem; font-weight: 900; text-transform: uppercase; color: var(--text-dimmed); letter-spacing: 0.08em; }
-        .sidebar-body { padding: 24px; }
-        .profile-hero { display: flex; gap: 14px; align-items: center; }
-        .profile-avatar { width: 48px; height: 48px; border-radius: 14px; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.4rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-        .profile-name { font-weight: 800; font-size: 1.1rem; color: white; }
-        .profile-role { font-size: 0.8rem; color: var(--text-dimmed); font-weight: 600; }
-        
-        .intel-field label { display: block; font-size: 0.65rem; font-weight: 900; color: var(--text-dimmed); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.05em; }
-        .select-premium { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; color: white; padding: 12px; outline: none; font-weight: 700; cursor: pointer; }
-        .assignee-display { display: flex; align-items: center; gap: 10px; margin-top: 16px; font-size: 0.85rem; color: #10b981; font-weight: 700; }
-        
-        .status-btn { flex: 1; min-width: calc(50% - 8px); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 8px 12px; color: var(--text-muted); font-size: 0.75rem; font-weight: 800; cursor: pointer; text-transform: uppercase; transition: all 0.2s; }
-        .status-btn.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(59,130,246,0.2); }
-        .status-btn:hover:not(.active) { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.1); }
-        .full-width { width: 100%; }
-        .btn-secondary-outline { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 10px; border-radius: 12px; cursor: pointer; text-align: center; text-decoration: none; display: block; font-weight: 800; font-size: 0.85rem; transition: all 0.2s; }
-        .btn-secondary-outline:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); color: white; }
+        .status-pill.open { background: rgba(59,130,246,0.1); color: #3b82f6; border-color: rgba(59,130,246,0.2); }
+        .status-pill.closed { background: rgba(16,185,129,0.1); color: #10b981; border-color: rgba(16,185,129,0.2); }
+        .status-pill.in-progress { background: rgba(245,158,11,0.1); color: #f59e0b; border-color: rgba(245,158,11,0.2); }
+        .status-pill.resolved { background: rgba(139,92,246,0.1); color: #8b5cf6; border-color: rgba(139,92,246,0.2); }
       `}</style>
     </div>
   )
