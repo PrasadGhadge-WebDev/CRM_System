@@ -91,23 +91,23 @@ export default function InvoicesList() {
         </div>
 
         {loading ? (
-          <div className="leadsLoadingState" style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-subtle)', borderRadius: '32px', minHeight: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+          <div className="leadsLoadingState" style={{ background: 'var(--bg-surface)', border: '1px dashed var(--border)', borderRadius: '32px', minHeight: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
             <div className="spinner-medium" />
             <span className="muted">Loading invoices...</span>
           </div>
         ) : (
           <>
-            <div className="crm-table-wrap shadow-soft">
+            <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <div className="crm-table-scroll">
                 <table className="crm-table">
-                  <thead>
+                  <thead style={{ background: 'var(--bg-surface)' }}>
                     <tr>
-                      <th style={{ width: '140px' }}>INVOICE #</th>
-                      <th style={{ width: '140px' }}>DATE</th>
-                      <th style={{ minWidth: '220px' }}>CUSTOMER NAME</th>
-                      <th style={{ width: '160px' }}>TOTAL AMOUNT</th>
-                      <th style={{ width: '130px' }}>STATUS</th>
-                      {(canEdit || canDelete) && <th className="text-right" style={{ width: '120px' }}>ACTION</th>}
+                      <th style={{ width: '140px', color: 'var(--text-dimmed)' }}>INVOICE #</th>
+                      <th style={{ width: '140px', color: 'var(--text-dimmed)' }}>DATE</th>
+                      <th style={{ minWidth: '220px', color: 'var(--text-dimmed)' }}>CUSTOMER NAME</th>
+                      <th style={{ width: '160px', color: 'var(--text-dimmed)' }}>TOTAL AMOUNT</th>
+                      <th style={{ width: '130px', color: 'var(--text-dimmed)' }}>STATUS</th>
+                      {(canEdit || canDelete) && <th className="text-right" style={{ width: '120px', color: 'var(--text-dimmed)' }}>ACTION</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -115,11 +115,18 @@ export default function InvoicesList() {
                       invoices.map(inv => (
                         <tr key={inv.id} className="crm-table-row" onClick={() => navigate(`/invoices/${inv.id}`)}>
                           <td><span className="font-numeric" style={{ color: 'var(--primary)', fontWeight: 800 }}>#{inv.invoice_number}</span></td>
-                          <td><span className="text-sm">{new Date(inv.invoice_date).toLocaleDateString()}</span></td>
+                          <td><span className="text-sm" style={{ color: 'var(--text-muted)' }}>{new Date(inv.invoice_date).toLocaleDateString()}</span></td>
                           <td>
                             <div className="stack gap-2">
                               <span className="font-bold" style={{ color: 'var(--text)' }}>{inv.customer_id?.name || 'Customer'}</span>
-                              <span className="text-xs muted uppercase">{inv.customer_id?.company || 'Personal'}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span className="text-xs muted uppercase">{inv.customer_id?.company || 'Personal'}</span>
+                                {inv.deal_id && (
+                                  <span className="text-xs" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                                    • {inv.deal_id.name}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td><span className="font-numeric" style={{ color: 'var(--primary)', fontWeight: 800 }}>{formatCurrency(inv.total_amount)}</span></td>
@@ -131,7 +138,7 @@ export default function InvoicesList() {
                           {(canEdit || canDelete) && (
                             <td className="text-right" onClick={e => e.stopPropagation()}>
                               <div className="crm-action-group">
-                                {canEdit && <button className="crm-action-btn" onClick={() => navigate(`/invoices/${inv.id}`)}><Icon name="edit" size={14} /></button>}
+                                {canEdit && <button className="crm-action-btn" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }} onClick={() => navigate(`/invoices/${inv.id}`)}><Icon name="edit" size={14} /></button>}
                                 {canDelete && <button className="crm-action-btn danger" onClick={() => handleDelete(inv.id)}><Icon name="trash" size={14} /></button>}
                               </div>
                             </td>
@@ -142,7 +149,7 @@ export default function InvoicesList() {
                       <tr>
                         <td colSpan="6">
                           <div className="emptyState" style={{ padding: '60px 0', textAlign: 'center' }}>
-                            <h3>No Invoices Found</h3>
+                            <h3 style={{ color: 'var(--text)' }}>No Invoices Found</h3>
                             <p className="muted">Create a new invoice to start tracking.</p>
                           </div>
                         </td>
@@ -154,9 +161,9 @@ export default function InvoicesList() {
             </div>
             {total > limit && (
               <div className="pagination-container" style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                <button className="btn-premium action-secondary" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Prev</button>
+                <button className="btn-premium action-secondary" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)' }} disabled={page === 1} onClick={() => setPage(p => p - 1)}>Prev</button>
                 <span className="text-sm muted" style={{ display: 'flex', alignItems: 'center' }}>Page {page} of {Math.ceil(total / limit)}</span>
-                <button className="btn-premium action-secondary" disabled={page * limit >= total} onClick={() => setPage(p => p + 1)}>Next</button>
+                <button className="btn-premium action-secondary" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)' }} disabled={page * limit >= total} onClick={() => setPage(p => p + 1)}>Next</button>
               </div>
             )}
           </>

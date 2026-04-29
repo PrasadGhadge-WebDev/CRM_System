@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { leadsApi } from '../../../services/leads.js'
@@ -199,15 +200,15 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
     }
   }
 
-  if (loading) return <div className="p-40 text-center text-dimmed">Loading lead details...</div>
+  if (loading) return <div className="p-40 text-center text-dimmed">Loading lead...</div>
 
-  return (
+  const modalContent = (
     <div className="crm-modal-portal-overlay">
       <div className="crm-modal-sheet animate-sheet-in">
         <div className="crm-modal-sheet-header">
           <div className="sheet-title-area">
             <h2 className="sheet-title">{isEdit ? 'Update Lead' : 'Add New Lead'}</h2>
-            <p className="sheet-subtitle">{isEdit ? `Editing lead for ${model.firstName}` : 'Capture a new opportunity'}</p>
+            <p className="sheet-subtitle">{isEdit ? `Editing ${model.firstName}` : 'Add a new lead'}</p>
           </div>
         </div>
 
@@ -217,7 +218,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <Icon name="user" />
-                <span>Personal Information</span>
+                <span>Personal Details</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
@@ -282,7 +283,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <Icon name="briefcase" />
-                <span>Lead Qualification</span>
+                <span>Details</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
@@ -310,7 +311,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                   </select>
                 </div>
                 <div className="sheet-field">
-                  <label>Estimated Amount (₹)</label>
+                  <label>Potential Amount (₹)</label>
                   <input
                     className="crm-input"
                     type="number"
@@ -335,7 +336,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
                 <Icon name="calendar" />
-                <span>Follow-up Planning</span>
+                <span>Follow-up</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
@@ -348,7 +349,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                   />
                 </div>
                 <div className="sheet-field full-width">
-                  <label>Internal Notes</label>
+                  <label>Notes</label>
                   <textarea
                     className="crm-input"
                     style={{ minHeight: '100px' }}
@@ -363,10 +364,10 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
         </form>
 
         <div className="crm-modal-sheet-footer">
-          <p className="footer-hint">Lead data is securely synchronized across the CRM.</p>
+          <p className="footer-hint">Your data is safe.</p>
           <div style={{ display: 'flex', gap: '16px' }}>
-            <button className="btn-premium secondary" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
-            <button className="btn-premium action-vibrant" disabled={saving} onClick={handleSubmit}>
+            <button className="crm-btn-premium glass" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
+            <button className="crm-btn-premium vibrant" disabled={saving} onClick={handleSubmit}>
               {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Lead'}
             </button>
           </div>
@@ -390,4 +391,6 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
       )}
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

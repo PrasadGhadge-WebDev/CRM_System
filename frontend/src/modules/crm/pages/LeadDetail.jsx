@@ -196,7 +196,7 @@ export default function LeadDetail() {
     return (
       <div className="center padding40 stack gap-20">
         <div className="spinner-medium" />
-        <span className="muted">Loading lead detail...</span>
+        <span className="muted">Loading lead...</span>
       </div>
     )
   }
@@ -217,207 +217,173 @@ export default function LeadDetail() {
   const isConverted = String(lead?.status || '').toLowerCase() === 'converted'
 
   return (
-    <div className="crm-fullscreen-shell crm-detail-container">
-      <PageHeader
-        title="Lead Details"
-        description={lead.name}
-        backTo="/leads"
-        actions={
-          <div className="control-bar-premium">
-            <button className="btn-premium action-info" type="button" onClick={openFollowup}>
-              <Icon name="phone" />
-              <span>Log Follow-up</span>
+    <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
+      {/* Header Row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <Link to="/leads" className="crm-btn-premium" style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+          <span>← Back</span>
+        </Link>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="crm-btn-premium" onClick={openFollowup} style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+            <Icon name="phone" />
+            <span>Add Activity</span>
+          </button>
+          {canEdit && !isConverted && (
+            <button className="crm-btn-premium" onClick={onConvert} style={{ background: 'var(--success)', color: '#ffffff', border: 'none', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+              <Icon name="check" />
+              <span>Convert</span>
             </button>
-            {canEdit && !isConverted ? (
-              <button className="btn-premium action-vibrant" type="button" onClick={onConvert} disabled={converting}>
-                <Icon name="check" />
-                <span>{converting ? 'Converting...' : 'Convert to Customer'}</span>
-              </button>
-            ) : null}
-            {canEdit ? (
-              <Link className="btn-premium action-secondary" to={`/leads/${lead.id || lead._id}/edit`}>
-                <Icon name="edit" />
-                <span>Edit Lead</span>
-              </Link>
-            ) : null}
-          </div>
-        }
-      />
-
-      <section className="crm-hero-shell">
-        <div className="crm-hero-glow crm-hero-glow-1" />
-        <div className="crm-hero-glow crm-hero-glow-2" />
-
-        <div className="crm-hero-topline">
-          <span className={`status-pill ${statusPillClass}`}>{displayValue(lead.status, 'Active')}</span>
-          <span className="hero-meta-chip">Lead ID: {lead.leadId || lead.readable_id || lead._id}</span>
-          {lead.nextFollowupDate ? (
-            <span className={`status-pill ${followupMetaChipClass}`}>
-              Follow-up {followupBucket === 'overdue' ? 'Overdue' : followupBucket === 'today' ? 'Due Today' : 'Scheduled'} • {nextFollowupLabel}
-            </span>
-          ) : null}
+          )}
+          {canEdit && (
+            <Link className="crm-btn-premium" to={`/leads/${lead.id || lead._id}/edit`} style={{ background: 'var(--primary)', color: '#ffffff', padding: '8px 24px', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}>
+              <Icon name="edit" />
+              <span>Edit Lead</span>
+            </Link>
+          )}
         </div>
+      </div>
 
-        <div className="crm-hero-main-row">
-          <div className="crm-hero-avatar" aria-hidden="true">
-            <Icon name="users" size={48} />
+      {/* Profile Header Card */}
+      <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '32px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Avatar */}
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--primary-soft)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 700, flexShrink: 0, boxShadow: 'inset 0 0 0 1px var(--primary-soft)' }}>
+             {(lead.name || 'L').split(' ').map(n => n[0]).join('').toUpperCase()}
           </div>
 
-          <div className="crm-hero-copy">
-            <h1 className="crm-hero-name">{displayValue(lead.name, 'Unnamed Lead')}</h1>
-            <div className="crm-hero-subline">
-              <div className="crm-hero-subline-item">
-                <Icon name="user" />
-                <span>Assigned to: {lead.assignedTo?.name || 'Unassigned'}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', margin: 0 }}>{lead.name}</h1>
+              <span style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', padding: '2px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border)' }}>
+                {lead.status}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600, marginLeft: '4px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }} />
+                <span>Current</span>
               </div>
-              <div className="crm-hero-divider" />
-              <div className="crm-hero-subline-item">
-                <Icon name="mail" />
+            </div>
+
+            <div style={{ display: 'flex', gap: '20px', color: 'var(--text-dimmed)', fontSize: '0.9rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Icon name="mail" size={14} />
                 <span>{lead.email || 'No email'}</span>
               </div>
-              {lead.phone ? (
-                <>
-                  <div className="crm-hero-divider" />
-                  <div className="crm-hero-subline-item">
-                    <Icon name="phone" />
-                    <span>{lead.phone}</span>
-                  </div>
-                </>
-              ) : null}
+              {lead.phone && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Icon name="phone" size={14} />
+                  <span>{lead.phone}</span>
+                </div>
+              )}
             </div>
           </div>
+        </div>
 
-          <div className="crm-hero-side-stack">
-            <div className="crm-hero-stat-card vibrant-border">
-              <span className="crm-hero-stat-label">Created Date</span>
-              <span className="crm-hero-stat-value">{createdLabel}</span>
-            </div>
-          </div>
+        <div style={{ height: '1px', background: 'var(--border)', margin: '24px 0' }} />
+
+        {/* Time Stats Row */}
+        <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Added On:</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)' }}>{createdLabel}</span>
+           </div>
+           {lead.nextFollowupDate && (
+             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+               <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+               <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Next Follow-up:</span>
+               <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary)' }}>{nextFollowupLabel}</span>
+             </div>
+           )}
         </div>
       </section>
 
-      <div className="crm-hub-nav">
-        {[
-          { id: 'info', label: 'Details', icon: 'dashboard' },
-          { id: 'followup', label: 'Follow-up Hub', icon: 'bell' }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`crm-hub-tab ${activeTab === tab.id ? 'active' : ''}`}
-          >
-            <Icon name={tab.icon} size={14} />
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="crm-detail-grid">
-        <div className="crm-detail-main">
-          {activeTab === 'info' && (
-            <section className="crm-detail-card">
-              <div className="crm-detail-card-header">
-                <div className="crm-detail-card-title">
-                  <Icon name="info" />
-                  <h3>Lead Summary</h3>
-                </div>
+      {/* Main Grid */}
+      <div className="crm-profile-grid-desktop" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+        
+        {/* Lead Details Card */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Details</h3>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Full Name</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(lead.name)}</div>
               </div>
-              <div className="crm-detail-card-body">
-                <div className="crm-intel-grid">
-                  <div className="crm-intel-field">
-                    <label>Full Name</label>
-                    <div className="crm-intel-value">{displayValue(lead.name)}</div>
-                  </div>
-                  <div className="crm-intel-field">
-                    <label>Status</label>
-                    <div className="crm-intel-value highlight">{lead.status}</div>
-                  </div>
-                  <div className="crm-intel-field">
-                    <label>Lead Source</label>
-                    <div className="crm-intel-value">{displayValue(lead.source)}</div>
-                  </div>
-                  <div className="crm-intel-field">
-                    <label>Priority</label>
-                    <div className="crm-intel-value">{displayValue(lead.priority)}</div>
-                  </div>
-                  <div className="crm-intel-field full-width">
-                    <label>Company Name</label>
-                    <div className="crm-intel-value">{displayValue(lead.company, 'Not specified')}</div>
-                  </div>
-                  <div className="crm-intel-field full-width">
-                    <label>General Notes</label>
-                    <div className="crm-intel-value" style={{ fontSize: '0.95rem', fontWeight: 400, opacity: 0.8, lineHeight: 1.6 }}>
-                      {stripHtml(lead.followupNote) || 'No notes added.'}
-                    </div>
-                  </div>
-                </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Company</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(lead.company)}</div>
               </div>
-            </section>
-          )}
-
-          {activeTab === 'followup' && (
-            <section className="crm-detail-card">
-              <div className="crm-detail-card-header">
-                <div className="crm-detail-card-title">
-                  <Icon name="bell" />
-                  <h3>Follow-up Hub</h3>
-                </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Source</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(lead.source)}</div>
               </div>
-              <div className="crm-detail-card-body">
-                <div className="milestone-panel">
-                  <div className="milestone-label">Next Follow-up Date</div>
-                  <div className="milestone-value highlight">
-                    {lead.nextFollowupDate ? nextFollowupLabel : 'No follow-up set'}
-                  </div>
-                </div>
-                <div className="crm-intel-field full-width">
-                  <label>Notes for next step</label>
-                  <div className="crm-intel-value">{stripHtml(lead.followupNote) || 'No notes for the next step.'}</div>
-                </div>
-                <div className="stack gap-16 margin-top-24">
-                  <h4 style={{ fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-dimmed)' }}>Follow-up History</h4>
-                  <Timeline relatedId={lead.id || lead._id} relatedType="Lead" defaultView="table" />
-                </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Priority</label>
+                <div style={{ color: lead.priority === 'High' ? 'var(--danger)' : 'var(--text)', fontWeight: 700 }}>{displayValue(lead.priority)}</div>
               </div>
-            </section>
-          )}
+            </div>
+            {lead.followupNote && (
+              <div style={{ marginTop: '20px' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Notes</label>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>{stripHtml(lead.followupNote)}</div>
+              </div>
+            )}
+          </div>
         </div>
 
-        <aside className="crm-detail-side">
-          <section className="crm-detail-card accent-card">
-            <div className="crm-detail-card-header">
-              <div className="crm-detail-card-title">
-                <Icon name="bell" />
-                <h3>Quick Actions</h3>
+        {/* Account Snapshot Table Card */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Summary</h3>
+          </div>
+          <div style={{ padding: '0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🧑💼</span> Assigned To
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{lead.assignedTo?.name || 'Unassigned'}</div>
+              </div>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🔌</span> Status
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)', fontWeight: 700 }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
+                  Current
+                </div>
               </div>
             </div>
-            <div className="crm-detail-card-body">
-              <div className="milestone-panel">
-                <div className="milestone-label">Next Follow-up</div>
-                <div className="milestone-value highlight">
-                  {lead.nextFollowupDate ? nextFollowupLabel : 'Not Set'}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📅</span> Added On
                 </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{formatDate(lead.created_at)}</div>
               </div>
-
-              <div className="snapshot-list">
-                <div className="snapshot-row">
-                  <span className="snapshot-label">Lead Owner</span>
-                  <span className="snapshot-value">{lead.assignedTo?.name || 'Unassigned'}</span>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⏱️</span> Next Follow-up
                 </div>
-                <div className="snapshot-row">
-                  <span className="snapshot-label">Contact Info</span>
-                  <span className="snapshot-value">{lead.phone || lead.email || '—'}</span>
-                </div>
+                <div style={{ fontWeight: 600, color: lead.nextFollowupDate ? 'var(--primary)' : 'var(--text)', fontSize: '0.85rem' }}>{nextFollowupLabel}</div>
               </div>
-
-              <button className="btn-modern-vibrant full-width" onClick={openFollowup}>
-                <Icon name="plus" />
-                <span>Log New Follow-up</span>
-              </button>
             </div>
-          </section>
-        </aside>
+          </div>
+        </div>
       </div>
+
+      {/* History Section */}
+      <section style={{ marginTop: '32px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Icon name="bell" size={18} style={{ color: 'var(--text-dimmed)' }} />
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>History</h3>
+        </div>
+        <div style={{ padding: '24px' }}>
+          <Timeline relatedId={lead.id || lead._id} relatedType="Lead" defaultView="table" />
+        </div>
+      </section>
 
       <FollowupModal
         isOpen={isFollowupOpen}
@@ -435,6 +401,14 @@ export default function LeadDetail() {
         onClose={() => setIsConversionOpen(false)}
         onConverted={handleConverted}
       />
+
+      <style>{`
+        @media (max-width: 900px) {
+          .crm-profile-grid-desktop {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

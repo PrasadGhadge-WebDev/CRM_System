@@ -27,41 +27,42 @@
 /* Professional LIGHT Mode (Default or when body doesn't have .dark) */
 body:not(.dark) {
   color-scheme: light;
-  --bg: #f8fafc;
+  --bg: #F5F7FA;
   --bg-elevated: #ffffff;
   --bg-surface: #f1f5f9;
   --bg-card: #ffffff;
-  --bg-hover: rgba(59, 130, 246, 0.05);
-  --panel-bg: rgba(255, 255, 255, 0.7);
-  --panel-border: rgba(37, 99, 235, 0.1);
+  --bg-hover: rgba(44, 95, 138, 0.05);
+  --panel-bg: #ffffff;
+  --panel-border: #E2E8F0;
   
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-soft: rgba(37, 99, 235, 0.08);
-  --primary-rgb: 37, 99, 235;
+  --primary: #2C5F8A;
+  --primary-hover: #1E4563;
+  --primary-soft: rgba(44, 95, 138, 0.08);
+  --primary-rgb: 44, 95, 138;
 
-  /* UI Gradients - Light Mesh & Orbs */
-  --bg-mesh: radial-gradient(at 100% 0%, rgba(37, 99, 235, 0.04) 0px, transparent 50%),
-             radial-gradient(at 0% 100%, rgba(37, 99, 235, 0.02) 0px, transparent 50%),
-             #f8fafc;
-  --bg-orb-1: radial-gradient(circle at 80% 20%, rgba(37, 99, 235, 0.03) 0%, transparent 40%);
-  --bg-orb-2: radial-gradient(circle at 20% 80%, rgba(37, 99, 235, 0.02) 0%, transparent 40%);
+  /* UI Gradients - Clean & Minimal */
+  --bg-mesh: #F5F7FA;
+  --bg-orb-1: transparent;
+  --bg-orb-2: transparent;
 
   --sidebar-bg: #ffffff;
-  --topbar-bg: rgba(255, 255, 255, 0.8);
-  --sidebar-item-active: rgba(37, 99, 235, 0.1);
+  --topbar-bg: rgba(255, 255, 255, 0.9);
+  --sidebar-item-active: rgba(44, 95, 138, 0.1);
   
-  --border: #e2e8f0;
+  --border: #E2E8F0;
   --border-strong: #cbd5e1;
   
-  --text: #0f172a;
-  --text-muted: #475569;
-  --text-dimmed: #64748b;
+  --text: #1E2A3E;
+  --text-muted: #5A6E7F;
+  --text-dimmed: #7c8ea1;
 
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+  --success: #2E7D32;
+  --warning: #E67E22;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.05);
 }
 
 /* Premium DARK Mode (Intelligence Theme) */

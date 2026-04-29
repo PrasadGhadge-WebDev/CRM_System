@@ -167,7 +167,7 @@ export default function Reports() {
                      <div className="performer-value success-text">₹{p.revenue?.toLocaleString()}</div>
                   </div>
                 ))}
-                {(!metrics?.topPerformers || metrics.topPerformers.length === 0) && (
+                {(!metrics?.topPerformers || metrics.topPerformers?.length === 0) && (
                    <div className="center muted italic padding20">No data available</div>
                 )}
              </div>

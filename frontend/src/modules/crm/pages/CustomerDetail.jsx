@@ -103,79 +103,170 @@ export default function CustomerDetail() {
       'badge-danger-vibrant'
 
   return (
-    <div className="crm-fullscreen-shell crm-detail-container">
-      <PageHeader
-        title="Customer Details"
-        description={customer.name}
-        backTo="/customers"
-        actions={
-          <div className="action-group">
-            <button className="btn-premium action-info" onClick={() => setIsFollowupOpen(true)}>
-              <Icon name="phone" />
-              <span>Log Follow-up</span>
+    <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
+      {/* Header Row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <Link to="/customers" className="crm-btn-premium" style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+          <span>← Back</span>
+        </Link>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="crm-btn-premium" onClick={() => setIsFollowupOpen(true)} style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+            <Icon name="phone" />
+            <span>Log Follow-up</span>
+          </button>
+          {!isReadOnly && (
+            <button className="crm-btn-premium" onClick={() => setIsDealModalOpen(true)} style={{ background: 'var(--success)', color: '#ffffff', border: 'none', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+              <Icon name="plus" />
+              <span>New Deal</span>
             </button>
-            {canModify && (
-              <Link className="btn-premium action-secondary" to={`/customers/${id}/edit`}>
-                <Icon name="edit" />
-                <span>Edit Customer</span>
-              </Link>
-            )}
-            {!isReadOnly && (
-              <button className="btn-premium action-vibrant" onClick={() => setIsDealModalOpen(true)}>
-                <Icon name="plus" />
-                <span>New Deal</span>
-              </button>
-            )}
-          </div>
-        }
-      />
-
-      <section className="crm-hero-shell">
-        <div className="crm-hero-glow crm-hero-glow-1" />
-        <div className="crm-hero-glow crm-hero-glow-2" />
-
-        <div className="crm-hero-topline">
-          <span className={`status-pill ${customer.status === 'Lost' ? 'badge-danger-vibrant' : 'badge-success-vibrant'}`}>
-            {customer.status || 'Active'}
-          </span>
-          <span className={`status-pill ${paymentStatusClass}`}>
-            Payment: {customer.payment_status || 'Pending'}
-          </span>
-          <span className="hero-meta-chip">Assigned to: {customer.assigned_to?.name || 'Unassigned'}</span>
+          )}
+          {canModify && (
+            <Link className="crm-btn-premium" to={`/customers/${id}/edit`} style={{ background: 'var(--primary)', color: '#ffffff', padding: '8px 24px', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}>
+              <Icon name="edit" />
+              <span>Edit Customer</span>
+            </Link>
+          )}
         </div>
+      </div>
 
-        <div className="crm-hero-main-row">
-          <div className="crm-hero-avatar" aria-hidden="true">
-            <Icon name="users" size={48} />
+      {/* Profile Header Card */}
+      <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '32px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Avatar */}
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--primary-soft)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 700, flexShrink: 0, boxShadow: 'inset 0 0 0 1px var(--primary-soft)' }}>
+             {(customer.name || 'C').split(' ').map(n => n[0]).join('').toUpperCase()}
           </div>
 
-          <div className="crm-hero-copy">
-            <h1 className="crm-hero-name">{customer.name}</h1>
-            <div className="crm-hero-subline">
-              <div className="crm-hero-subline-item">
-                <Icon name="mail" />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', margin: 0 }}>{customer.name}</h1>
+              <span style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', padding: '2px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border)' }}>
+                {customer.status || 'Active'}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600, marginLeft: '4px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }} />
+                <span>Active</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '20px', color: 'var(--text-dimmed)', fontSize: '0.9rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Icon name="mail" size={14} />
                 <span>{customer.email || 'No email'}</span>
               </div>
-              <div className="crm-hero-divider" />
-              <div className="crm-hero-subline-item">
-                <Icon name="phone" />
-                <span>{customer.phone || 'No phone'}</span>
-              </div>
+              {customer.phone && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Icon name="phone" size={14} />
+                  <span>{customer.phone}</span>
+                </div>
+              )}
             </div>
           </div>
+        </div>
 
-          <div className="crm-hero-side-stack">
-            <div className="crm-hero-stat-card vibrant-border">
-              <span className="crm-hero-stat-label">Total Deal Value</span>
-              <span className="crm-hero-stat-value success">
-                ₹{(customer.total_deal_value || 0).toLocaleString()}
-              </span>
-            </div>
-          </div>
+        <div style={{ height: '1px', background: 'var(--border)', margin: '24px 0' }} />
+
+        {/* Time Stats Row */}
+        <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Total Deal Value:</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--success)' }}>₹{(customer.total_deal_value || 0).toLocaleString()}</span>
+           </div>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Pending Amount:</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--danger)' }}>₹{(customer.pending_amount || 0).toLocaleString()}</span>
+           </div>
         </div>
       </section>
 
-      <div className="crm-hub-nav">
+      {/* Main Grid */}
+      <div className="crm-profile-grid-desktop" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+        
+        {/* Customer Details Card */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Customer Details</h3>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Full Name</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(customer.name)}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Company</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(customer.company_name)}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Source</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(customer.source)}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Payment Status</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: customer.payment_status === 'Paid' ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: customer.payment_status === 'Paid' ? 'var(--success)' : 'var(--danger)' }} />
+                  {customer.payment_status || 'Pending'}
+                </div>
+              </div>
+            </div>
+            {customer.address && (
+              <div style={{ marginTop: '20px' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Office Address</label>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>{stripHtml(customer.address)}</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Account Snapshot Table Card */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Customer Snapshot</h3>
+          </div>
+          <div style={{ padding: '0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🧑💼</span> Assigned To
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{customer.assigned_to?.name || 'Unassigned'}</div>
+              </div>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🔌</span> Connectivity
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)', fontWeight: 700 }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
+                  Active
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📅</span> Last Interaction
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                  {customer.last_interaction_date ? new Date(customer.last_interaction_date).toLocaleDateString() : 'Never'}
+                </div>
+              </div>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⏱️</span> Next Follow-up
+                </div>
+                <div style={{ fontWeight: 600, color: customer.next_followup_date ? 'var(--primary)' : 'var(--text)', fontSize: '0.85rem' }}>
+                   {customer.next_followup_date ? new Date(customer.next_followup_date).toLocaleDateString() : 'Not Set'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs Navigation */}
+      <div className="crm-hub-nav" style={{ marginTop: '24px' }}>
         {[
           { id: 'summary', label: 'Summary', icon: 'dashboard', roles: ['Admin', 'Manager', 'Employee', 'Accountant', 'HR'] },
           { id: 'deals', label: 'Deals', icon: 'deals', roles: ['Admin', 'Manager', 'Employee', 'Accountant'] },
@@ -187,6 +278,7 @@ export default function CustomerDetail() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`crm-hub-tab ${activeTab === tab.id ? 'active' : ''}`}
+            style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)' }}
           >
             <Icon name={tab.icon} size={14} />
             <span>{tab.label}</span>
@@ -194,274 +286,140 @@ export default function CustomerDetail() {
         ))}
       </div>
 
-      <div className="crm-detail-grid">
-        <div className="crm-detail-main">
-
-          {activeTab === 'summary' && (
-            <div className="stack gap-24">
-              <section className="crm-detail-card">
-                <div className="crm-detail-card-header">
-                  <div className="crm-detail-card-title">
-                    <Icon name="info" />
-                    <h3>Company Details</h3>
-                  </div>
-                </div>
-                <div className="crm-detail-card-body">
-                  <div className="crm-intel-grid">
-                    <div className="crm-intel-field">
-                      <label>Company Name</label>
-                      <div className="crm-intel-value">{displayValue(customer.company_name)}</div>
-                    </div>
-                    <div className="crm-intel-field">
-                      <label>Customer Status</label>
-                      <div className="crm-intel-value highlight">{displayValue(customer.status)}</div>
-                    </div>
-                    <div className="crm-intel-field">
-                      <label>Lead Source</label>
-                      <div className="crm-intel-value">{displayValue(customer.source)}</div>
-                    </div>
-                    <div className="crm-intel-field">
-                      <label>Last Follow-up</label>
-                      <div className="crm-intel-value">
-                        {customer.last_interaction_date ? new Date(customer.last_interaction_date).toLocaleDateString() : 'Never'}
-                      </div>
-                    </div>
-                    <div className="crm-intel-field full-width">
-                      <label>Office Address</label>
-                      <div className="crm-intel-value" style={{ fontSize: '0.95rem', fontWeight: 400, opacity: 0.8 }}>
-                        {stripHtml(customer.address) || 'No address added.'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="crm-detail-card">
-                <div className="crm-detail-card-header">
-                  <div className="crm-detail-card-title">
-                    <Icon name="reports" />
-                    <h3>Payment Summary</h3>
-                  </div>
-                </div>
-                <div className="crm-detail-card-body">
-                  <div className="financial-stats-row">
-                    <div className="f-stat">
-                      <div className="f-label">Total Deals</div>
-                      <div className="f-value">₹{(customer.total_deal_value || 0).toLocaleString()}</div>
-                    </div>
-                    <div className="f-stat success">
-                      <div className="f-label">Paid Amount</div>
-                      <div className="f-value">₹{(customer.paid_amount || 0).toLocaleString()}</div>
-                    </div>
-                    <div className="f-stat warning">
-                      <div className="f-label">Pending Amount</div>
-                      <div className="f-value">₹{(customer.pending_amount || 0).toLocaleString()}</div>
-                    </div>
-                  </div>
-                  <div className="progress-bar-wrap">
-                    <div className="progress-bar-label">Collection Progress</div>
-                    <div className="progress-bg">
-                      <div
-                        className="progress-fill"
-                        style={{ width: `${customer.total_deal_value > 0 ? (customer.paid_amount / customer.total_deal_value) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </section>
+      <div style={{ marginTop: '24px' }}>
+        {activeTab === 'summary' && (
+          <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Financial Performance</h3>
             </div>
-          )}
-
-          {activeTab === 'deals' && (
-            <section className="crm-detail-card">
-              <div className="crm-detail-card-header">
-                <div className="crm-detail-card-title">
-                  <Icon name="deals" />
-                  <h3>Deals List</h3>
+            <div style={{ padding: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px' }}>
+                <div style={{ background: 'var(--bg-surface)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <div style={{ color: 'var(--text-dimmed)', fontSize: '0.8rem', marginBottom: '4px' }}>Total Business</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text)' }}>₹{(customer.total_deal_value || 0).toLocaleString()}</div>
+                </div>
+                <div style={{ background: 'var(--primary-soft)', padding: '20px', borderRadius: '12px', border: '1px solid var(--primary-soft)' }}>
+                  <div style={{ color: 'var(--primary)', fontSize: '0.8rem', marginBottom: '4px' }}>Received Amount</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>₹{(customer.paid_amount || 0).toLocaleString()}</div>
+                </div>
+                <div style={{ background: 'var(--danger-soft)', padding: '20px', borderRadius: '12px', border: '1px solid var(--danger-soft)' }}>
+                  <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginBottom: '4px' }}>Pending Receivables</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--danger)' }}>₹{(customer.pending_amount || 0).toLocaleString()}</div>
                 </div>
               </div>
-              <div className="crm-detail-card-body">
-                {deals.length > 0 ? (
-                  <div className="crm-table-wrap">
-                    <table className="crm-table">
-                      <thead>
-                        <tr>
-                          <th>DEAL ID</th>
-                          <th>DEAL NAME</th>
-                          <th>VALUE</th>
-                          <th>STAGE</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {deals.map(deal => (
-                          <tr key={deal.id} className="crm-table-row">
-                            <td><span className="muted">{deal.readable_id || 'OPP-100'}</span></td>
-                            <td><Link className="link-standard" style={{ fontWeight: 700 }} to={`/deals/${deal.id}`}>{deal.name}</Link></td>
-                            <td className="font-numeric">₹{deal.value?.toLocaleString()}</td>
-                            <td><span className={`status-pill ${deal.stage === 'Won' ? 'badge-success-vibrant' : 'badge-info-vibrant'}`} style={{ fontSize: '0.65rem' }}>{deal.stage}</span></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="empty-state-mini">No deals found for this customer.</div>
-                )}
-              </div>
-            </section>
-          )}
-
-          {activeTab === 'payments' && (
-            <section className="crm-detail-card">
-              <div className="crm-detail-card-header">
-                <div className="crm-detail-card-title">
-                  <Icon name="activity" />
-                  <h3>Payment Records</h3>
-                </div>
-              </div>
-              <div className="crm-detail-card-body">
-                {payments.length > 0 ? (
-                  <div className="crm-table-wrap">
-                    <table className="crm-table">
-                      <thead>
-                        <tr>
-                          <th>BILL #</th>
-                          <th>AMOUNT</th>
-                          <th>METHOD</th>
-                          <th>DATE</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {payments.map(p => (
-                          <tr key={p.id} className="crm-table-row">
-                            <td><span className="muted">{p.payment_number}</span></td>
-                            <td className="font-numeric success-text">₹{p.amount?.toLocaleString()}</td>
-                            <td><span className="badge-info-vibrant" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>{p.payment_method}</span></td>
-                            <td>{new Date(p.payment_date).toLocaleDateString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="empty-state-mini">No payments found.</div>
-                )}
-              </div>
-            </section>
-          )}
-
-          {activeTab === 'notes' && (
-            <div className="stack gap-24">
-              <section className="discussion-input-card">
-                <form className="discussion-form" onSubmit={handleAddNote}>
-                  <textarea
-                    className="discussion-textarea"
-                    placeholder="Write a note about this customer..."
-                    value={newNote}
-                    onChange={e => setNewNote(e.target.value)}
-                    required
-                  />
-                  <div className="row justify-end padding12">
-                    <button className="btn-modern-vibrant" style={{ width: 'auto', padding: '10px 24px' }} disabled={postingNote || !newNote.trim()}>
-                      <Icon name="edit" size={14} />
-                      <span>{postingNote ? 'Saving...' : 'Save Note'}</span>
-                    </button>
-                  </div>
-                </form>
-              </section>
-
-              <div className="discussion-timeline">
-                {notes.length > 0 ? notes.map(note => (
-                  <div key={note.id} className="discussion-bubble-row">
-                    <div className="discussion-avatar" style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
-                      {(note.author_id?.name || 'U').charAt(0)}
-                    </div>
-                    <div className="discussion-bubble">
-                      <div className="discussion-bubble-header">
-                        <span className="discussion-author">{note.author_id?.name || 'Staff'}</span>
-                        <span className="discussion-time">{new Date(note.created_at).toLocaleString()}</span>
-                      </div>
-                      <div className="discussion-content">{stripHtml(note.content)}</div>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="empty-state-mini">No notes found for this customer.</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'activity' && (
-            <section className="crm-detail-card">
-              <div className="crm-detail-card-header">
-                <div className="crm-detail-card-title">
-                  <Icon name="reports" />
-                  <h3>Activity History</h3>
-                </div>
-              </div>
-              <div className="crm-detail-card-body">
-                <Timeline relatedId={id} relatedType="Customer" defaultView="table" />
-              </div>
-            </section>
-          )}
-        </div>
-
-        <aside className="crm-detail-side">
-          <section className="crm-detail-card accent-card">
-            <div className="crm-detail-card-header">
-              <div className="crm-detail-card-title">
-                <Icon name="dashboard" />
-                <h3>Quick Actions</h3>
-              </div>
-            </div>
-            <div className="crm-detail-card-body">
-              <div className="milestone-panel">
-                <div className="milestone-label">Pending Payment</div>
-                <div className="milestone-value danger-text">
-                  ₹{(customer.pending_amount || 0).toLocaleString()}
-                </div>
-              </div>
-
-              <div className="snapshot-list">
-                <div className="snapshot-row">
-                  <span className="snapshot-label">Assigned To</span>
-                  <span className="snapshot-value">{customer.assigned_to?.name || 'Unassigned'}</span>
-                </div>
-                <div className="snapshot-row">
-                  <span className="snapshot-label">Next Follow-up</span>
-                  <span className="snapshot-value">
-                    {customer.next_followup_date ? new Date(customer.next_followup_date).toLocaleDateString() : '—'}
-                  </span>
-                </div>
-              </div>
-
-              <button className="btn-modern-vibrant full-width" onClick={() => setIsFollowupOpen(true)}>
-                <Icon name="plus" />
-                <span>Set Follow-up</span>
-              </button>
             </div>
           </section>
+        )}
 
-          {customer.converted_from_lead_id && (
-            <section className="crm-detail-card">
-              <div className="crm-detail-card-header">
-                <div className="crm-detail-card-title">
-                  <Icon name="eye" />
-                  <h3>Lead History</h3>
+        {activeTab === 'deals' && (
+          <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Deals Overview</h3>
+            </div>
+            <div style={{ padding: '24px' }}>
+              {deals.length > 0 ? (
+                <div className="crm-table-wrap">
+                  <table className="crm-table">
+                    <thead>
+                      <tr>
+                        <th>DEAL ID</th>
+                        <th>NAME</th>
+                        <th>VALUE</th>
+                        <th>STAGE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deals.map(deal => (
+                        <tr key={deal.id}>
+                          <td><span style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)' }}>{deal.readable_id || 'N/A'}</span></td>
+                          <td><Link to={`/deals/${deal.id}`} style={{ fontWeight: 600, color: 'var(--primary)' }}>{deal.name}</Link></td>
+                          <td>₹{deal.value?.toLocaleString()}</td>
+                          <td><span style={{ background: 'var(--bg-surface)', color: 'var(--text)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', border: '1px solid var(--border)' }}>{deal.stage}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-              <div className="crm-detail-card-body">
-                <Link to={`/leads/${customer.converted_from_lead_id?.id || customer.converted_from_lead_id}`} className="converted-link-premium">
-                  <div className="link-icon"><Icon name="eye" size={14} /></div>
-                  <div className="link-text">
-                    <strong>View Original Lead</strong>
-                    <span>Check records before conversion</span>
+              ) : <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dimmed)' }}>No deals registered.</div>}
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'payments' && (
+          <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Payment Records</h3>
+            </div>
+            <div style={{ padding: '24px' }}>
+              {payments.length > 0 ? (
+                <div className="crm-table-wrap">
+                  <table className="crm-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>AMOUNT</th>
+                        <th>METHOD</th>
+                        <th>DATE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map(p => (
+                        <tr key={p.id}>
+                          <td><span style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)' }}>{p.payment_number}</span></td>
+                          <td><span style={{ fontWeight: 600, color: 'var(--success)' }}>₹{p.amount?.toLocaleString()}</span></td>
+                          <td>{p.payment_method}</td>
+                          <td>{new Date(p.payment_date).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dimmed)' }}>No payments recorded.</div>}
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'notes' && (
+          <div style={{ display: 'grid', gap: '24px' }}>
+            <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
+               <form onSubmit={handleAddNote}>
+                  <textarea 
+                    style={{ width: '100%', minHeight: '100px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text)', resize: 'vertical' }}
+                    placeholder="Log a strategy update or internal note..."
+                    value={newNote}
+                    onChange={e => setNewNote(e.target.value)}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                    <button className="crm-btn-premium" style={{ background: 'var(--primary)', color: '#ffffff' }} disabled={postingNote || !newNote.trim()}>
+                      {postingNote ? 'Saving...' : 'Post Note'}
+                    </button>
                   </div>
-                </Link>
-              </div>
+               </form>
             </section>
-          )}
-        </aside>
+            <div style={{ display: 'grid', gap: '16px' }}>
+              {notes.map(note => (
+                <div key={note.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--text)' }}>{note.author_id?.name || 'Staff'}</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)' }}>{new Date(note.created_at).toLocaleString()}</span>
+                  </div>
+                  <div style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>{stripHtml(note.content)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'activity' && (
+          <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Engagement Timeline</h3>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <Timeline relatedId={id} relatedType="Customer" defaultView="table" />
+            </div>
+          </section>
+        )}
       </div>
 
       <DealModal
@@ -481,6 +439,14 @@ export default function CustomerDetail() {
           loadCustomerData();
         }}
       />
+
+      <style>{`
+        @media (max-width: 900px) {
+          .crm-profile-grid-desktop {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
-  );
+  )
 }

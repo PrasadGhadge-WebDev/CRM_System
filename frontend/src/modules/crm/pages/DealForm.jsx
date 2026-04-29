@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { toast } from 'react-toastify'
 import { dealsApi } from '../../../services/deals.js'
 import { customersApi } from '../../../services/customers.js'
@@ -107,7 +108,7 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
 
   if (loading) return <div className="p-40 text-center text-dimmed">Analyzing opportunity data...</div>
 
-  return (
+  const modalContent = (
     <div className="crm-modal-portal-overlay">
       <div className="crm-modal-sheet animate-sheet-in">
         <div className="crm-modal-sheet-header">
@@ -212,10 +213,10 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
         </form>
 
         <div className="crm-modal-sheet-footer">
-          <p className="footer-hint">Financial projections are calculated in real-time.</p>
+          <p className="footer-hint">All fields are securely encrypted.</p>
           <div style={{ display: 'flex', gap: '16px' }}>
-            <button className="btn-premium secondary" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
-            <button className="btn-premium action-vibrant" disabled={saving} onClick={handleSubmit}>
+            <button className="crm-btn-premium glass" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
+            <button className="crm-btn-premium vibrant" disabled={saving} onClick={handleSubmit}>
               {saving ? 'Processing...' : isEdit ? 'Save Changes' : 'Create Deal'}
             </button>
           </div>
@@ -223,4 +224,6 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

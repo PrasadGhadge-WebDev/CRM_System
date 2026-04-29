@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { toast } from 'react-toastify'
 import { supportApi } from '../../../services/workflow.js'
 import { customersApi } from '../../../services/customers.js'
@@ -96,7 +97,7 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
 
   if (loading) return <div className="p-40 text-center text-dimmed">Loading ticket details...</div>
 
-  return (
+  const modalContent = (
     <div className="crm-modal-portal-overlay">
       <div className="crm-modal-sheet animate-sheet-in">
         <div className="crm-modal-sheet-header">
@@ -207,10 +208,10 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
         </form>
 
         <div className="crm-modal-sheet-footer">
-          <p className="footer-hint">Our support team will review this ticket within 24 hours.</p>
+          <p className="footer-hint">All fields are securely encrypted.</p>
           <div style={{ display: 'flex', gap: '16px' }}>
-            <button className="btn-premium secondary" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
-            <button className="btn-premium action-vibrant" disabled={saving} onClick={handleSubmit}>
+            <button className="crm-btn-premium glass" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
+            <button className="crm-btn-premium vibrant" disabled={saving} onClick={handleSubmit}>
               {saving ? 'Processing...' : isEdit ? 'Save Changes' : 'Create Ticket'}
             </button>
           </div>
@@ -218,4 +219,6 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

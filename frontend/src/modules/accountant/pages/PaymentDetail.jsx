@@ -26,142 +26,162 @@ export default function PaymentDetail() {
   if (!payment) return <div className="p-24 muted">Payment not found</div>
 
   return (
-    <div className="crm-fullscreen-shell">
-      <PageHeader
-        title="Payment Record"
-        backTo="/payments"
-        actions={
-          <div className="flex gap-12 align-center">
-            <button className="crm-btn-premium vibrant" onClick={() => window.print()}>
-              <Icon name="reports" />
-              <span>Print Receipt</span>
-            </button>
-          </div>
-        }
-      />
-
-      <section className="crm-hero-shell" style={{ background: 'radial-gradient(circle at top left, rgba(16, 185, 129, 0.15), transparent 40%), linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(15, 23, 42, 0.95))' }}>
-        <div className="crm-hero-glow crm-hero-glow-1" style={{ background: 'rgba(16, 185, 129, 0.2)' }} />
-        <div className="crm-hero-glow crm-hero-glow-2" style={{ background: 'rgba(5, 150, 105, 0.15)' }} />
-
-        <div className="crm-hero-topline">
-          <span className="status-pill Won">SUCCESS</span>
-          <span className="hero-meta-chip">Received on {new Date(payment.payment_date).toLocaleDateString()}</span>
+    <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
+      {/* Header Row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <Link to="/payments" className="crm-btn-premium" style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+          <span>← Back</span>
+        </Link>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="crm-btn-premium" onClick={() => window.print()} style={{ background: 'var(--success)', color: '#ffffff', border: 'none', padding: '8px 24px', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}>
+            <Icon name="reports" />
+            <span>Print Receipt</span>
+          </button>
         </div>
+      </div>
 
-        <div className="crm-hero-main-row">
-          <div className="crm-hero-avatar" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
-             <Icon name="billing" size={40} />
+      {/* Profile Header Card */}
+      <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '32px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Avatar */}
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--success-soft)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 700, flexShrink: 0, boxShadow: 'inset 0 0 0 1px var(--success-soft)' }}>
+             <Icon name="billing" size={32} />
           </div>
 
-          <div className="crm-hero-copy">
-            <h1 className="crm-hero-name">{formatCurrency(payment.amount)}</h1>
-            <div className="crm-hero-subline">
-              <div className="crm-hero-subline-item">
-                <Icon name="user" />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', margin: 0 }}>{formatCurrency(payment.amount)}</h1>
+              <span style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', padding: '2px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border)' }}>
+                Payment Received
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600, marginLeft: '4px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }} />
+                <span>Verified</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '20px', color: 'var(--text-dimmed)', fontSize: '0.9rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Icon name="user" size={14} />
                 <span>{payment.customer_id?.name || 'Unknown Client'}</span>
               </div>
-              <div className="crm-hero-divider" />
-              <div className="crm-hero-subline-item">
-                <Icon name="activity" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Icon name="activity" size={14} />
                 <span>{payment.payment_method}</span>
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="crm-hero-side-stack">
-            <div className="crm-hero-stat-card">
-              <span className="crm-hero-stat-label">Reference ID</span>
-              <span className="crm-hero-stat-value">{payment.transaction_id || 'N/A'}</span>
-            </div>
-            <div className="crm-hero-stat-card">
-              <span className="crm-hero-stat-label">Payment ID</span>
-              <span className="crm-hero-stat-value">#{payment.payment_number}</span>
-            </div>
-          </div>
+        <div style={{ height: '1px', background: 'var(--border)', margin: '24px 0' }} />
+
+        {/* Time Stats Row */}
+        <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Received On:</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)' }}>{new Date(payment.payment_date).toLocaleDateString()}</span>
+           </div>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Payment ID:</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary)' }}>#{payment.payment_number}</span>
+           </div>
         </div>
       </section>
 
-      <div className="crm-detail-grid">
-        <div className="crm-detail-main">
-          <section className="crm-detail-card">
-            <div className="crm-detail-card-header">
-              <div className="crm-detail-card-title">
-                <Icon name="billing" />
-                <h3>Transaction Details</h3>
+      {/* Main Grid */}
+      <div className="crm-profile-grid-desktop" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+        
+        {/* Payment Details Card */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Transaction Details</h3>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Paid Amount</label>
+                <div style={{ color: 'var(--success)', fontWeight: 700 }}>{formatCurrency(payment.amount)}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Method</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{payment.payment_method}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Transaction ID</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{payment.transaction_id || '—'}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Status</label>
+                <div style={{ color: 'var(--success)', fontWeight: 700 }}>Success</div>
               </div>
             </div>
-            <div className="crm-detail-card-body">
-              <div className="crm-intel-grid">
-                <div className="crm-intel-field">
-                  <label>Paid Amount</label>
-                  <div className="crm-intel-value" style={{ color: '#34d399' }}>{formatCurrency(payment.amount)}</div>
-                </div>
-                <div className="crm-intel-field">
-                  <label>Payment Method</label>
-                  <div className="crm-intel-value">{payment.payment_method}</div>
-                </div>
-                <div className="crm-intel-field">
-                  <label>Transaction Date</label>
-                  <div className="crm-intel-value">{new Date(payment.payment_date).toLocaleDateString()}</div>
-                </div>
-                <div className="crm-intel-field">
-                  <label>Reference Number</label>
-                  <div className="crm-intel-value">{payment.transaction_id || '—'}</div>
-                </div>
-                <div className="crm-intel-field full-width">
-                  <label>Internal Notes</label>
-                  <div className="crm-intel-value" style={{ fontWeight: 400 }}>
-                    {payment.notes || 'No internal notes recorded for this transaction.'}
-                  </div>
-                </div>
+            {payment.notes && (
+              <div style={{ marginTop: '20px' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Internal Notes</label>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>{payment.notes}</div>
               </div>
-            </div>
-          </section>
+            )}
+          </div>
         </div>
 
-        <aside className="crm-detail-side">
-          <section className="crm-detail-card accent-card">
-            <div className="crm-detail-card-header">
-              <div className="crm-detail-card-title">
-                <Icon name="deals" />
-                <h3>Linked Registry</h3>
+        {/* Registry Snapshot Card */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Registry Snapshot</h3>
+          </div>
+          <div style={{ padding: '0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📄</span> Linked Bill
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                   {payment.invoice_id ? (
+                      <Link to={`/invoices/${payment.invoice_id.id || payment.invoice_id}`} style={{ color: 'var(--primary)' }}>#{payment.invoice_id.invoice_number}</Link>
+                   ) : 'No Bill'}
+                </div>
+              </div>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🤝</span> Associated Deal
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                   {payment.deal_id ? (
+                      <Link to={`/deals/${payment.deal_id.id || payment.deal_id}`} style={{ color: 'var(--primary)' }}>{payment.deal_id.name}</Link>
+                   ) : 'No Deal'}
+                </div>
               </div>
             </div>
-            <div className="crm-detail-card-body">
-              {payment.invoice_id ? (
-                <Link to={`/invoices/${payment.invoice_id.id}`} className="converted-link-premium" style={{ marginBottom: '16px' }}>
-                  <div className="link-icon"><Icon name="billing" /></div>
-                  <div className="link-text">
-                    <strong>Bill #{payment.invoice_id.invoice_number}</strong>
-                    <span>View original bill details</span>
-                  </div>
-                </Link>
-              ) : (
-                <div className="center padding-24 muted italic" style={{ border: '1px dashed var(--border)', borderRadius: '12px', marginBottom: '16px' }}>No linked bill</div>
-              )}
-
-              {payment.deal_id && (
-                <Link to={`/deals/${payment.deal_id.id}`} className="converted-link-premium">
-                  <div className="link-icon"><Icon name="deals" /></div>
-                  <div className="link-text">
-                    <strong>Deal: {payment.deal_id.name}</strong>
-                    <span>View associated deal pipeline</span>
-                  </div>
-                </Link>
-              )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>👤</span> Customer
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{payment.customer_id?.name || 'N/A'}</div>
+              </div>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🛡️</span> Security
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)', fontWeight: 700 }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
+                  Encrypted
+                </div>
+              </div>
             </div>
-          </section>
-
-          <section className="crm-detail-card" style={{ background: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
-            <div className="center text-center">
-              <div className="muted text-xs uppercase font-black margin-bottom-12">Total Settled</div>
-              <div className="text-3xl font-black" style={{ color: '#10b981' }}>{formatCurrency(payment.amount)}</div>
-              <div className="text-xs font-black mt-4" style={{ color: '#10b981' }}>Verified Transaction</div>
-            </div>
-          </section>
-        </aside>
+          </div>
+        </div>
       </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .crm-profile-grid-desktop {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

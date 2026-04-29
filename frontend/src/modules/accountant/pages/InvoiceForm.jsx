@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { invoicesApi } from '../../../services/invoices'
 import { api } from '../../../services/api'
 import { toast } from 'react-toastify'
@@ -73,7 +74,7 @@ export default function InvoiceForm({ mode = 'create', onCancel, onSuccess }) {
 
   if (loading) return <div className="p-40 text-center text-dimmed">Preparing financial document...</div>
 
-  return (
+  const modalContent = (
     <div className="crm-modal-portal-overlay">
       <div className="crm-modal-sheet animate-sheet-in" style={{ maxWidth: '1100px' }}>
         <div className="crm-modal-sheet-header">
@@ -156,8 +157,9 @@ export default function InvoiceForm({ mode = 'create', onCancel, onSuccess }) {
                   </tbody>
                 </table>
               </div>
-              <button type="button" className="btn-premium secondary" onClick={addItem} style={{ padding: '10px 20px' }}>
-                <Icon name="plus" size={14} /> Add Line Item
+              <button type="button" className="crm-btn-premium glass" onClick={addItem} style={{ padding: '10px 20px' }}>
+                <Icon name="plus" size={14} /> 
+                <span>Add Line Item</span>
               </button>
             </section>
 
@@ -195,10 +197,10 @@ export default function InvoiceForm({ mode = 'create', onCancel, onSuccess }) {
         </form>
 
         <div className="crm-modal-sheet-footer">
-          <p className="footer-hint">Invoices are generated as legally-compliant PDF documents.</p>
+          <p className="footer-hint">All fields are securely encrypted.</p>
           <div style={{ display: 'flex', gap: '16px' }}>
-            <button className="btn-premium secondary" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
-            <button className="btn-premium action-vibrant" disabled={saving} onClick={handleSubmit}>
+            <button className="crm-btn-premium glass" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
+            <button className="crm-btn-premium vibrant" disabled={saving} onClick={handleSubmit}>
               {saving ? 'Processing...' : (mode === 'create' ? 'Generate Invoice' : 'Commit Changes')}
             </button>
           </div>
@@ -206,4 +208,6 @@ export default function InvoiceForm({ mode = 'create', onCancel, onSuccess }) {
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useNotifications } from '../context/NotificationContext'
 import { Icon } from '../layouts/icons.jsx'
+import { DotLottieReact } from '@lottiefiles/dotlottie-react'
+import LottieEmpty from './LottieEmpty.jsx'
+import bellData from '../assets/bell-animation.json'
 
 export default function NotificationDropdown() {
   const { 
@@ -37,8 +40,14 @@ export default function NotificationDropdown() {
 
   return (
     <div className="notificationCenter" ref={dropdownRef}>
-      <button className="iconBtn" onClick={() => setOpen(!open)}>
-        <Icon name="bell" />
+      <button className="iconBtn" onClick={() => setOpen(!open)} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px' }}>
+        <div style={{ width: '24px', height: '24px' }}>
+          <DotLottieReact
+            data={bellData}
+            loop={unreadCount > 0}
+            autoplay={unreadCount > 0}
+          />
+        </div>
         {unreadCount > 0 && <span className="badgeCount">{unreadCount}</span>}
       </button>
 
@@ -74,9 +83,10 @@ export default function NotificationDropdown() {
                 </div>
               ))
             ) : (
-              <div className="muted padding center" style={{ padding: '20px', textAlign: 'center' }}>
-                No notifications yet.
-              </div>
+              <LottieEmpty 
+                message="All caught up!" 
+                description="You have no new notifications. Check back later for updates." 
+              />
             )}
           </div>
 
@@ -96,74 +106,75 @@ export default function NotificationDropdown() {
           position: absolute;
           top: -2px;
           right: -2px;
-          background: #ef4444;
-          color: var(--text);
+          background: var(--danger);
+          color: white;
           font-size: 10px;
           padding: 2px 6px;
           border-radius: 10px;
-          border: 2px solid var(--card-bg);
+          border: 2px solid var(--bg-card);
           font-weight: bold;
         }
         .notificationDropdown {
           position: absolute;
           top: 100%;
           right: 0;
-          width: 320px;
-          background: var(--card-bg);
+          width: 340px;
+          background: var(--bg-card);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          border-radius: 16px;
+          box-shadow: var(--shadow-xl);
           z-index: 1000;
           margin-top: 12px;
           overflow: hidden;
         }
         .dropdownHeader {
-          padding: 12px 16px;
+          padding: 16px 20px;
           border-bottom: 1px solid var(--border);
           display: flex;
           justify-content: space-between;
           align-items: center;
+          background: var(--bg-surface);
         }
-        .dropdownHeader h3 { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text); }
+        .dropdownHeader h3 { margin: 0; font-size: 1rem; font-weight: 800; color: var(--text); }
         .notificationList {
-          max-height: 380px;
+          max-height: 400px;
           overflow-y: auto;
         }
         .notificationItem {
-          padding: 12px 16px;
+          padding: 16px 20px;
           display: flex;
-          gap: 12px;
+          gap: 16px;
           cursor: pointer;
           border-bottom: 1px solid var(--border);
           transition: all 0.2s;
         }
-        .notificationItem:hover { background: rgba(55, 125, 255, 0.05); }
-        .notificationItem.unread { background: rgba(55, 125, 255, 0.1); border-left: 3px solid #2563eb; }
+        .notificationItem:hover { background: var(--bg-hover); }
+        .notificationItem.unread { background: color-mix(in srgb, var(--primary) 5%, transparent); border-left: 3px solid var(--primary); }
         .notificationIcon {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          background: var(--border);
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          background: var(--bg-surface);
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          color: #64748b;
+          color: var(--text-dimmed);
         }
-        .notificationItem.unread .notificationIcon { background: #2563eb; color: var(--text); }
-        .notificationTitle { font-weight: 700; font-size: 0.875rem; color: var(--text); }
-        .notificationMessage { font-size: 0.825rem; margin-top: 2px; color: var(--text-muted); }
-        .notificationTime { font-size: 0.7rem; margin-top: 6px; color: #94a3b8; }
-        .dropdownFooter { padding: 8px; background: rgba(0,0,0,0.05); }
+        .notificationItem.unread .notificationIcon { background: var(--primary); color: white; }
+        .notificationTitle { font-weight: 800; font-size: 0.9rem; color: var(--text); }
+        .notificationMessage { font-size: 0.85rem; margin-top: 4px; color: var(--text-muted); line-height: 1.4; }
+        .notificationTime { font-size: 0.75rem; margin-top: 8px; color: var(--text-dimmed); }
+        .dropdownFooter { padding: 12px; border-top: 1px solid var(--border); }
         .linkBtn {
           background: none;
           border: none;
-          color: #2563eb;
+          color: var(--primary);
           cursor: pointer;
-          font-size: 0.8rem;
-          font-weight: 600;
+          font-size: 0.85rem;
+          font-weight: 700;
         }
-        .linkBtn:hover { text-decoration: underline; }
+        .linkBtn:hover { color: var(--primary-hover); text-decoration: underline; }
       `}</style>
     </div>
   )

@@ -13,10 +13,11 @@
 /* Override components to use intelligence styling within CRM context */
 .crmContent :is(.card, .crmPanel, .card-premium, .info-card-premium, .preview-card-premium, .detail-card, .lead-hero-shell, .note, .alert, .tableWrap, .glass-panel, .intel-form-card, .intel-card) {
   background: var(--bg-intelligence) !important;
-  border: 1px solid var(--border-strong) !important;
-  box-shadow: var(--shadow-xl) !important;
-  backdrop-filter: blur(16px) !important;
-  border-radius: 24px !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-md) !important;
+  backdrop-filter: none !important;
+  border-radius: 16px !important;
+  padding: 20px !important;
 }
 
 /* Glass Panels with subtle gradients depending on theme */
@@ -27,14 +28,22 @@
 /* Buttons consistency */
 .crmContent :is(.btn, .btn-premium, .btn-premium-large) {
   border: 1px solid var(--border) !important;
+  padding: 10px 20px !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .crmContent :is(.btn.primary, .btn-premium.primary, .btn-premium-large.primary, .action-vibrant) {
-  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 80%, black 20%)) !important;
+  background: var(--primary) !important;
   color: white !important;
   border-color: var(--primary) !important;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 25%, transparent) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 20%, transparent) !important;
+}
+
+.crmContent :is(.btn.primary, .btn-premium.primary, .btn-premium-large.primary, .action-vibrant):hover {
+  background: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
 }
 
 .crmContent :is(.btn.secondary, .btn-premium.secondary, .btn-premium-large.secondary, .action-secondary) {
@@ -74,12 +83,26 @@
   background: var(--bg-hover) !important;
 }
 
-/* Status Pills */
-.crmContent .status-pill-modern {
+/* Status Pills & Badges */
+.crmContent :is(.status-pill-modern, .status-badge) {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   background: color-mix(in srgb, var(--pill-color, var(--primary)) 12%, transparent);
   color: var(--pill-color, var(--primary));
   border: 1px solid color-mix(in srgb, var(--pill-color, var(--primary)) 25%, transparent);
 }
+
+.badge-new { --pill-color: var(--primary); }
+.badge-info, .badge-contacted, .badge-pending { --pill-color: var(--warning); }
+.badge-success, .badge-qualified, .badge-closed { --pill-color: var(--success); }
+.badge-danger, .badge-lost, .badge-overdue { --pill-color: var(--danger); }
+.badge-muted { --pill-color: var(--text-dimmed); }
 
 /* Title Gradient - Responds slightly to theme */
 .crmContent .userFormTitle,
@@ -92,9 +115,43 @@
 
 /* Standardized shell */
 .leadsFullscreenShell {
-  padding: 32px;
+  padding: 24px;
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
+}
+
+/* Global Text Utilities for Dark Mode Consistency */
+.muted, .text-muted {
+  color: var(--text-muted) !important;
+}
+
+.text-dimmed {
+  color: var(--text-dimmed) !important;
+}
+
+.text-dimmed-more {
+  color: color-mix(in srgb, var(--text-dimmed) 70%, transparent) !important;
+}
+
+.text-white {
+  color: #ffffff !important;
+}
+
+.text-black {
+  color: #000000 !important;
+}
+
+/* Responsive Grid Helper */
+.crm-profile-grid-desktop {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .crm-profile-grid-desktop {
+    grid-template-columns: 1fr !important;
+  }
 }

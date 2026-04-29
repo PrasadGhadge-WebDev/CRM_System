@@ -65,7 +65,7 @@ export default function LeadsList() {
           (Array.isArray(res) ? res : []).map((s) => ({ value: s.name, label: s.name, color: s.color })),
         ),
       )
-      .catch(() => {})
+      .catch(() => { })
 
     usersApi
       .list({ limit: 'all' })
@@ -73,7 +73,7 @@ export default function LeadsList() {
         const list = res?.items || []
         setEmployees(list.filter((u) => (u?.role || '').toLowerCase() === 'employee'))
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   const desiredParams = useMemo(() => {
@@ -197,14 +197,14 @@ export default function LeadsList() {
       <section className="crm-fullscreen-shell">
         <PageHeader
           title="Leads"
-          description="Capture, qualify, and track potential customer engagements throughout the sales lifecycle."
+
           backTo="/"
           actions={
             <div className="crm-flex-end crm-gap-12">
               {isAdmin && selectedLeads.length > 0 && (
                 <button className="btn-premium action-secondary text-danger" onClick={onBulkDelete}>
                   <Icon name="trash" size={16} />
-                  <span>Purge ({selectedLeads.length})</span>
+                  <span>Delete ({selectedLeads.length})</span>
                 </button>
               )}
               <button className="btn-premium action-vibrant" onClick={() => navigate('/leads/new')}>
@@ -215,14 +215,15 @@ export default function LeadsList() {
           }
         />
 
-        <div className="crm-filter-panel">
+        <div className="crm-filter-panel modern-filter-panel">
           <div className="crm-filter-cell">
-            <label className="crm-filter-label">Search Context</label>
+            <label className="crm-filter-label">Search</label>
             <div className="crm-search-input-wrap">
               <Icon name="search" className="search-icon" />
               <input
                 type="text"
                 placeholder="Name, Phone, Email..."
+                className="crm-input"
                 value={q}
                 onChange={(e) => {
                   setQ(e.target.value)
@@ -232,7 +233,7 @@ export default function LeadsList() {
             </div>
           </div>
           <div className="crm-filter-cell">
-            <label className="crm-filter-label">Pipeline Stage</label>
+            <label className="crm-filter-label">Status</label>
             <select
               className="crm-input"
               value={status}
@@ -251,7 +252,7 @@ export default function LeadsList() {
           </div>
           {!isEmployee && (
             <div className="crm-filter-cell">
-              <label className="crm-filter-label">Owner</label>
+              <label className="crm-filter-label">Assigned To</label>
               <select
                 className="crm-input"
                 value={assignedTo}
@@ -270,7 +271,7 @@ export default function LeadsList() {
             </div>
           )}
           <div className="crm-filter-cell">
-            <label className="crm-filter-label">Next Engagement</label>
+            <label className="crm-filter-label">Next Follow-up</label>
             <input
               className="crm-input"
               type="date"
@@ -288,14 +289,14 @@ export default function LeadsList() {
         {loading ? (
           <div className="leadsLoadingState">
             <div className="spinner-medium" />
-            <span className="muted">Synchronizing opportunity data...</span>
+            <span className="muted">Loading leads...</span>
           </div>
         ) : (
           <>
-            <div className="crm-table-wrap shadow-soft">
+            <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <div className="crm-table-scroll">
                 <table className="crm-table">
-                  <thead>
+                  <thead style={{ background: 'var(--bg-surface)' }}>
                     <tr>
                       {isAdminOrManager ? (
                         <th style={{ width: '50px' }}>
@@ -309,16 +310,15 @@ export default function LeadsList() {
                           />
                         </th>
                       ) : null}
-                      <th style={{ width: '70px' }}>PROFILE</th>
-                      <th style={{ minWidth: '220px' }}>PROSPECT IDENTITY</th>
+                      <th style={{ minWidth: '220px' }}>NAME</th>
                       <th style={{ minWidth: '180px' }} className="tablet-hide">
                         CONTACT INFO
                       </th>
-                      <th style={{ minWidth: '160px' }}>PIPELINE STATUS</th>
+                      <th style={{ width: '130px' }}>STATUS</th>
                       <th style={{ minWidth: '170px' }} className="tablet-hide">
-                        OWNERSHIP
+                        ASSIGNED TO
                       </th>
-                      <th style={{ minWidth: '180px' }}>FOLLOW-UP</th>
+                      <th style={{ minWidth: '180px' }}>NEXT FOLLOW-UP</th>
                       <th className="text-right" style={{ width: '130px' }}>
                         ACTIONS
                       </th>
@@ -330,7 +330,7 @@ export default function LeadsList() {
                         const id = lead.id || lead._id
                         const isSelected = selectedLeads.includes(String(id))
                         const nextDate = lead.nextFollowupDate ? new Date(lead.nextFollowupDate) : null
-                        const isOverdue = nextDate && nextDate < new Date().setHours(0,0,0,0)
+                        const isOverdue = nextDate && nextDate < new Date().setHours(0, 0, 0, 0)
 
                         return (
                           <tr
@@ -347,15 +347,11 @@ export default function LeadsList() {
                                 />
                               </td>
                             ) : null}
-                            <td className="mobile-hide">
-                              <div className="tableAvatarFallback">
-                                {(lead.name || 'L').charAt(0).toUpperCase()}
-                              </div>
-                            </td>
+
                             <td>
                               <div className="leadsIdentityCell">
                                 <div className="leadsPrimaryText">{lead.name || '—'}</div>
-                                <div className="leadsSecondaryText">{lead.company_name || 'Individual Prospect'}</div>
+                                <div className="leadsSecondaryText">{lead.company_name || 'Personal'}</div>
                               </div>
                             </td>
                             <td className="tablet-hide">
@@ -365,7 +361,8 @@ export default function LeadsList() {
                               </div>
                             </td>
                             <td>
-                              <span className={`crm-status-pill blue`}>
+                              <span className="crm-status-pill-modern">
+                                <div className="status-dot" />
                                 {lead.status || 'NEW'}
                               </span>
                             </td>
@@ -378,7 +375,7 @@ export default function LeadsList() {
                             <td>
                               <div className={`leadsFollowupCell ${isOverdue ? 'is-overdue' : ''}`}>
                                 <span className="followupDate">
-                                  {nextDate ? nextDate.toLocaleDateString() : 'None Scheduled'}
+                                  {nextDate ? nextDate.toLocaleDateString() : 'None'}
                                 </span>
                                 {nextDate && (
                                   <span className="followupTime">
@@ -390,14 +387,14 @@ export default function LeadsList() {
                             <td className="text-right" onClick={stopRowNavigation}>
                               <div className="crm-action-group">
                                 <button
-                                  className="crm-action-btn"
+                                  className="modern-action-btn"
                                   onClick={() => openFollowup(lead)}
                                   title="Record Activity"
                                 >
                                   <Icon name="bell" size={14} />
                                 </button>
                                 <button
-                                  className="crm-action-btn"
+                                  className="modern-action-btn"
                                   onClick={() => navigate(`/leads/${id}/edit`)}
                                   title="Edit Lead"
                                 >
@@ -405,9 +402,9 @@ export default function LeadsList() {
                                 </button>
                                 {isAdmin ? (
                                   <button
-                                    className="crm-action-btn danger"
+                                    className="modern-action-btn danger"
                                     onClick={() => onDelete(id)}
-                                    title="Purge Lead"
+                                    title="Delete Lead"
                                   >
                                     <Icon name="trash" size={14} />
                                   </button>
@@ -421,8 +418,8 @@ export default function LeadsList() {
                       <tr>
                         <td colSpan={isAdminOrManager ? 8 : 7}>
                           <div className="emptyState" style={{ padding: '80px 0' }}>
-                            <h3>No leads captured</h3>
-                            <p className="muted">Refine your search or capture a new potential opportunity.</p>
+                            <h3>No leads found</h3>
+                            <p className="muted">Try a different search or add a new lead.</p>
                           </div>
                         </td>
                       </tr>
@@ -457,29 +454,57 @@ export default function LeadsList() {
       />
 
       <style>{`
-        .tableAvatarFallback { width: 44px; height: 44px; border-radius: 12px; background: rgba(59, 130, 246, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; }
+        .tableAvatarFallback { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, var(--primary-soft), rgba(59, 130, 246, 0.2)); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.1); }
         .leadsIdentityCell { display: flex; flex-direction: column; gap: 2px; }
-        .leadsPrimaryText { color: var(--text); font-size: 1rem; font-weight: 700; }
+        .leadsPrimaryText { color: var(--text); font-size: 0.95rem; font-weight: 700; }
         .leadsSecondaryText { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
         
         .leadsContactCell { display: flex; flex-direction: column; gap: 2px; }
-        .contactMain { color: var(--text); font-size: 0.9rem; font-weight: 700; }
-        .contactSub { color: var(--text-muted); font-size: 0.8rem; font-weight: 500; }
+        .contactMain { color: var(--text); font-size: 0.85rem; font-weight: 700; }
+        .contactSub { color: var(--text-muted); font-size: 0.75rem; font-weight: 500; }
 
         .leadsOwnerCell { display: flex; flex-direction: column; gap: 2px; }
-        .ownerName { color: var(--text); font-size: 0.9rem; font-weight: 700; }
+        .ownerName { color: var(--text); font-size: 0.85rem; font-weight: 700; }
         .ownerRole { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
 
         .leadsFollowupCell { display: flex; flex-direction: column; gap: 2px; }
         .leadsFollowupCell.is-overdue .followupDate { color: var(--danger); font-weight: 800; }
-        .followupDate { color: var(--text); font-size: 0.9rem; font-weight: 700; }
-        .followupTime { color: var(--text-dimmed); font-size: 0.75rem; }
+        .followupDate { color: var(--text); font-size: 0.85rem; font-weight: 700; }
+        .followupTime { color: var(--text-dimmed); font-size: 0.7rem; }
 
-        .crm-action-group { display: flex; gap: 8px; justify-content: flex-end; }
-        .crm-action-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-        .crm-action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px var(--primary-soft); }
-        .crm-action-btn.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
-        .crm-action-btn svg { width: 16px; height: 16px; }
+        .crm-clickable-row { cursor: pointer; transition: all 0.2s; }
+        .crm-clickable-row:hover { background: var(--bg-surface) !important; }
+        
+        .crm-action-group { display: flex; gap: 10px; justify-content: flex-end; }
+        .modern-action-btn { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .modern-action-btn:hover { background: var(--bg-card); color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px var(--primary-soft); }
+        .modern-action-btn.danger:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15); }
+
+        /* Glass Filter Effect */
+        .modern-filter-panel { 
+           background: var(--bg-card); 
+           backdrop-filter: blur(10px); 
+           border: 1px solid var(--border); 
+           border-radius: 24px; 
+           padding: 24px;
+           margin-bottom: 24px;
+        }
+
+        .crm-status-pill-modern {
+           padding: 6px 14px;
+           border-radius: 10px;
+           font-size: 0.7rem;
+           font-weight: 700;
+           text-transform: uppercase;
+           letter-spacing: 0.05em;
+           display: inline-flex;
+           align-items: center;
+           gap: 6px;
+           background: var(--primary-soft); 
+           color: var(--primary); 
+           border: 1px solid var(--primary-soft);
+        }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 8px var(--primary); }
       `}</style>
     </div>
   )

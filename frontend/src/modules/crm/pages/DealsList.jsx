@@ -40,7 +40,7 @@ export default function DealsList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [employees, setEmployees] = useState([])
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedDeal, setSelectedDeal] = useState(null)
 
@@ -63,7 +63,7 @@ export default function DealsList() {
     if (filters.assigned_to) next.set('assigned_to', filters.assigned_to)
     if (filters.page > 1) next.set('page', String(filters.page))
     if (viewMode !== 'list') next.set('view', viewMode)
-    
+
     // Preserve modal state in URL
     const addDeal = searchParams.get('addDeal')
     const editDeal = searchParams.get('editDeal')
@@ -170,30 +170,85 @@ export default function DealsList() {
     <div className="stack">
       <section className="crm-fullscreen-shell">
         <PageHeader
-          title={isAccountant ? 'Money Oversight' : isEmployee ? 'My Sales' : 'Sales Pipeline'}
-          description={isAccountant ? 'Track won deals and payments.' : 'Manage sales deals from start to finish.'}
-          backTo="/"
+          title="Sales Pipeline"
+          description="Manage and track your deals"
           actions={
-            <div className="crm-flex-end crm-gap-12">
-              <div className="crm-view-switcher">
-                <button className={`crm-view-btn ${viewMode === 'board' ? 'active' : ''}`} onClick={() => setViewMode('board')}>
-                  <Icon name="deals" size={18} />
-                  <span>Kanban</span>
+            <div className="crm-flex-end" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              {/* Back Button - Gray Outline */}
+              <button 
+                onClick={() => navigate(-1)}
+                className="btn-premium" 
+                style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '8px 16px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+              >
+                <Icon name="arrowLeft" size={14} style={{ marginRight: '6px' }} />
+                <span>Back</span>
+              </button>
+
+              {/* View Switcher - Blue Outline/Active */}
+              <div style={{ display: 'flex', border: '1px solid var(--primary)', borderRadius: '10px', overflow: 'hidden', height: '38px' }}>
+                <button 
+                  onClick={() => setViewMode('board')}
+                  style={{ 
+                    border: 'none', 
+                    padding: '0 16px', 
+                    fontSize: '0.8rem', 
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: viewMode === 'board' ? 'var(--primary)' : 'transparent',
+                    color: viewMode === 'board' ? '#ffffff' : 'var(--primary)',
+                    transition: '0.2s'
+                  }}
+                >
+                  Kanban
                 </button>
-                <button className={`crm-view-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>
-                  <Icon name="list" size={18} />
-                  <span>Registry</span>
+                <button 
+                  onClick={() => setViewMode('list')}
+                  style={{ 
+                    border: 'none', 
+                    padding: '0 16px', 
+                    fontSize: '0.8rem', 
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: viewMode === 'list' ? 'var(--primary)' : 'transparent',
+                    color: viewMode === 'list' ? '#ffffff' : 'var(--primary)',
+                    transition: '0.2s',
+                    borderLeft: '1px solid var(--primary)'
+                  }}
+                >
+                  Registry
                 </button>
               </div>
+
+              {/* Create Deal - Blue Solid with + */}
               {canCreate && (
-                <button className="btn-premium action-vibrant" onClick={handleOpenCreateModal}>
-                  <Icon name="plus" />
+                <button 
+                  className="btn-premium" 
+                  onClick={handleOpenCreateModal}
+                  style={{ background: 'var(--primary)', color: '#ffffff', border: 'none', padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', boxShadow: 'var(--shadow-sm)', cursor: 'pointer' }}
+                >
+                  <Icon name="plus" size={16} />
                   <span>Create Deal</span>
                 </button>
               )}
             </div>
           }
         />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+          <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ color: 'var(--text-dimmed)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Total Deals</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--text)' }}>{total}</div>
+          </div>
+          <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ color: 'var(--text-dimmed)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Won Deals</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--success)' }}>{items.filter(d => d.stage === 'Won').length}</div>
+          </div>
+          <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ color: 'var(--text-dimmed)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Total Value</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--primary)' }}>
+              ₹{items.reduce((sum, d) => sum + (Number(d.value) || 0), 0).toLocaleString()}
+            </div>
+          </div>
+        </div>
 
         <div className="crm-filter-panel" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
           <div className="crm-filter-cell">
@@ -204,6 +259,7 @@ export default function DealsList() {
                 type="text"
                 placeholder="Name, Client, Owner..."
                 value={filters.q}
+                className="crm-input"
                 onChange={(e) => handleFilterChange({ q: e.target.value })}
               />
             </div>
@@ -227,7 +283,7 @@ export default function DealsList() {
 
           <div className="crm-filter-cell">
             <label className="crm-filter-label" style={{ visibility: 'hidden' }}>Reset</label>
-            <button className="crm-action-btn" onClick={handleReset} style={{ width: 'auto', padding: '0 16px', height: '48px', gap: '8px' }}>
+            <button className="crm-action-btn" onClick={handleReset} style={{ width: 'auto', padding: '0 16px', height: '48px', gap: '8px', background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
               <Icon name="trash" size={14} />
               <span>Clear</span>
             </button>
@@ -237,33 +293,35 @@ export default function DealsList() {
         {viewMode === 'board' ? (
           <DealsKanban deals={items} loading={loading} onStatusChange={onUpdateStage} />
         ) : (
-          <div className="crm-table-wrap shadow-soft">
+          <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             <div className="crm-table-scroll">
               <table className="crm-table">
                 <thead>
                   <tr>
-                    <th className="text-left">DEAL NAME</th>
-                    <th className="text-left">CUSTOMER</th>
-                    <th className="text-center">AMOUNT</th>
-                    <th className="text-center">STAGE</th>
-                    <th className="text-left">OWNER</th>
-                    <th className="text-right">ACTIONS</th>
+                    <th className="text-left" style={{ position: 'sticky', top: 0, background: 'var(--bg-surface)', zIndex: 10, color: 'var(--text-dimmed)' }}>DEAL NAME</th>
+                    <th className="text-left" style={{ position: 'sticky', top: 0, background: 'var(--bg-surface)', zIndex: 10, color: 'var(--text-dimmed)' }}>CUSTOMER</th>
+                    <th className="text-right" style={{ position: 'sticky', top: 0, background: 'var(--bg-surface)', zIndex: 10, color: 'var(--text-dimmed)' }}>AMOUNT</th>
+                    <th className="text-center" style={{ position: 'sticky', top: 0, background: 'var(--bg-surface)', zIndex: 10, color: 'var(--text-dimmed)' }}>STAGE</th>
+                    <th className="text-left" style={{ position: 'sticky', top: 0, background: 'var(--bg-surface)', zIndex: 10, color: 'var(--text-dimmed)' }}>OWNER</th>
+                    <th className="text-right" style={{ position: 'sticky', top: 0, background: 'var(--bg-surface)', zIndex: 10, color: 'var(--text-dimmed)' }}>ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id} className="crm-table-row" onClick={() => navigate(`/deals/${item.id}`)}>
+                    <tr key={item.id} className="crm-table-row zebra-row" onClick={() => navigate(`/deals/${item.id}`)}>
                       <td className="text-left font-bold" style={{ color: 'var(--text)' }}>{item.name}</td>
-                      <td className="text-left">{item.customer_id?.name || '—'}</td>
-                      <td className="text-center" style={{ fontWeight: 800, color: 'var(--text)' }}>₹{item.value?.toLocaleString()}</td>
+                      <td className="text-left" style={{ color: 'var(--text-muted)' }}>{item.customer_id?.name || '—'}</td>
+                      <td className="text-right" style={{ fontWeight: 800, color: 'var(--text)' }}>₹{item.value?.toLocaleString()}</td>
                       <td className="text-center" onClick={stopRowNavigation}>
-                        {isAccountant ? (
-                          <span className={`crm-status-pill ${item.stage === 'Won' ? 'success' : item.stage === 'Lost' ? 'danger' : 'info'}`}>{item.stage}</span>
+                        {item.stage === 'Won' ? (
+                          <span style={{ background: 'var(--success-soft)', color: 'var(--success)', padding: '4px 12px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', border: '1px solid var(--success-soft)' }}>
+                            Won
+                          </span>
                         ) : (
-                          <select 
-                            className="crm-input" 
-                            style={{ minWidth: '130px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }} 
-                            value={item.stage} 
+                          <select
+                            className="crm-input"
+                            style={{ minWidth: '130px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', borderRadius: '8px' }}
+                            value={item.stage}
                             onChange={(e) => onUpdateStage(item.id, e.target.value)}
                           >
                             {STAGE_OPTIONS.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
@@ -271,14 +329,18 @@ export default function DealsList() {
                         )}
                       </td>
                       <td className="text-left">
-                        <div className="crm-user-mention">
-                          <div className="crm-user-dot" />
-                          <span>{item.assigned_to?.name || 'Unassigned'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-surface)', color: 'var(--text-dimmed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--border)' }}>
+                            {(item.assigned_to?.name || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <span style={{ fontSize: '0.9rem', color: 'var(--text)', fontWeight: 500 }}>{item.assigned_to?.name || 'Unassigned'}</span>
                         </div>
                       </td>
                       <td className="text-right" onClick={stopRowNavigation}>
                         <div className="crm-action-group">
-                          <button className="crm-action-btn" onClick={() => handleOpenEditModal(item)} title="Edit Deal"><Icon name="edit" /></button>
+                          <button className="crm-action-btn" onClick={() => handleOpenEditModal(item)} title="More Options" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                            <Icon name="more" size={18} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -294,7 +356,7 @@ export default function DealsList() {
         )}
       </section>
 
-      <DealModal 
+      <DealModal
         isOpen={isModalOpen}
         deal={selectedDeal}
         onClose={() => {
@@ -313,9 +375,13 @@ export default function DealsList() {
       />
 
       <style>{`
-        .crm-view-switcher { display: flex; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 12px; border: 1px solid var(--border); }
+        .crm-view-switcher { display: flex; background: var(--bg-surface); padding: 4px; border-radius: 12px; border: 1px solid var(--border); }
         .crm-view-btn { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border: none; background: none; color: var(--text-dimmed); font-size: 0.8rem; font-weight: 800; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
         .crm-view-btn.active { background: var(--primary); color: white; }
+        
+        .zebra-row:nth-child(even) { background-color: var(--bg-surface); }
+        .zebra-row:hover { background-color: var(--bg-hover) !important; cursor: pointer; }
+        .crm-table thead th { position: sticky; top: 0; z-index: 10; background: var(--bg-surface); border-bottom: 2px solid var(--border); }
       `}</style>
     </div>
   )

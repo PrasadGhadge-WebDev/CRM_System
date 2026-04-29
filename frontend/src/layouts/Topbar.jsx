@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom"
 import { hasRequiredRole, NAV_ACCESS } from "../utils/accessControl"
 import NotificationDropdown from "../components/NotificationDropdown.jsx"
 import GlobalSearch from "../components/GlobalSearch.jsx"
+import { DotLottieReact } from "@lottiefiles/dotlottie-react"
+import menuData from "../assets/menu-animation.json"
 
 export default function Topbar({
   title,
@@ -39,8 +41,14 @@ export default function Topbar({
 
       {/* LEFT */}
       <div className="topbarLeft">
-        <button className="iconBtn sidebarToggle" onClick={onToggleSidebar}>
-          <Icon name="menu" />
+        <button className="iconBtn sidebarToggle" onClick={onToggleSidebar} style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '24px', height: '24px' }}>
+            <DotLottieReact
+              data={menuData}
+              segment={sidebarOpen ? [0, 30] : [30, 0]}
+              autoplay
+            />
+          </div>
         </button>
         <img src="/CRM_Logo.png" alt="CRM Logo" style={{ width: '32px', height: '32px', marginRight: '10px', objectFit: 'contain' }} />
         <h2 className="topbarTitle">{title}</h2>

@@ -6,13 +6,16 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(10, 15, 25, 0.75);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  z-index: 99999;
+  background: #f8fafc; /* Clean light background */
+  z-index: 1000000; /* Extremely high to cover everything including headers */
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden; /* Prevent background scrolling */
+}
+
+[data-theme='dark'] .crm-modal-portal-overlay {
+  background: #0f172a; /* Clean dark background */
 }
 
 .crm-modal-sheet {

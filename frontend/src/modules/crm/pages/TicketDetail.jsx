@@ -130,199 +130,233 @@ export default function TicketDetail() {
   const canReply = ticket.status !== 'closed'
 
   return (
-    <div className="crm-fullscreen-shell">
-      <PageHeader 
-        title={`#${ticket.ticket_id}: ${ticket.subject}`} 
-        backTo="/tickets"
-        actions={
-          <div className="flex gap-12">
-            {canManage && (
-              <button onClick={() => updateStatus(ticket.status === 'closed' ? 'open' : 'closed')} className={`crm-btn-premium ${ticket.status === 'closed' ? 'vibrant' : 'danger'}`}>
-                <Icon name={ticket.status === 'closed' ? 'activity' : 'check'} />
-                <span>{ticket.status === 'closed' ? 'Reopen Ticket' : 'Close Ticket'}</span>
-              </button>
-            )}
-            {!ticket.is_escalated && (isAdmin || isEmployee) && (
-              <button onClick={handleEscalate} className="crm-btn-premium vibrant" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }} disabled={escalating}>
-                <Icon name="bell" />
-                <span>{escalating ? 'Escalating...' : 'Escalate'}</span>
-              </button>
-            )}
+    <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
+      {/* Header Row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <Link to="/tickets" className="crm-btn-premium" style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+          <span>← Back</span>
+        </Link>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {canManage && (
+            <button onClick={() => updateStatus(ticket.status === 'closed' ? 'open' : 'closed')} className="crm-btn-premium" style={{ background: ticket.status === 'closed' ? 'var(--success)' : 'var(--danger)', color: '#ffffff', border: 'none', padding: '8px 16px', borderRadius: '8px' }}>
+              <Icon name={ticket.status === 'closed' ? 'activity' : 'check'} />
+              <span>{ticket.status === 'closed' ? 'Reopen Ticket' : 'Close Ticket'}</span>
+            </button>
+          )}
+          {!ticket.is_escalated && (isAdmin || isEmployee) && (
+            <button onClick={handleEscalate} className="crm-btn-premium" style={{ background: '#f59e0b', color: '#ffffff', border: 'none', padding: '8px 24px', borderRadius: '8px' }} disabled={escalating}>
+              <Icon name="bell" />
+              <span>{escalating ? 'Escalating...' : 'Escalate'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Profile Header Card */}
+      <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '32px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Avatar */}
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--primary-soft)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 700, flexShrink: 0, boxShadow: 'inset 0 0 0 1px var(--primary-soft)' }}>
+             {(ticket.subject || 'T').charAt(0).toUpperCase()}
           </div>
-        }
-      />
 
-      <div className="crm-detail-grid" style={{ marginTop: '32px', height: 'calc(100vh - 250px)' }}>
-        {/* Main Conversation Column */}
-        <div className="crm-detail-main" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <div className="crm-detail-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: 0, overflow: 'hidden' }}>
-            <div className="chat-header" style={{ padding: '24px', borderBottom: '1px solid var(--border-subtle)' }}>
-              <div className="flex align-center gap-12 margin-bottom-12">
-                <span className={`status-pill ${ticket.status}`}>{ticket.status}</span>
-                <span className="hero-meta-chip">{ticket.priority} Priority</span>
-                <span className="muted" style={{ marginLeft: 'auto', fontSize: '0.8rem' }}>Opened on {new Date(ticket.created_at).toLocaleDateString()}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', margin: 0 }}>{ticket.subject}</h1>
+              <span style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', padding: '2px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border)' }}>
+                {ticket.status.toUpperCase()}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: ticket.priority === 'urgent' ? 'var(--danger)' : '#f59e0b', fontWeight: 600, marginLeft: '4px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: ticket.priority === 'urgent' ? 'var(--danger)' : '#f59e0b' }} />
+                <span>{ticket.priority.toUpperCase()} PRIORITY</span>
               </div>
-              <h2 className="crm-hero-name" style={{ fontSize: '1.6rem', margin: 0 }}>{ticket.subject}</h2>
             </div>
 
-            <div className="messages-scroll" style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', background: 'rgba(0,0,0,0.1)' }}>
-               <div className="message-node system-node">
-                  <div className="message-content">
-                     <div className="message-label">Problem Intelligence</div>
-                     <div className="message-text">{ticket.description}</div>
-                     <div className="message-time">{new Date(ticket.created_at).toLocaleString()}</div>
-                  </div>
-               </div>
-
-               {ticket.messages?.map((msg, idx) => (
-                 <div key={idx} className={`message-node ${String(msg.sender_id?._id || msg.sender_id) === String(user.id) ? 'self-node' : 'other-node'}`}>
-                    <div className="message-content">
-                      <div className="message-author">
-                        {msg.sender_name} <span className="author-role">({msg.sender_role})</span>
-                      </div>
-                      <div className="message-text">{msg.text}</div>
-                      <div className="message-time">{new Date(msg.created_at).toLocaleString()}</div>
-                    </div>
-                 </div>
-               ))}
-               <div ref={chatEndRef} />
-            </div>
-
-            {canReply && (
-              <form className="chat-footer" onSubmit={handleReply} style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: '16px' }}>
-                <textarea 
-                  className="crm-input"
-                  style={{ flex: 1, minHeight: '80px', maxHeight: '200px', resize: 'none' }}
-                  placeholder="Type your response intelligence..." 
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleReply(e); } }}
-                />
-                <button className="crm-btn-premium vibrant" disabled={sendingReply || !replyText.trim()} style={{ height: 'auto', padding: '0 32px' }}>
-                  <Icon name="activity" />
-                  <span>{sendingReply ? '...' : 'Send'}</span>
-                </button>
-              </form>
-            )}
-            {ticket.status === 'closed' && (
-              <div className="center padding-32 muted" style={{ background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-subtle)' }}>
-                 <Icon name="check" size={20} style={{ color: 'var(--primary)', marginBottom: '8px' }} />
-                 <div style={{ fontWeight: 800 }}>Resolution Synchronized</div>
-                 <div style={{ fontSize: '0.85rem' }}>This communication node is locked. No further inputs are permitted.</div>
+            <div style={{ display: 'flex', gap: '20px', color: 'var(--text-dimmed)', fontSize: '0.9rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Icon name="user" size={14} />
+                <span>{ticket.customer_id?.name || ticket.user_customer_id?.name || 'Unknown Client'}</span>
               </div>
-            )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Icon name="activity" size={14} />
+                <span>ID: #{ticket.ticket_id}</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Sidebar Info Column */}
-        <aside className="crm-detail-side">
-          <section className="crm-detail-card accent-card">
-            <div className="crm-detail-card-header">
-              <div className="crm-detail-card-title">
-                <Icon name="user" />
-                <h3>Customer Intel</h3>
+        <div style={{ height: '1px', background: 'var(--border)', margin: '24px 0' }} />
+
+        {/* Time Stats Row */}
+        <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Opened On:</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)' }}>{new Date(ticket.created_at).toLocaleString()}</span>
+           </div>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Handler:</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary)' }}>{ticket.assigned_to?.name || 'Unassigned'}</span>
+           </div>
+        </div>
+      </section>
+
+      {/* Main Grid */}
+      <div className="crm-profile-grid-desktop" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+        
+        {/* Ticket Intel Card */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Ticket Intelligence</h3>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Current Status</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{ticket.status.toUpperCase()}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Priority Level</label>
+                <div style={{ color: ticket.priority === 'urgent' ? 'var(--danger)' : 'var(--text)', fontWeight: 700 }}>{ticket.priority.toUpperCase()}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Ticket ID</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>#{ticket.ticket_id}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Escalated</label>
+                <div style={{ color: ticket.is_escalated ? 'var(--danger)' : 'var(--success)', fontWeight: 700 }}>{ticket.is_escalated ? 'YES' : 'NO'}</div>
               </div>
             </div>
-            <div className="crm-detail-card-body">
-               <div className="profile-hero" style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '20px' }}>
-                  <div className="crm-hero-avatar" style={{ width: '48px', height: '48px', borderRadius: '14px' }}>
-                    {(ticket.customer_id?.name || ticket.user_customer_id?.name || 'U').charAt(0)}
-                  </div>
-                  <div>
-                     <div style={{ fontWeight: 800, color: 'var(--text)' }}>{ticket.customer_id?.name || ticket.user_customer_id?.name}</div>
-                     <div className="muted" style={{ fontSize: '0.8rem' }}>{ticket.user_customer_id ? 'System Member' : 'Institutional Client'}</div>
-                  </div>
-               </div>
-               {ticket.customer_id && (
-                 <Link to={`/customers/${ticket.customer_id._id}`} className="crm-btn-premium glass full-width" style={{ justifyContent: 'center' }}>
-                   <span>Analyze Profile</span>
-                 </Link>
-               )}
+            <div style={{ marginTop: '20px' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Original Request</label>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>{ticket.description}</div>
             </div>
-          </section>
+          </div>
+        </div>
 
-          <section className="crm-detail-card">
-             <div className="crm-detail-card-header">
-                <div className="crm-detail-card-title">
-                   <Icon name="settings" />
-                   <h3>Ownership</h3>
+        {/* Support Context Card */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Support Snapshot</h3>
+          </div>
+          <div style={{ padding: '0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🧑💼</span> Assigned Handler
                 </div>
-             </div>
-             <div className="crm-detail-card-body">
-                <div className="crm-intel-field">
-                   <label>Designated Handler</label>
-                   <select 
-                     className="crm-input" 
-                     value={ticket.assigned_to?._id || ''} 
-                     disabled={!canManage}
-                     onChange={(e) => assignTicket(e.target.value)}
-                   >
-                     <option value="">Unassigned</option>
-                     {teamMembers.map(m => (
-                       <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
-                     ))}
-                   </select>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                   {canManage ? (
+                      <select 
+                        style={{ width: '100%', border: 'none', background: 'transparent', fontWeight: 700, color: 'var(--primary)', padding: 0, cursor: 'pointer', outline: 'none' }}
+                        value={ticket.assigned_to?._id || ''} 
+                        onChange={(e) => assignTicket(e.target.value)}
+                      >
+                        <option value="">Unassigned</option>
+                        {teamMembers.map(m => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                   ) : (ticket.assigned_to?.name || 'Unassigned')}
                 </div>
-                {ticket.assigned_to && (
-                  <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#34d399', fontSize: '0.85rem', fontWeight: 800 }}>
-                     <Icon name="check" size={14} />
-                     <span>Active assignment synchronization.</span>
-                  </div>
-                )}
-             </div>
-          </section>
+              </div>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🔌</span> Connectivity
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)', fontWeight: 700 }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
+                  Live Sync
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>👤</span> Customer
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                   {ticket.customer_id ? (
+                      <Link to={`/customers/${ticket.customer_id._id}`} style={{ color: 'var(--primary)' }}>{ticket.customer_id.name}</Link>
+                   ) : (ticket.user_customer_id?.name || 'N/A')}
+                </div>
+              </div>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⏱️</span> Priority Action
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                   {STATUS_OPTIONS.slice(0, 3).map(opt => (
+                      <button 
+                        key={opt.value} 
+                        onClick={() => updateStatus(opt.value)}
+                        style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)', background: ticket.status === opt.value ? 'var(--primary)' : 'var(--bg-card)', color: ticket.status === opt.value ? '#ffffff' : 'var(--text-dimmed)', fontWeight: 700 }}
+                      >
+                        {opt.label}
+                      </button>
+                   ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          <section className="crm-detail-card">
-             <div className="crm-detail-card-header">
-                <div className="crm-detail-card-title">
-                   <Icon name="activity" />
-                   <h3>Status Protocol</h3>
-                </div>
-             </div>
-             <div className="crm-detail-card-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  {STATUS_OPTIONS.map(opt => (
-                    <button 
-                      key={opt.value} 
-                      className={`crm-btn-premium ${ticket.status === opt.value ? 'vibrant' : 'glass'}`}
-                      style={{ padding: '8px 4px', fontSize: '0.7rem', justifyContent: 'center' }}
-                      onClick={() => updateStatus(opt.value)}
-                      disabled={opt.value === 'closed' && !canManage}
-                    >
-                      <span>{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-             </div>
-          </section>
-        </aside>
+      {/* Conversation Area */}
+      <div style={{ marginTop: '24px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Resolution Thread</h3>
+        </div>
+        
+        <div style={{ padding: '24px', background: 'var(--bg-surface)', minHeight: '300px', maxHeight: '500px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+           <div style={{ alignSelf: 'flex-start', maxWidth: '80%', background: 'var(--bg-card)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-dimmed)', fontWeight: 800, marginBottom: '4px' }}>ORIGINAL REQUEST</div>
+              <div style={{ color: 'var(--text)', lineHeight: '1.6' }}>{ticket.description}</div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-dimmed)', opacity: 0.6, marginTop: '8px', textAlign: 'right' }}>{new Date(ticket.created_at).toLocaleString()}</div>
+           </div>
+
+            {ticket.messages?.map((msg, idx) => {
+              const isOwn = String(msg.sender_id?._id || msg.sender_id || '') === String(user?.id || user?._id || '');
+              return (
+                <div key={idx} style={{ alignSelf: isOwn ? 'flex-end' : 'flex-start', maxWidth: '80%', background: isOwn ? 'var(--primary-soft)' : 'var(--bg-card)', padding: '16px', borderRadius: '12px', border: '1px solid', borderColor: isOwn ? 'var(--primary-soft)' : 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text)', marginBottom: '4px' }}>{msg.sender_name} <span style={{ color: 'var(--text-dimmed)', fontWeight: 400 }}>({msg.sender_role})</span></div>
+                  <div style={{ color: 'var(--text)', lineHeight: '1.6' }}>{msg.text}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-dimmed)', opacity: 0.6, marginTop: '8px', textAlign: 'right' }}>{new Date(msg.created_at).toLocaleString()}</div>
+               </div>
+              );
+            })}
+           <div ref={chatEndRef} />
+        </div>
+
+        {canReply ? (
+          <form onSubmit={handleReply} style={{ padding: '24px', borderTop: '1px solid var(--border)', display: 'flex', gap: '16px' }}>
+            <textarea 
+               style={{ flex: 1, minHeight: '80px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', resize: 'none' }}
+               placeholder="Type your response intelligence..." 
+               value={replyText}
+               onChange={(e) => setReplyText(e.target.value)}
+            />
+            <button className="crm-btn-premium" style={{ background: 'var(--primary)', color: '#ffffff', border: 'none', height: 'fit-content', padding: '12px 32px' }} disabled={sendingReply || !replyText.trim()}>
+               <span>{sendingReply ? '...' : 'Send'}</span>
+            </button>
+          </form>
+        ) : (
+          <div style={{ padding: '32px', textAlign: 'center', background: 'var(--bg-surface)', color: 'var(--text-dimmed)' }}>
+             <Icon name="check" size={24} style={{ color: 'var(--success)', marginBottom: '8px' }} />
+             <div style={{ fontWeight: 800 }}>Resolution Synchronized</div>
+             <div style={{ fontSize: '0.85rem' }}>This communication node is locked. No further inputs are permitted.</div>
+          </div>
+        )}
       </div>
 
       <style>{`
-        .messages-scroll::-webkit-scrollbar { width: 6px; }
-        .messages-scroll::-webkit-scrollbar-track { background: transparent; }
-        .messages-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        .messages-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-
-        .message-node { display: flex; max-width: 85%; }
-        .system-node { align-self: center; max-width: 95%; width: 100%; }
-        .other-node { align-self: flex-start; }
-        .self-node { align-self: flex-end; }
-        
-        .message-content { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); position: relative; width: 100%; }
-        .self-node .message-content { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.2); }
-        .system-node .message-content { background: rgba(255,255,255,0.01); border-style: dashed; padding: 16px; }
-        
-        .message-label { font-size: 0.65rem; font-weight: 900; text-transform: uppercase; color: var(--primary); margin-bottom: 8px; letter-spacing: 0.05em; }
-        .message-author { font-size: 0.9rem; font-weight: 800; margin-bottom: 6px; color: var(--text); }
-        .author-role { font-weight: 600; font-size: 0.75rem; color: var(--text-dimmed); }
-        .message-text { font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; color: var(--text-muted); }
-        .message-time { font-size: 0.7rem; color: var(--text-dimmed); margin-top: 12px; text-align: right; font-weight: 600; }
-
-        .status-pill.open { background: rgba(59,130,246,0.1); color: #3b82f6; border-color: rgba(59,130,246,0.2); }
-        .status-pill.closed { background: rgba(16,185,129,0.1); color: #10b981; border-color: rgba(16,185,129,0.2); }
-        .status-pill.in-progress { background: rgba(245,158,11,0.1); color: #f59e0b; border-color: rgba(245,158,11,0.2); }
-        .status-pill.resolved { background: rgba(139,92,246,0.1); color: #8b5cf6; border-color: rgba(139,92,246,0.2); }
+        @media (max-width: 900px) {
+          .crm-profile-grid-desktop {
+            grid-template-columns: 1fr !important;
+          }
+        }
       `}</style>
     </div>
   )

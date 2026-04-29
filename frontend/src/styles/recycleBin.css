@@ -1,0 +1,234 @@
+/* Recycle Bin Intelligence - Styles */
+.recycle-bin-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  background-color: #0F1117;
+  min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.recycle-bin-card {
+  width: 100%;
+  max-width: 1200px;
+  background-color: #1A1D2B;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 15px rgba(59, 130, 246, 0.15);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.recycle-bin-card::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  right: -100px;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Header Section */
+.recycle-bin-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.recycle-bin-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.recycle-bin-header-icon {
+  color: #3B82F6;
+  opacity: 0.9;
+}
+
+.recycle-bin-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.recycle-bin-subtitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: #9CA3AF;
+  margin: 4px 0 0 0;
+}
+
+.recycle-bin-divider {
+  height: 1px;
+  background-color: #2D3040;
+  margin-top: 20px;
+  width: 100%;
+}
+
+/* Table Section */
+.recycle-bin-table-container {
+  width: 100%;
+  overflow-x: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.recycle-bin-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.recycle-bin-thead-row {
+  border-bottom: 1px solid #2D3040;
+}
+
+.recycle-bin-th {
+  text-align: left;
+  padding: 14px 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6B7280;
+  font-weight: 600;
+}
+
+/* Column Widths */
+.col-identity { width: 35%; }
+.col-type { width: 15%; }
+.col-removed-by { width: 20%; }
+.col-timestamp { width: 20%; }
+.col-action { width: 10%; }
+
+/* Table Rows */
+.recycle-bin-row {
+  height: 72px;
+  border-bottom: 1px solid #252837;
+  transition: background-color 0.2s ease;
+}
+
+.recycle-bin-row:last-child {
+  border-bottom: none;
+}
+
+.recycle-bin-row:hover {
+  background-color: #1B1F2E;
+}
+
+.recycle-bin-td {
+  padding: 12px;
+  vertical-align: middle;
+}
+
+/* Cell Contents */
+.identity-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.identity-name {
+  font-size: 14px;
+  color: #FFFFFF;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 350px;
+}
+
+.identity-id {
+  font-size: 11px;
+  color: #6B7280;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+}
+
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  background: transparent;
+  letter-spacing: 0.5px;
+}
+
+.type-badge.user {
+  border-color: #3B82F6;
+  color: #3B82F6;
+}
+
+.type-badge.customer {
+  border-color: #10B981;
+  color: #10B981;
+}
+
+.type-badge.lead {
+  border-color: #8B5CF6;
+  color: #8B5CF6;
+}
+
+.removed-by-name {
+  font-size: 14px;
+  color: #FFFFFF;
+}
+
+.timestamp-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timestamp-date {
+  font-size: 14px;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.timestamp-time {
+  font-size: 11px;
+  color: #6B7280;
+}
+
+/* Restore Button */
+.restore-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid #4B5563;
+  border-radius: 8px;
+  color: #D1D5DB;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.restore-btn:hover {
+  background-color: #FFFFFF;
+  color: #0F1117;
+  border-color: #FFFFFF;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+}
+
+.restore-btn .icon-undo {
+  font-size: 14px;
+}

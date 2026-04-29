@@ -80,260 +80,230 @@ export default function UserDetail() {
   if (error && !user) return <div className="alert error glass-alert">{error}</div>
   if (!user) return <div className="muted center padding40">User not found or has been removed.</div>
 
-  const statusClass =
-    user.status === 'active'
-      ? 'badge-success-vibrant'
-      : user.status === 'inactive'
-        ? 'badge-danger-vibrant'
-        : 'badge-muted-vibrant'
-
   const createdLabel = formatDateTime(user.created_at, 'Not available')
   const lastSeenLabel = formatDateTime(user.login_time || user.last_login, 'Never logged in')
 
   return (
-    <div className="stack gap-32 user-profile-container">
-      <PageHeader
-        title="User Profile"
-        backTo="/users"
-        actions={
-          <div className="control-bar-premium">
-            <Link className="btn-premium action-secondary" to={`/users/${user.id}/edit`}>
-              <Icon name="edit" />
-              <span>Edit Profile</span>
-            </Link>
+    <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
+      {/* Header Row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <Link to="/users" className="crm-btn-premium" style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+          <span>← Back</span>
+        </Link>
+        <Link className="crm-btn-premium" to={`/users/${user.id}/edit`} style={{ background: 'var(--primary)', color: '#ffffff', padding: '8px 24px', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}>
+          <Icon name="edit" />
+          <span>Edit Profile</span>
+        </Link>
+      </div>
+
+      {/* Profile Header Card */}
+      <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '32px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Avatar */}
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--primary-soft)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 700, flexShrink: 0, boxShadow: 'inset 0 0 0 1px var(--primary-soft)', overflow: 'hidden' }}>
+             {user.profile_photo ? (
+               <img src={user.profile_photo} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+             ) : (
+               (user.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase()
+             )}
           </div>
-        }
-      />
 
-      <section className="crm-hero-shell">
-        <div className="crm-hero-glow crm-hero-glow-1" />
-        <div className="crm-hero-glow crm-hero-glow-2" />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', margin: 0 }}>{user.name}</h1>
+              <span style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', padding: '2px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border)' }}>
+                {user.role}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600, marginLeft: '4px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }} />
+                <span>Active</span>
+              </div>
+            </div>
 
-        <div className="crm-hero-topline">
-          <span className={`status-pill ${statusClass}`}>{user.status || 'active'}</span>
-          <span className="hero-meta-chip">Joined on {formatDate(user.created_at)}</span>
+            <div style={{ display: 'flex', gap: '20px', color: 'var(--text-dimmed)', fontSize: '0.9rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Icon name="mail" size={14} />
+                <span>{user.email}</span>
+              </div>
+              {user.phone && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Icon name="phone" size={14} />
+                  <span>{user.phone}</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="crm-hero-main-row">
-          <div className="crm-hero-avatar" aria-hidden="true">
-            {user.profile_photo ? (
-              <img src={user.profile_photo} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-            ) : (
-              <span style={{ fontSize: '40px', fontWeight: 900 }}>{(user.name || 'U').charAt(0).toUpperCase()}</span>
-            )}
-          </div>
+        <div style={{ height: '1px', background: 'var(--border)', margin: '24px 0' }} />
 
-          <div className="crm-hero-copy">
-            <h1 className="crm-hero-name">{user.name || 'Unnamed Member'}</h1>
-            <div className="crm-hero-subline">
-              <div className="crm-hero-subline-item">
-                <Icon name="user" />
-                <span>{user.role || 'Teammate'}</span>
-              </div>
-              <div className="crm-hero-divider" />
-              <div className="crm-hero-subline-item">
-                <Icon name="mail" />
-                <span>{user.email || 'No email'}</span>
-              </div>
-              {user.phone ? (
-                <>
-                  <div className="crm-hero-divider" />
-                  <div className="crm-hero-subline-item">
-                    <Icon name="phone" />
-                    <span>{user.phone}</span>
-                  </div>
-                </>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="crm-hero-side-stack">
-            <div className="crm-hero-stat-card">
-              <span className="crm-hero-stat-label">Joined On</span>
-              <span className="crm-hero-stat-value">{createdLabel}</span>
-            </div>
-            <div className="crm-hero-stat-card">
-              <span className="crm-hero-stat-label">Last Online</span>
-              <span className="crm-hero-stat-value">{lastSeenLabel}</span>
-            </div>
-          </div>
+        {/* Time Stats Row */}
+        <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Joined On:</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)' }}>{createdLabel}</span>
+           </div>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Last Online:</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)' }}>{lastSeenLabel}</span>
+           </div>
         </div>
       </section>
 
-      <div className="crm-detail-grid">
-        <div className="crm-detail-main">
-          <section className="crm-detail-card">
-            <div className="crm-detail-card-header">
-              <div className="crm-detail-card-title">
-                <Icon name="user" />
-                <h3>User Details</h3>
+      {/* Main Grid */}
+      <div className="crm-profile-grid-desktop" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+        
+        {/* User Details Table Card */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>User Details</h3>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Full Name</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{user.name}</div>
               </div>
-            </div>
-            <div className="crm-detail-card-body">
-              <div className="crm-intel-grid">
-                <div className="crm-intel-field">
-                  <label>Full Name</label>
-                  <div className="crm-intel-value">{displayValue(user.name)}</div>
-                </div>
-                <div className="crm-intel-field">
-                  <label>Email Address</label>
-                  <div className="intel-value">{displayValue(user.email)}</div>
-                </div>
-                <div className="crm-intel-field">
-                  <label>Phone Number</label>
-                  <div className="crm-intel-value">{displayValue(user.phone)}</div>
-                </div>
-                <div className="crm-intel-field">
-                  <label>Account Status</label>
-                  <div className="crm-intel-value">{displayValue(user.status)}</div>
-                </div>
-                <div className="crm-intel-field full-width">
-                  <label>Joined On</label>
-                  <div className="crm-intel-value highlight">{createdLabel}</div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Phone Number</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(user.phone)}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Email Address</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{user.email}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Account Status</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)', fontWeight: 700 }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
+                  {user.status}
                 </div>
               </div>
             </div>
-          </section>
-
-          <section className="crm-detail-card">
-            <div className="crm-detail-card-header">
-              <div className="crm-detail-card-title">
-                <Icon name="settings" />
-                <h3>Security &amp; Access</h3>
-              </div>
-            </div>
-            <div className="crm-detail-card-body">
-              <div className="crm-intel-grid" style={{ marginBottom: '28px' }}>
-                <div className="crm-intel-field">
-                  <label>Access role</label>
-                  <div className="crm-intel-value highlight">{displayValue(user.role)}</div>
-                </div>
-                <div className="crm-intel-field">
-                  <label>Last login</label>
-                  <div className="crm-intel-value">{lastSeenLabel}</div>
-                </div>
-              </div>
-
-              <div className="password-reset-panel">
-                <div className="password-reset-header">
-                  <Icon name="settings" />
-                  <div>
-                    <div className="password-reset-title">Reset User Password</div>
-                    <div className="password-reset-sub">Force a secure credential update for this account.</div>
-                  </div>
-                </div>
-                <form className="password-reset-form" onSubmit={handleResetPassword}>
-                  <div className="crm-intel-grid">
-                    <div className="crm-intel-field">
-                      <label>New password</label>
-                      <input
-                        className="crm-input"
-                        type="password"
-                        required
-                        placeholder="Min 6 chars, letters + numbers"
-                        value={resetForm.newPassword}
-                        onChange={(e) => setResetForm((p) => ({ ...p, newPassword: e.target.value }))}
-                      />
-                    </div>
-                    <div className="crm-intel-field">
-                      <label>Confirm password</label>
-                      <input
-                        className="crm-input"
-                        type="password"
-                        required
-                        placeholder="Repeat new password"
-                        value={resetForm.confirmPassword}
-                        onChange={(e) => setResetForm((p) => ({ ...p, confirmPassword: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                  <button
-                    className="crm-btn-premium vibrant"
-                    type="submit"
-                    disabled={resettingPassword}
-                    style={{ marginTop: '24px', width: 'auto' }}
-                  >
-                    <Icon name="settings" />
-                    <span>{resettingPassword ? 'Updating...' : 'Set New Password'}</span>
-                  </button>
-                </form>
-              </div>
-            </div>
-          </section>
+          </div>
         </div>
 
-        <aside className="crm-detail-side">
-          <section className="crm-detail-card accent-card">
-            <div className="crm-detail-card-header">
-              <div className="crm-detail-card-title">
-                <Icon name="user" />
-                <h3>Account Snapshot</h3>
+        {/* Account Snapshot Table Card (Redesigned) */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Account Snapshot</h3>
+          </div>
+          <div style={{ padding: '0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🧑💼</span> Operational Role
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{user.role}</div>
+              </div>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🔌</span> Connectivity
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)', fontWeight: 700 }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
+                  Active
+                </div>
               </div>
             </div>
-            <div className="crm-detail-card-body">
-              <div className="milestone-panel">
-                <div className="milestone-label">Current role</div>
-                <div className="milestone-value">{user.role || 'Teammate'}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📅</span> Joined Cycle
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{formatDate(user.created_at)}</div>
               </div>
-
-              <div className="snapshot-list">
-                <div className="snapshot-row">
-                  <span className="snapshot-label">Status</span>
-                  <span className="snapshot-value">{user.status || 'active'}</span>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⏱️</span> Last Interaction
                 </div>
-                <div className="snapshot-row">
-                  <span className="snapshot-label">Joined</span>
-                  <span className="snapshot-value">{formatDate(user.created_at, '—')}</span>
-                </div>
-                <div className="snapshot-row">
-                  <span className="snapshot-label">Last seen</span>
-                  <span className="snapshot-value">{lastSeenLabel}</span>
-                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.85rem' }}>{lastSeenLabel}</div>
               </div>
-
-              <Link to={`/users/${user.id}/edit`} className="converted-link-premium">
-                <div className="link-icon">
-                  <Icon name="edit" />
-                </div>
-                <div className="link-text">
-                  <strong>Edit this profile</strong>
-                  <span>Update name, role, or status</span>
-                </div>
-              </Link>
             </div>
-          </section>
-        </aside>
+          </div>
+        </div>
       </div>
+
+      {/* Security Protocol Section (Upgraded) */}
+      <section style={{ marginTop: '32px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Icon name="settings" size={18} style={{ color: 'var(--text-dimmed)' }} />
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Security Protocol</h3>
+        </div>
+        
+        <div style={{ padding: '24px' }}>
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem', marginBottom: '4px' }}>Credential Synchronization</div>
+          </div>
+
+          <form onSubmit={handleResetPassword} style={{ maxWidth: '800px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+              <div className="sheet-field">
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', display: 'block', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>New Secret Key</label>
+                <input 
+                  className="crm-input" 
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', padding: '10px 14px', borderRadius: '8px', width: '100%', color: 'var(--text)' }} 
+                  type="password" 
+                  required 
+                  placeholder="Min 6 characters" 
+                  value={resetForm.newPassword} 
+                  onChange={(e) => setResetForm((p) => ({ ...p, newPassword: e.target.value }))} 
+                />
+              </div>
+              <div className="sheet-field">
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', display: 'block', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>Confirm Identity</label>
+                <input 
+                  className="crm-input" 
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', padding: '10px 14px', borderRadius: '8px', width: '100%', color: 'var(--text)' }} 
+                  type="password" 
+                  required 
+                  placeholder="Repeat secret key" 
+                  value={resetForm.confirmPassword} 
+                  onChange={(e) => setResetForm((p) => ({ ...p, confirmPassword: e.target.value }))} 
+                />
+              </div>
+            </div>
+            <button 
+              className="crm-btn-premium" 
+              type="submit" 
+              disabled={resettingPassword} 
+              style={{ marginTop: '28px', background: 'var(--primary)', color: '#ffffff', padding: '10px 24px', borderRadius: '8px', fontWeight: 600, fontSize: '0.9rem', border: 'none', cursor: 'pointer' }}
+            >
+              <span>{resettingPassword ? 'Updating...' : 'Update Credentials'}</span>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .crm-profile-grid-desktop {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
 
-function formatDate(value, fallback = 'Not available') {
+function formatDate(value, fallback = '—') {
   if (!value) return fallback
   try {
     const d = new Date(value)
     if (Number.isNaN(d.getTime())) return fallback
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  } catch {
-    return fallback
-  }
+  } catch { return fallback }
 }
 
-function formatDateTime(value, fallback = 'Not available') {
+function formatDateTime(value, fallback = '—') {
   if (!value) return fallback
   try {
     const d = new Date(value)
     if (Number.isNaN(d.getTime())) return fallback
-    return d.toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  } catch {
-    return fallback
-  }
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  } catch { return fallback }
 }
 
 function displayValue(value, fallback = 'Not available') {

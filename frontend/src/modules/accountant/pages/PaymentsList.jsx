@@ -103,24 +103,24 @@ export default function PaymentsList() {
         </div>
 
         {loading ? (
-          <div className="leadsLoadingState" style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-subtle)', borderRadius: '32px', minHeight: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+          <div className="leadsLoadingState" style={{ background: 'var(--bg-surface)', border: '1px dashed var(--border)', borderRadius: '32px', minHeight: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
             <div className="spinner-medium" />
             <span className="muted">Loading payment history...</span>
           </div>
         ) : (
           <>
-            <div className="crm-table-wrap shadow-soft">
+            <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <div className="crm-table-scroll">
                 <table className="crm-table">
-                  <thead>
+                  <thead style={{ background: 'var(--bg-surface)' }}>
                     <tr>
-                      <th style={{ width: '150px' }}>PAYMENT #</th>
-                      <th style={{ width: '140px' }}>DATE</th>
-                      <th style={{ minWidth: '200px' }}>CUSTOMER NAME</th>
-                      <th style={{ width: '160px' }}>BILL NUMBER</th>
-                      <th style={{ width: '140px' }}>PAYMENT METHOD</th>
-                      <th style={{ width: '160px' }}>AMOUNT</th>
-                      {canDelete && <th className="text-right" style={{ width: '100px' }}>ACTION</th>}
+                      <th style={{ width: '150px', color: 'var(--text-dimmed)' }}>PAYMENT #</th>
+                      <th style={{ width: '140px', color: 'var(--text-dimmed)' }}>DATE</th>
+                      <th style={{ minWidth: '200px', color: 'var(--text-dimmed)' }}>CUSTOMER NAME</th>
+                      <th style={{ width: '160px', color: 'var(--text-dimmed)' }}>BILL NUMBER</th>
+                      <th style={{ width: '140px', color: 'var(--text-dimmed)' }}>PAYMENT METHOD</th>
+                      <th style={{ width: '160px', color: 'var(--text-dimmed)' }}>AMOUNT</th>
+                      {canDelete && <th className="text-right" style={{ width: '100px', color: 'var(--text-dimmed)' }}>ACTION</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -128,17 +128,25 @@ export default function PaymentsList() {
                       payments.map(pay => (
                         <tr key={pay.id} className="crm-table-row clickable" onClick={() => navigate(`/payments/${pay.id}`)}>
                           <td><span className="font-numeric" style={{ color: 'var(--primary)', fontWeight: 800 }}>#{pay.payment_number}</span></td>
-                          <td><span className="text-sm">{new Date(pay.payment_date).toLocaleDateString()}</span></td>
+                          <td><span className="text-sm" style={{ color: 'var(--text-muted)' }}>{new Date(pay.payment_date).toLocaleDateString()}</span></td>
                           <td><span className="font-bold" style={{ color: 'var(--text)' }}>{pay.customer_id?.name || 'Customer'}</span></td>
                           <td>
-                            {pay.invoice_id?.invoice_number ? (
-                              <Link to={`/invoices/${pay.invoice_id.id}`} className="text-sm" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>
-                                #{pay.invoice_id.invoice_number}
-                              </Link>
-                            ) : <span className="muted text-xs">UNLINKED</span>}
+                            <div className="stack gap-2">
+                              {pay.invoice_id?.invoice_number ? (
+                                <Link to={`/invoices/${pay.invoice_id.id}`} className="text-sm font-bold" style={{ color: 'var(--primary)' }}>
+                                  #{pay.invoice_id.invoice_number}
+                                </Link>
+                              ) : <span className="muted text-xs">UNLINKED BILL</span>}
+                              {pay.deal_id && (
+                                <span className="text-xs muted" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Icon name="activity" size={10} />
+                                  {pay.deal_id.name || 'Deal Record'}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td><span className="crm-status-pill info">{pay.payment_method}</span></td>
-                          <td><span className="font-numeric" style={{ fontWeight: 800, color: '#10b981' }}>{formatCurrency(pay.amount)}</span></td>
+                          <td><span className="font-numeric" style={{ fontWeight: 800, color: 'var(--success)' }}>{formatCurrency(pay.amount)}</span></td>
                           {canDelete && (
                             <td className="text-right" onClick={e => e.stopPropagation()}>
                               <div className="crm-action-group">
@@ -152,7 +160,7 @@ export default function PaymentsList() {
                       <tr>
                         <td colSpan="7">
                           <div className="emptyState" style={{ padding: '60px 0', textAlign: 'center' }}>
-                            <h3>No Payments Found</h3>
+                            <h3 style={{ color: 'var(--text)' }}>No Payments Found</h3>
                             <p className="muted">Add a new payment record to start tracking.</p>
                           </div>
                         </td>
@@ -164,9 +172,9 @@ export default function PaymentsList() {
             </div>
             {total > limit && (
               <div className="pagination-container" style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                <button className="btn-premium action-secondary" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Prev</button>
+                <button className="btn-premium action-secondary" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)' }} disabled={page === 1} onClick={() => setPage(p => p - 1)}>Prev</button>
                 <span className="text-sm muted" style={{ display: 'flex', alignItems: 'center' }}>Page {page}</span>
-                <button className="btn-premium action-secondary" disabled={page * limit >= total} onClick={() => setPage(p => p + 1)}>Next</button>
+                <button className="btn-premium action-secondary" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)' }} disabled={page * limit >= total} onClick={() => setPage(p => p + 1)}>Next</button>
               </div>
             )}
           </>

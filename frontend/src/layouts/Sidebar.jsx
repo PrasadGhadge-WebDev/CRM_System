@@ -117,6 +117,15 @@ export default function Sidebar({ isOpen, onClose }) {
           </NavLink>
         )}
 
+        {hasPermission(user, 'tickets') && (
+          <NavLink className="navItem" to="/tickets" onClick={handleNavClick} title="Support Tickets">
+            <span className="navIcon">
+              <Icon name="activity" size={20} />
+            </span>
+            <span className="navText">Support Tickets</span>
+          </NavLink>
+        )}
+
         {hasPermission(user, 'notifications') && (
           <NavLink className="navItem" to="/notifications" onClick={handleNavClick} title="Notifications">
             <span className="navIcon">

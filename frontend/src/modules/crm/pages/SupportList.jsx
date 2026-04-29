@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { Icon } from '../../../layouts/icons.jsx'
 import Pagination from '../../../components/Pagination.jsx'
+import LottieLoader from '../../../components/LottieLoader.jsx'
+import LottieEmpty from '../../../components/LottieEmpty.jsx'
 import PageHeader from '../../../components/PageHeader.jsx'
 import { supportApi } from '../../../services/workflow.js'
 import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
@@ -181,82 +183,88 @@ export default function SupportList() {
         {error && <div className="alert-premium error">{error}</div>}
 
         {loading ? (
-          <div className="leadsLoadingState" style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-subtle)', borderRadius: '32px', minHeight: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
-             <div className="spinner-medium" />
-             <span className="muted">Loading tickets...</span>
-          </div>
+          <LottieLoader message="Synchronizing support tickets..." />
         ) : (
-          <div className="crm-table-wrap shadow-soft">
-            <div className="crm-table-scroll">
-              <table className="crm-table">
-                <thead>
-                  <tr>
-                    <th>SUPPORT TICKET</th>
-                    <th>CUSTOMER</th>
-                    <th>PRIORITY</th>
-                    <th>STATUS</th>
-                    <th>ASSIGNED TO</th>
-                    <th className="text-right">ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((t) => (
-                    <tr 
-                      key={t.id}
-                      className={`crm-table-row ${t.is_escalated ? 'row-escalated' : ''}`}
-                      onClick={() => navigate(`/tickets/${t.id}`)}
-                    >
-                      <td>
-                        <div className="flex items-center gap-12">
-                          <div className="support-avatar">
-                            {t.customer_id?.is_vip ? '★' : (t.subject || 'S').charAt(0).toUpperCase()}
-                          </div>
-                          <div className="support-info">
-                            <div className="support-subject" style={{ fontWeight: 800, color: 'var(--text)' }}>{t.subject}</div>
-                            <div className="support-meta">#{t.ticket_id} • {t.category || 'General'}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                         <div className="crm-user-mention">
-                           <Icon name="user" size={14} />
-                           <span>{t.customer_id?.name || t.user_customer_id?.name || 'Unknown'}</span>
-                         </div>
-                      </td>
-                      <td>
-                        <span className={`crm-status-pill ${t.priority === 'urgent' || t.priority === 'high' ? 'danger' : t.priority === 'medium' ? 'warning' : 'success'}`}>
-                          {t.priority}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`crm-status-pill ${t.status === 'open' ? 'info' : t.status === 'in-progress' ? 'warning' : 'success'}`}>
-                          {t.status}
-                        </span>
-                      </td>
-                      <td>
-                         <div className="crm-user-mention">
-                           {t.assigned_to ? (
-                             <>
-                               <div className="crm-user-dot" />
-                               <span>{t.assigned_to.name}</span>
-                             </>
-                           ) : (
-                             <span className="muted italic">Not Assigned</span>
-                           )}
-                         </div>
-                      </td>
-                      <td className="text-right" onClick={(e) => e.stopPropagation()}>
-                         <div className="crm-action-group">
-                           <button className="crm-action-btn" onClick={() => navigate(`/tickets/${t.id}/edit`)}><Icon name="edit" /></button>
-                           {isAdmin && <button className="crm-action-btn danger" onClick={(e) => handleDelete(e, t.id)}><Icon name="trash" /></button>}
-                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <>
+            {items.length === 0 ? (
+              <LottieEmpty 
+                message="No tickets found" 
+                description="Your search criteria didn't match any support tickets. Try broader keywords or clearing filters." 
+              />
+            ) : (
+              <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <div className="crm-table-scroll">
+                  <table className="crm-table">
+                    <thead style={{ background: 'var(--bg-surface)' }}>
+                      <tr>
+                        <th style={{ color: 'var(--text-dimmed)' }}>SUPPORT TICKET</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>CUSTOMER</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>PRIORITY</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>STATUS</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>ASSIGNED TO</th>
+                        <th className="text-right" style={{ color: 'var(--text-dimmed)' }}>ACTIONS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((t) => (
+                        <tr 
+                          key={t.id}
+                          className={`crm-table-row ${t.is_escalated ? 'row-escalated' : ''}`}
+                          onClick={() => navigate(`/tickets/${t.id}`)}
+                        >
+                          <td>
+                            <div className="flex items-center gap-12">
+                              <div className="support-avatar">
+                                {t.customer_id?.is_vip ? '★' : (t.subject || 'S').charAt(0).toUpperCase()}
+                              </div>
+                              <div className="support-info">
+                                <div className="support-subject" style={{ fontWeight: 800, color: 'var(--text)' }}>{t.subject}</div>
+                                <div className="support-meta">#{t.ticket_id} • {t.category || 'General'}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                             <div className="crm-user-mention">
+                               <Icon name="user" size={14} />
+                               <span style={{ color: 'var(--text)' }}>{t.customer_id?.name || t.user_customer_id?.name || 'Unknown'}</span>
+                             </div>
+                          </td>
+                          <td>
+                            <span className={`crm-status-pill ${t.priority === 'urgent' || t.priority === 'high' ? 'danger' : t.priority === 'medium' ? 'warning' : 'success'}`}>
+                              {t.priority}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`crm-status-pill ${t.status === 'open' ? 'info' : t.status === 'in-progress' ? 'warning' : 'success'}`}>
+                              {t.status}
+                            </span>
+                          </td>
+                          <td>
+                             <div className="crm-user-mention">
+                               {t.assigned_to ? (
+                                 <>
+                                   <div className="crm-user-dot" />
+                                   <span style={{ color: 'var(--text)' }}>{t.assigned_to.name}</span>
+                                 </>
+                               ) : (
+                                 <span className="muted italic">Not Assigned</span>
+                               )}
+                             </div>
+                          </td>
+                          <td className="text-right" onClick={(e) => e.stopPropagation()}>
+                             <div className="crm-action-group">
+                               <button className="crm-action-btn" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }} onClick={() => navigate(`/tickets/${t.id}/edit`)}><Icon name="edit" /></button>
+                               {isAdmin && <button className="crm-action-btn danger" onClick={(e) => handleDelete(e, t.id)}><Icon name="trash" /></button>}
+                             </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         <Pagination 
@@ -269,11 +277,11 @@ export default function SupportList() {
       </section>
 
       <style>{`
-        .support-avatar { width: 40px; height: 40px; border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--primary); }
+        .support-avatar { width: 40px; height: 40px; border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--primary); }
         .support-info { display: flex; flex-direction: column; gap: 2px; }
         .support-subject { font-size: 0.95rem; }
         .support-meta { font-size: 0.75rem; color: var(--text-dimmed); }
-        .row-escalated { background: rgba(239, 68, 68, 0.05); }
+        .row-escalated { background: var(--danger-soft, rgba(239, 68, 68, 0.05)); }
       `}</style>
     </div>
   )

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { paymentsApi } from '../../../services/payments'
 import { invoicesApi } from '../../../services/invoices'
 import { api } from '../../../services/api'
@@ -87,7 +88,7 @@ export default function PaymentForm({ onCancel, onSuccess }) {
     }
   }
 
-  return (
+  const modalContent = (
     <div className="crm-modal-portal-overlay">
       <div className="crm-modal-sheet animate-sheet-in" style={{ maxWidth: '700px' }}>
         <div className="crm-modal-sheet-header">
@@ -211,10 +212,10 @@ export default function PaymentForm({ onCancel, onSuccess }) {
         </form>
 
         <div className="crm-modal-sheet-footer">
-          <p className="footer-hint">Payments are recorded in the ledger immediately.</p>
+          <p className="footer-hint">All fields are securely encrypted.</p>
           <div style={{ display: 'flex', gap: '16px' }}>
-            <button className="btn-premium secondary" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
-            <button className="btn-premium action-vibrant" disabled={saving} onClick={handleSubmit}>
+            <button className="crm-btn-premium glass" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
+            <button className="crm-btn-premium vibrant" disabled={saving} onClick={handleSubmit}>
               {saving ? 'Recording...' : 'Record Payment'}
             </button>
           </div>
@@ -222,4 +223,6 @@ export default function PaymentForm({ onCancel, onSuccess }) {
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

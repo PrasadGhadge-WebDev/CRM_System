@@ -113,10 +113,11 @@ export default function Pagination({ page: rawPage, limit: rawLimit, total: rawT
           align-items: center;
           gap: 16px;
           margin-top: 24px;
-          padding: 16px;
-          background: rgba(255, 255, 255, 0.03);
+          padding: 12px 20px;
+          background: var(--bg-card);
           border-radius: 16px;
-          border: 1px solid var(--border-color);
+          border: 1px solid var(--border);
+          box-shadow: var(--shadow-sm);
         }
 
         .pg-controls {
@@ -132,19 +133,19 @@ export default function Pagination({ page: rawPage, limit: rawLimit, total: rawT
         }
 
         .pg-btn {
-          height: 36px;
-          min-width: 36px;
+          height: 40px;
+          min-width: 40px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 1px solid var(--border-color);
-          background: var(--bg-card);
-          color: var(--text);
-          border-radius: 10px;
-          font-size: 0.85rem;
-          font-weight: 600;
+          border: 1px solid var(--border);
+          background: var(--bg-surface);
+          color: var(--text-muted);
+          border-radius: 12px;
+          font-size: 0.9rem;
+          font-weight: 700;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .pg-btn:hover:not(:disabled) {
@@ -154,10 +155,10 @@ export default function Pagination({ page: rawPage, limit: rawLimit, total: rawT
         }
 
         .pg-btn.active {
-          background: var(--primary-color);
-          border-color: var(--primary-color);
-          color: var(--text);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+          background: var(--primary);
+          border-color: var(--primary);
+          color: white;
+          box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent);
         }
 
         .pg-btn:disabled {
@@ -180,9 +181,10 @@ export default function Pagination({ page: rawPage, limit: rawLimit, total: rawT
           align-items: center;
           justify-content: space-between;
           width: 100%;
-          max-width: 500px;
+          max-width: 550px;
           font-size: 0.85rem;
           color: var(--text-muted);
+          font-weight: 600;
         }
 
         .pg-info b {
@@ -196,13 +198,16 @@ export default function Pagination({ page: rawPage, limit: rawLimit, total: rawT
         }
 
         .pg-select {
-          background: var(--bg-hover);
-          border: 1px solid var(--border-color);
-          border-radius: 8px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border);
+          border-radius: 10px;
           color: var(--text);
-          padding: 2px 6px;
-          font-size: 0.8rem;
+          padding: 4px 10px;
+          font-size: 0.85rem;
+          font-weight: 700;
           cursor: pointer;
+          outline: none;
+          transition: all 0.2s;
         }
 
         @media (min-width: 640px) {

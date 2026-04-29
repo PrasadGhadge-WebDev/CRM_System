@@ -8,18 +8,18 @@ const DealSchema = new mongoose.Schema(
     customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', index: true },
     readable_id: { type: String, unique: true, index: true },
     name: { type: String, required: true, trim: true },
-    value: { type: Number, default: 0 },
+    value: { type: Number, default: 0, min: [0, 'Amount must be a positive number'] },
     currency: { type: String, default: 'INR' },
     
     stage: { 
       type: String, 
-      enum: ['New', 'Qualified', 'Proposal', 'Won', 'Lost'],
+      enum: ['New', 'Discovery', 'Qualified', 'Proposal', 'Proposal Sent', 'Negotiation', 'Won', 'Closed Won', 'Lost', 'Closed Lost'],
       default: 'New', 
       index: true 
     },
     status: {
       type: String,
-      enum: ['Pending', 'Completed'],
+      enum: ['Pending', 'Completed', 'Discovery', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'],
       default: 'Pending',
       index: true
     },

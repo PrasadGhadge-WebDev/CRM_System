@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { toast } from 'react-toastify'
 import { rolesApi } from '../../../services/roles.js'
 import { Icon } from '../../../layouts/icons.jsx'
@@ -62,77 +63,104 @@ export default function RoleFormModal({ role, onClose, onSuccess }) {
     }
   }
 
-  return (
-    <div className="crm-modal-overlay">
-      <div className="crm-modal card" style={{ maxWidth: '600px', width: '90%' }}>
-        <div className="crm-modal-header">
-          <h3 style={{ margin: 0 }}>{isEdit ? 'Edit Role' : 'Add New Role'}</h3>
-          <button className="iconBtn" onClick={onClose}><Icon name="close" /></button>
+  const modalContent = (
+    <div className="crm-modal-portal-overlay">
+      <div className="crm-modal-sheet animate-sheet-in" style={{ maxWidth: '600px' }}>
+        <div className="crm-modal-sheet-header">
+          <div className="sheet-title-area">
+            <h2 className="sheet-title">{isEdit ? 'Update Role' : 'Add New Role'}</h2>
+            <p className="sheet-subtitle">Define access levels and module permissions for your team</p>
+          </div>
         </div>
 
-        <form className="crm-modal-body stack gap-20" onSubmit={handleSubmit}>
-          <div className="stack tiny-gap">
-            <label className="text-small muted" style={{ fontWeight: 600 }}>Role Name *</label>
-            <input
-              className="input"
-              value={model.name}
-              onChange={e => setModel(p => ({ ...p, name: e.target.value }))}
-              placeholder="e.g. Sales Head, Tech Lead"
-              required
-              disabled={role?.is_system_role}
-            />
-            {role?.is_system_role && <span className="extra-small muted">System role names cannot be modified.</span>}
-          </div>
-
-          <div className="stack tiny-gap">
-            <label className="text-small muted" style={{ fontWeight: 600 }}>Description</label>
-            <textarea
-              className="input"
-              style={{ minHeight: '80px', resize: 'vertical' }}
-              value={model.description}
-              onChange={e => setModel(p => ({ ...p, description: e.target.value }))}
-              placeholder="What this role does..."
-            />
-          </div>
-
-          <div className="stack tiny-gap">
-            <label className="text-small muted" style={{ fontWeight: 600 }}>Module Permissions</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '200px', overflowY: 'auto', padding: '8px', background: 'rgba(0,0,0,0.1)', borderRadius: 'var(--radius-md)' }}>
-              {MODULE_PERMISSIONS.map(p => (
-                <label key={p} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '4px', textTransform: 'capitalize' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={model.permissions.includes(p)}
-                    onChange={() => togglePermission(p)}
+        <form className="crm-modal-sheet-body custom-scrollbar" onSubmit={handleSubmit}>
+          <div className="sheet-content-container">
+            {/* Basic Info */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="shield" />
+                <span>Basic Configuration</span>
+              </div>
+              <div className="form-sheet-grid" style={{ gridTemplateColumns: '1fr' }}>
+                <div className="sheet-field">
+                  <label>Role Identity *</label>
+                  <input
+                    className="crm-input"
+                    value={model.name}
+                    onChange={e => setModel(p => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. Sales Head, Tech Lead"
+                    required
+                    disabled={role?.is_system_role}
+                    autoFocus
                   />
-                  <span className="text-small">{p}</span>
+                  {role?.is_system_role && <p className="footer-hint" style={{ marginTop: '4px', fontStyle: 'normal' }}>System role names cannot be modified.</p>}
+                </div>
+
+                <div className="sheet-field">
+                  <label>Role Description</label>
+                  <textarea
+                    className="crm-input"
+                    style={{ minHeight: '80px' }}
+                    value={model.description}
+                    onChange={e => setModel(p => ({ ...p, description: e.target.value }))}
+                    placeholder="What this role does..."
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Permissions */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="briefcase" />
+                <span>Module Permissions</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'var(--bg-surface)', padding: '24px', borderRadius: '24px', border: '2px solid rgba(0,0,0,0.1)' }}>
+                {MODULE_PERMISSIONS.map(p => (
+                  <label key={p} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', textTransform: 'capitalize', fontSize: '0.85rem', fontWeight: 600 }}>
+                    <input 
+                      type="checkbox" 
+                      checked={model.permissions.includes(p)}
+                      onChange={() => togglePermission(p)}
+                    />
+                    <span>{p}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+
+            {/* Status */}
+            <section className="form-sheet-section no-border">
+              <div className="form-sheet-section-header">
+                <Icon name="info" />
+                <span>Operational Status</span>
+              </div>
+              <div style={{ display: 'flex', gap: '32px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  <input type="radio" checked={model.status === 'active'} onChange={() => setModel(p => ({ ...p, status: 'active' }))} />
+                  <span>Active</span>
                 </label>
-              ))}
-            </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  <input type="radio" checked={model.status === 'inactive'} onChange={() => setModel(p => ({ ...p, status: 'inactive' }))} />
+                  <span>Inactive</span>
+                </label>
+              </div>
+            </section>
           </div>
+        </form>
 
-          <div className="row">
-            <label className="text-small muted" style={{ fontWeight: 600 }}>Status</label>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <input type="radio" checked={model.status === 'active'} onChange={() => setModel(p => ({ ...p, status: 'active' }))} />
-                <span className="text-small">Active</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <input type="radio" checked={model.status === 'inactive'} onChange={() => setModel(p => ({ ...p, status: 'inactive' }))} />
-                <span className="text-small">Inactive</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="tableActions" style={{ marginTop: '10px' }}>
-            <button className="btn secondary" type="button" onClick={onClose} disabled={loading}>Cancel</button>
-            <button className="btn primary" type="submit" disabled={loading}>
+        <div className="crm-modal-sheet-footer">
+          <p className="footer-hint">All fields are securely encrypted.</p>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <button className="crm-btn-premium glass" type="button" onClick={onClose}>Cancel</button>
+            <button className="crm-btn-premium vibrant" type="submit" onClick={handleSubmit} disabled={loading}>
               {loading ? 'Saving...' : (isEdit ? 'Update Role' : 'Create Role')}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

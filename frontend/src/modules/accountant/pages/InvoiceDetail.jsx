@@ -67,103 +67,172 @@ export default function InvoiceDetail() {
   }
 
   return (
-    <div className="crm-fullscreen-shell">
-      <PageHeader
-        title="Customer Bill"
-        backTo="/invoices"
-        actions={
-          <div className="flex gap-12 align-center">
-             {canEdit && remaining > 0 && (
-               <button 
-                 className="crm-btn-premium vibrant" 
-                 onClick={() => navigate(`/payments/new?invoiceId=${invoice.id}&customerId=${invoice.customer_id?._id || invoice.customer_id}`)}
-                 style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
-               >
-                 <Icon name="plus" />
-                 <span>Add Payment</span>
-               </button>
-             )}
-             <button className="crm-btn-premium vibrant" onClick={handlePayOnline} style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}>
-              <Icon name="activity" />
-              <span>Pay Now</span>
-            </button>
-             <button className="crm-btn-premium vibrant" onClick={handleShareWhatsApp} style={{ background: '#25d366' }}>
-              <Icon name="phone" />
-              <span>Share WhatsApp</span>
-            </button>
-            <button className="crm-btn-premium glass" onClick={handlePrint}>
-              <Icon name="reports" />
-              <span>Print Bill</span>
-            </button>
-            {canEdit && (
-              <button className="crm-btn-premium glass" onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
-                <Icon name="edit" />
-                <span>Edit</span>
-              </button>
-            )}
-          </div>
-        }
-      />
-
-      <section className="crm-hero-shell">
-        <div className="crm-hero-glow crm-hero-glow-1" />
-        <div className="crm-hero-glow crm-hero-glow-2" />
-
-        <div className="crm-hero-topline">
-          <span className={`status-pill ${invoice.status === 'Paid' ? 'Paid' : invoice.status === 'Overdue' ? 'Lost' : 'Contacted'}`}>
-            {invoice.status}
-          </span>
-          <span className="hero-meta-chip">Billed on {new Date(invoice.invoice_date).toLocaleDateString()}</span>
-          {invoice.paid_date && (
-            <span className="hero-meta-chip" style={{ color: '#34d399', borderColor: 'rgba(52, 211, 153, 0.3)' }}>Settled {new Date(invoice.paid_date).toLocaleDateString()}</span>
-          )}
+    <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
+      {/* Header Row */}
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <Link to="/invoices" className="crm-btn-premium" style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+          <span>← Back</span>
+        </Link>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+           {canEdit && remaining > 0 && (
+             <button className="crm-btn-premium" onClick={() => navigate(`/payments/new?invoiceId=${invoice.id}&customerId=${invoice.customer_id?._id || invoice.customer_id}`)} style={{ background: 'var(--success)', color: '#ffffff', border: 'none', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+               <Icon name="plus" />
+               <span>Add Payment</span>
+             </button>
+           )}
+           <button className="crm-btn-premium" onClick={handlePayOnline} style={{ background: '#7c3aed', color: '#ffffff', border: 'none', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+             <Icon name="activity" />
+             <span>Pay Now</span>
+           </button>
+           <button className="crm-btn-premium" onClick={handleShareWhatsApp} style={{ background: '#25d366', color: '#ffffff', border: 'none', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+             <Icon name="phone" />
+             <span>WhatsApp</span>
+           </button>
+           <button className="crm-btn-premium" onClick={handlePrint} style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+             <Icon name="reports" />
+             <span>Print Bill</span>
+           </button>
+           {canEdit && (
+             <button className="crm-btn-premium" onClick={() => navigate(`/invoices/${invoice.id}/edit`)} style={{ background: 'var(--primary)', color: '#ffffff', border: 'none', padding: '8px 24px', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}>
+               <Icon name="edit" />
+               <span>Edit Bill</span>
+             </button>
+           )}
         </div>
+      </div>
 
-        <div className="crm-hero-main-row">
-          <div className="crm-hero-avatar">
-             <Icon name="billing" size={40} />
+      {/* Profile Header Card */}
+      <section className="no-print" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '32px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Avatar */}
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--primary-soft)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 700, flexShrink: 0, boxShadow: 'inset 0 0 0 1px var(--primary-soft)' }}>
+             <Icon name="billing" size={32} />
           </div>
 
-          <div className="crm-hero-copy">
-            <h1 className="crm-hero-name">{formatCurrency(invoice.total_amount)}</h1>
-            <div className="crm-hero-subline">
-              <div className="crm-hero-subline-item">
-                <Icon name="user" />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', margin: 0 }}>{formatCurrency(invoice.total_amount)}</h1>
+              <span style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', padding: '2px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border)' }}>
+                {invoice.status}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: invoice.status === 'Paid' ? 'var(--success)' : 'var(--danger)', fontWeight: 600, marginLeft: '4px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: invoice.status === 'Paid' ? 'var(--success)' : 'var(--danger)' }} />
+                <span>{invoice.status === 'Paid' ? 'Settled' : 'Pending'}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '20px', color: 'var(--text-dimmed)', fontSize: '0.9rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Icon name="user" size={14} />
                 <span>{invoice.customer_info?.name || invoice.customer_id?.name || 'Client'}</span>
               </div>
-              <div className="crm-hero-divider" />
-              <div className="crm-hero-subline-item">
-                <Icon name="alert" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Icon name="alert" size={14} />
                 <span>Due: {new Date(invoice.due_date).toLocaleDateString()}</span>
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="crm-hero-side-stack" style={{ gridTemplateColumns: 'repeat(3, 1fr)', width: 'auto', minWidth: '480px' }}>
-            <div className="crm-hero-stat-card">
-              <span className="crm-hero-stat-label">Total Billed</span>
-              <span className="crm-hero-stat-value">{formatCurrency(invoice.total_amount)}</span>
-            </div>
-            <div className="crm-hero-stat-card">
-              <span className="crm-hero-stat-label">Received</span>
-              <span className="crm-hero-stat-value" style={{ color: '#34d399' }}>{formatCurrency(invoice.paid_amount || 0)}</span>
-            </div>
-            <div className="crm-hero-stat-card">
-              <span className="crm-hero-stat-label">Balance</span>
-              <span className="crm-hero-stat-value" style={{ color: remaining > 0 ? '#f87171' : '#34d399' }}>{formatCurrency(remaining)}</span>
-            </div>
-          </div>
+        <div style={{ height: '1px', background: 'var(--border)', margin: '24px 0' }} />
+
+        {/* Time Stats Row */}
+        <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Total Amount:</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)' }}>{formatCurrency(invoice.total_amount)}</span>
+           </div>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Remaining:</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: remaining > 0 ? 'var(--danger)' : 'var(--success)' }}>{formatCurrency(remaining)}</span>
+           </div>
         </div>
       </section>
 
+      {/* Main Grid */}
+      <div className="crm-profile-grid-desktop no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+        
+        {/* Bill Details Card */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Bill Overview</h3>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Bill Number</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>#{invoice.invoice_number}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Total Billed</label>
+                <div style={{ color: 'var(--text)', fontWeight: 700 }}>{formatCurrency(invoice.total_amount)}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Received</label>
+                <div style={{ color: 'var(--success)', fontWeight: 700 }}>{formatCurrency(invoice.paid_amount || 0)}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Balance</label>
+                <div style={{ color: remaining > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 700 }}>{formatCurrency(remaining)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Snapshot Table Card */}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Bill Snapshot</h3>
+          </div>
+          <div style={{ padding: '0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📅</span> Bill Date
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{new Date(invoice.invoice_date).toLocaleDateString()}</div>
+              </div>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⚠️</span> Due Date
+                </div>
+                <div style={{ fontWeight: 600, color: remaining > 0 ? 'var(--danger)' : 'var(--text)' }}>{new Date(invoice.due_date).toLocaleDateString()}</div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>👤</span> Client Name
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{invoice.customer_info?.name || 'N/A'}</div>
+              </div>
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⚙️</span> Associated Deal
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                   {invoice.deal_id ? (
+                      <Link to={`/deals/${invoice.deal_id.id || invoice.deal_id}`} style={{ color: 'var(--primary)' }}>{invoice.deal_id.name || 'View Deal'}</Link>
+                   ) : 'No Deal'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Printable Invoice Wrapper */}
       <div className="crm-detail-grid">
         <div className="crm-detail-main">
-          <div className="invoice-container crm-detail-card no-padding overflow-hidden shadow-soft" id="printable-invoice" style={{ background: 'white', color: '#1a202c', border: 'none' }}>
+          <div className="invoice-container crm-detail-card no-padding overflow-hidden shadow-soft" id="printable-invoice" style={{ background: 'white', color: '#1a202c', border: 'none', borderRadius: '12px' }}>
+            {/* Rest of the invoice content (lines 162-277) */}
             <div style={{ padding: '40px' }}>
               {/* Header Section */}
               <div className="row justify-between align-start">
                 <div className="stack gap-12">
-                  <div className="text-3xl font-black italic tracking-tighter" style={{ color: 'var(--primary)' }}>
+                  <div className="text-3xl font-black italic tracking-tighter" style={{ color: '#2563eb' }}>
                      {invoice.company_info?.name?.toUpperCase() || 'COMPANY NAME'}
                   </div>
                   <div className="text-sm muted stack gap-2 max-w-200">
@@ -256,7 +325,7 @@ export default function InvoiceDetail() {
                   </div>
                   <div className="row justify-between border-top pt-12 mt-4">
                     <span className="font-black text-xl uppercase">Total Amount:</span>
-                    <span className="font-black text-xl text-primary font-numeric">{formatCurrency(invoice.total_amount)}</span>
+                    <span className="font-black text-xl text-primary font-numeric" style={{ color: '#2563eb' }}>{formatCurrency(invoice.total_amount)}</span>
                   </div>
                   <div className="row justify-between mt-8 p-12 rounded-12" style={{ background: remaining > 0 ? '#fff5f5' : '#f0fff4' }}>
                     <span className={`font-bold ${remaining > 0 ? 'text-danger' : 'text-success'}`}>
@@ -269,7 +338,7 @@ export default function InvoiceDetail() {
                 </div>
               </div>
 
-              <div className="divider mt-24" style={{ height: '4px', background: 'var(--primary)', opacity: 0.1, borderRadius: '99px' }} />
+              <div className="divider mt-24" style={{ height: '4px', background: '#2563eb', opacity: 0.1, borderRadius: '99px' }} />
               <div className="text-center text-xs muted font-bold uppercase tracking-tighter">
                 This is a computer generated document. No signature required.
               </div>
@@ -277,50 +346,37 @@ export default function InvoiceDetail() {
           </div>
         </div>
 
-        <aside className="crm-detail-side">
-          <section className="crm-detail-card accent-card">
-            <div className="crm-detail-card-header">
-              <div className="crm-detail-card-title">
-                <Icon name="activity" />
-                <h3>Payment Activity</h3>
-              </div>
+        <aside className="crm-detail-side no-print">
+          <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', marginBottom: '24px' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Payment Activity</h3>
             </div>
-            <div className="crm-detail-card-body">
+            <div style={{ padding: '24px' }}>
               <div className="snapshot-list">
                 {payments.map(pay => (
-                  <div key={pay.id} className="snapshot-row" style={{ cursor: 'pointer' }} onClick={() => navigate(`/payments/${pay.id}`)}>
+                  <div key={pay.id} className="snapshot-row" style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }} onClick={() => navigate(`/payments/${pay.id}`)}>
                     <div className="stack tiny-gap">
-                      <span className="snapshot-label">{new Date(pay.payment_date).toLocaleDateString()}</span>
-                      <span className="text-xs muted">{pay.payment_method}</span>
+                      <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text)' }}>{new Date(pay.payment_date).toLocaleDateString()}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)' }}>{pay.payment_method}</span>
                     </div>
-                    <span className="snapshot-value text-success">{formatCurrency(pay.amount)}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--success)' }}>{formatCurrency(pay.amount)}</span>
                   </div>
                 ))}
                 {payments.length === 0 && (
-                  <div className="center padding-24 muted italic" style={{ border: '1px dashed var(--border)', borderRadius: '12px' }}>
-                    No payments yet.
+                  <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-dimmed)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                    No payments documented.
                   </div>
                 )}
               </div>
             </div>
           </section>
 
-          {invoice.deal_id && (
-            <Link to={`/deals/${invoice.deal_id.id || invoice.deal_id}`} className="converted-link-premium">
-              <div className="link-icon"><Icon name="deals" /></div>
-              <div className="link-text">
-                <strong>Linked Deal: {invoice.deal_id.name}</strong>
-                <span>Back to sales pipeline</span>
-              </div>
-            </Link>
-          )}
-
-          <section className="crm-detail-card">
-            <div className="center text-center">
-              <div className="muted text-xs uppercase font-black margin-bottom-12">Next Action Intelligence</div>
-              <button className="crm-btn-premium vibrant full-width" style={{ justifyContent: 'center' }} onClick={() => window.print()}>
+          <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: 'var(--text-dimmed)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '16px' }}>Ready for Dispatch?</div>
+              <button className="crm-btn-premium" style={{ width: '100%', background: 'var(--primary)', color: '#ffffff', border: 'none', justifyContent: 'center' }} onClick={handlePrint}>
                 <Icon name="reports" />
-                <span>Dispatch to Client</span>
+                <span>Download as PDF</span>
               </button>
             </div>
           </section>

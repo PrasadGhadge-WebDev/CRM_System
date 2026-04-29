@@ -121,6 +121,19 @@ exports.createDeal = asyncHandler(async (req, res) => {
     payload.readable_id = await getNextDealId(req.user.company_id);
   }
 
+  // Duplicate Check
+  if (payload.name && payload.customer_id) {
+    const existing = await Deal.findOne({
+      company_id: req.user.company_id,
+      customer_id: payload.customer_id,
+      name: payload.name,
+      value: payload.value || 0
+    });
+    if (existing) {
+      return res.fail('Deal already exists for this customer', 400);
+    }
+  }
+
   // Automation for Won/Lost
   if (payload.stage === 'Won' || payload.stage === 'Lost') {
     payload.actual_close_date = new Date();
@@ -189,6 +202,24 @@ exports.updateDeal = asyncHandler(async (req, res) => {
 
   const updates = { ...(req.body || {}) };
   
+  // Duplicate Check on Update
+  if (updates.name || updates.customer_id || updates.value !== undefined) {
+    const checkName = updates.name || oldDeal.name;
+    const checkCust = updates.customer_id || oldDeal.customer_id;
+    const checkVal  = updates.value !== undefined ? updates.value : oldDeal.value;
+    
+    const existing = await Deal.findOne({
+      _id: { $ne: req.params.id },
+      company_id: req.user.company_id,
+      customer_id: checkCust,
+      name: checkName,
+      value: checkVal
+    });
+    if (existing) {
+      return res.fail('Another deal with same name and amount already exists for this customer', 400);
+    }
+  }
+
   // Automate Close Date on Stage Change
   if (updates.stage && updates.stage !== oldDeal.stage) {
     if (updates.stage === 'Won' || updates.stage === 'Lost') {

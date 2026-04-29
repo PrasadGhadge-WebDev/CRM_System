@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, Outlet } from 'react-router-dom'
+import { Navigate, Route, Routes, Outlet, useParams } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import './index.css'
@@ -39,6 +39,7 @@ import Filters from './modules/admin/pages/Filters.jsx'
 import PaginationSettings from './modules/admin/pages/PaginationSettings.jsx'
 import TrashList from './modules/admin/pages/TrashList.jsx'
 import Attendance from './modules/admin/pages/Attendance.jsx'
+import RecycleBinIntelligence from './components/RecycleBinIntelligence.jsx'
 
 // Page Imports
 import Login from './pages/Login.jsx'
@@ -204,6 +205,7 @@ export default function App() {
           </Route>
 
           <Route path="/trash" element={<TrashList />} />
+          <Route path="/recycle-bin" element={<RecycleBinIntelligence />} />
           <Route path="/attendance" element={<ProtectedRoute permission="attendance"><Attendance /></ProtectedRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

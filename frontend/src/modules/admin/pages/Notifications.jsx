@@ -14,7 +14,7 @@ export default function Notifications() {
   const fetchNotifications = async () => {
     try {
       const res = await api.get('/notifications')
-      setNotifications(res.data)
+      setNotifications(Array.isArray(res) ? res : [])
     } catch (err) {
       console.error('Error fetching notifications:', err)
       // Fallback for demo if API is not fully ready

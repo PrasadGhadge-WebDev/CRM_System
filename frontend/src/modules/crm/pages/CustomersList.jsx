@@ -20,12 +20,12 @@ export default function CustomersList() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: currentUser } = useAuth()
-  
+
   const isAdmin = currentUser?.role === 'Admin'
   const isManager = currentUser?.role === 'Manager'
   const isEmployee = currentUser?.role === 'Employee'
   const isAdminOrManager = isAdmin || isManager
-  
+
   const canModify = isAdmin || isManager || isEmployee
   const canDelete = isAdmin
   const canImportExport = isAdmin || isManager
@@ -38,7 +38,7 @@ export default function CustomersList() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [statusOptions, setStatusOptions] = useState([])
-  
+
   useToastFeedback({ error })
 
   const [filters, setFilters] = useState({
@@ -105,7 +105,6 @@ export default function CustomersList() {
       <section className="crm-fullscreen-shell">
         <PageHeader
           title="Customers"
-          description="Manage your customer list and account info."
           backTo="/"
           actions={
             <div className="crm-flex-end crm-gap-12">
@@ -131,17 +130,17 @@ export default function CustomersList() {
           }
         />
 
-        <div className="crm-filter-panel">
+        <div className="crm-filter-panel modern-filter-panel">
           <div className="crm-filter-cell">
             <label className="crm-filter-label">Search Customers</label>
             <div className="crm-search-input-wrap">
               <Icon name="search" className="search-icon" />
-              <input type="text" placeholder="Name, Email, Phone..." value={filters.q} onChange={e => setFilters(f => ({...f, q: e.target.value, page: 1}))} />
+              <input type="text" className="crm-input" placeholder="Name, Email, Phone..." value={filters.q} onChange={e => setFilters(f => ({ ...f, q: e.target.value, page: 1 }))} />
             </div>
           </div>
           <div className="crm-filter-cell">
             <label className="crm-filter-label">Category</label>
-            <select className="crm-input" value={filters.customer_type} onChange={e => setFilters(f => ({...f, customer_type: e.target.value, page: 1}))}>
+            <select className="crm-input" value={filters.customer_type} onChange={e => setFilters(f => ({ ...f, customer_type: e.target.value, page: 1 }))}>
               <option value="">All Types</option>
               <option value="Lead">Potential Lead</option>
               <option value="Active">Active Customer</option>
@@ -150,14 +149,14 @@ export default function CustomersList() {
           </div>
           <div className="crm-filter-cell">
             <label className="crm-filter-label">Status</label>
-            <select className="crm-input" value={filters.status} onChange={e => setFilters(f => ({...f, status: e.target.value, page: 1}))}>
+            <select className="crm-input" value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value, page: 1 }))}>
               <option value="">All Statuses</option>
               {statusOptions.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
             </select>
           </div>
           <div className="crm-filter-cell">
             <label className="crm-filter-label">Assigned To</label>
-            <select className="crm-input" value={filters.assigned_to} onChange={e => setFilters(f => ({...f, assigned_to: e.target.value, page: 1}))}>
+            <select className="crm-input" value={filters.assigned_to} onChange={e => setFilters(f => ({ ...f, assigned_to: e.target.value, page: 1 }))}>
               <option value="">All Owners</option>
               {employees.map(e => <option key={e.id || e._id} value={e.id || e._id}>{e.name || e.username}</option>)}
             </select>
@@ -173,10 +172,10 @@ export default function CustomersList() {
           </div>
         ) : (
           <>
-            <div className="crm-table-wrap shadow-soft">
+            <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <div className="crm-table-scroll">
                 <table className="crm-table">
-                  <thead>
+                  <thead style={{ background: 'var(--bg-surface)' }}>
                     <tr>
                       <th style={{ width: '70px' }}>PROFILE</th>
                       <th style={{ minWidth: '220px' }}>CUSTOMER NAME</th>
@@ -227,7 +226,8 @@ export default function CustomersList() {
                               </span>
                             </td>
                             <td className="crm-clickable-cell">
-                              <span className={`crm-status-pill success`}>
+                              <span className="crm-status-pill-modern">
+                                <div className="status-dot" />
                                 {customer.status || 'ACTIVE'}
                               </span>
                             </td>
@@ -240,7 +240,7 @@ export default function CustomersList() {
                             <td className="text-right" onClick={stopRowNavigation}>
                               <div className="crm-action-group">
                                 <button
-                                  className="crm-action-btn"
+                                  className="modern-action-btn"
                                   onClick={() => navigate(`/customers/${id}/edit`)}
                                   title="Edit Customer"
                                 >
@@ -248,7 +248,7 @@ export default function CustomersList() {
                                 </button>
                                 {canDelete && (
                                   <button
-                                    className="crm-action-btn danger"
+                                    className="modern-action-btn danger"
                                     onClick={() => onDelete(id)}
                                     title="Delete"
                                   >
@@ -274,34 +274,70 @@ export default function CustomersList() {
                 </table>
               </div>
             </div>
-            <Pagination page={filters.page} limit={filters.limit} total={total} onPageChange={p => setFilters(f => ({...f, page: p}))} onLimitChange={l => setFilters(f => ({...f, limit: l, page: 1}))} />
+            <Pagination page={filters.page} limit={filters.limit} total={total} onPageChange={p => setFilters(f => ({ ...f, page: p }))} onLimitChange={l => setFilters(f => ({ ...f, limit: l, page: 1 }))} />
           </>
         )}
       </section>
 
       <style>{`
-        .tableAvatarFallback { width: 44px; height: 44px; border-radius: 12px; background: rgba(59, 130, 246, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; }
+        .tableAvatarFallback { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, var(--primary-soft), rgba(59, 130, 246, 0.2)); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.1); }
         .customersIdentityCell { display: flex; flex-direction: column; gap: 2px; }
-        .customersPrimaryText { color: var(--text); font-size: 1rem; font-weight: 700; }
+        .customersPrimaryText { color: var(--text); font-size: 0.95rem; font-weight: 700; }
         .customersSecondaryText { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
         
         .customersContactCell { display: flex; flex-direction: column; gap: 2px; }
-        .contactMain { color: var(--text); font-size: 0.9rem; font-weight: 700; }
-        .contactSub { color: var(--text-muted); font-size: 0.8rem; font-weight: 500; }
+        .contactMain { color: var(--text); font-size: 0.85rem; font-weight: 700; }
+        .contactSub { color: var(--text-muted); font-size: 0.75rem; font-weight: 500; }
 
         .customersOwnerCell { display: flex; flex-direction: column; gap: 2px; }
-        .ownerName { color: var(--text); font-size: 0.9rem; font-weight: 700; }
+        .ownerName { color: var(--text); font-size: 0.85rem; font-weight: 700; }
         .ownerRole { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
 
-        .customersTypeBadge { font-size: 0.7rem; font-weight: 800; color: var(--text-dimmed); letter-spacing: 0.05em; }
-        .crm-clickable-row { cursor: pointer; }
+        .customersTypeBadge { 
+          padding: 4px 10px;
+          background: var(--bg-surface);
+          border-radius: 8px;
+          font-size: 0.65rem; 
+          font-weight: 800; 
+          color: var(--text-muted); 
+          letter-spacing: 0.05em; 
+          text-transform: uppercase;
+          border: 1px solid var(--border);
+        }
+        .crm-clickable-row { cursor: pointer; transition: all 0.2s; }
+        .crm-clickable-row:hover { background: var(--bg-surface) !important; }
         .crm-clickable-row:focus { outline: 2px solid var(--primary); outline-offset: -2px; }
-        .crm-clickable-cell { cursor: pointer; }
         
-        .crm-action-group { display: flex; gap: 8px; justify-content: flex-end; }
-        .crm-action-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-        .crm-action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px var(--primary-soft); }
-        .crm-action-btn.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
+        .crm-action-group { display: flex; gap: 10px; justify-content: flex-end; }
+        .modern-action-btn { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .modern-action-btn:hover { background: var(--bg-card); color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px var(--primary-soft); }
+        .modern-action-btn.danger:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15); }
+
+        /* Glass Filter Effect */
+        .modern-filter-panel { 
+           background: var(--bg-card); 
+           backdrop-filter: blur(10px); 
+           border: 1px solid var(--border); 
+           border-radius: 24px; 
+           padding: 24px;
+           margin-bottom: 24px;
+        }
+
+        .crm-status-pill-modern {
+           padding: 6px 14px;
+           border-radius: 10px;
+           font-size: 0.7rem;
+           font-weight: 700;
+           text-transform: uppercase;
+           letter-spacing: 0.05em;
+           display: inline-flex;
+           align-items: center;
+           gap: 6px;
+           background: var(--success-soft, rgba(16, 185, 129, 0.08)); 
+           color: var(--success); 
+           border: 1px solid var(--success-soft, rgba(16, 185, 129, 0.15));
+        }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }
       `}</style>
     </div>
   )

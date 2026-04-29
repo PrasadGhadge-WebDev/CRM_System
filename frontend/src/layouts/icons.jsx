@@ -319,6 +319,13 @@ export function Icon({ name }) {
         </svg>
       )
 
+    case 'clock':
+      return (
+        <svg {...common} aria-hidden="true">
+          <circle {...stroke} cx="12" cy="12" r="10" />
+          <polyline {...stroke} points="12 6 12 12 16 14" />
+        </svg>
+      )
     default:
       return null
   }
