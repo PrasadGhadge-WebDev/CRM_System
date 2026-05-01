@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FiUser, FiMail, FiPhone, FiLock, FiCheckCircle, FiShield, FiZap } from 'react-icons/fi'
+import { FiUser, FiMail, FiPhone, FiLock, FiLoader, FiArrowLeft, FiSun, FiMoon } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
 import { validateRegisterField, validateRegisterForm } from '../utils/authValidation'
 import { normalizeDigits, normalizeName } from '../utils/formValidation'
 import { useToastFeedback } from '../utils/useToastFeedback.js'
-import '../styles/auth.css'
+import '../styles/auth-minimal.css'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -16,14 +16,21 @@ export default function Register() {
     password: '',
   })
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [fieldError, setFieldError] = useState({})
   const [touched, setTouched] = useState({})
   const [loading, setLoading] = useState(false)
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
 
   const { register } = useAuth()
   const navigate = useNavigate()
-  useToastFeedback({ error, success })
+  useToastFeedback({ error })
+
+  useEffect(() => {
+    document.body.classList.toggle('dark', theme === 'dark')
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
 
   const updateFieldError = (name, value) => {
     const nextError = validateRegisterField(name, value)
@@ -64,7 +71,6 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    setSuccess('')
 
     const errors = validateRegisterForm(formData)
     setFieldError(errors)
@@ -85,201 +91,120 @@ export default function Register() {
       const result = await register(formData)
 
       if (result.success) {
-        toast.success('Registration successful! Redirecting to dashboard...')
+        toast.success('Registration successful!')
         setTimeout(() => navigate('/dashboard'), 1500)
       } else {
         setError(result.message || 'Failed to register')
       }
     } catch (err) {
-      setError(err.message || 'An unexpected error occurred during registration')
+      setError(err.message || 'An unexpected error occurred')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="auth-container">
-      <div className="auth-shell auth-shell-register">
-        <section className="auth-panel auth-panel-brand">
-          <div className="auth-panel-top">
-            <div className="auth-logo-wrap">
-              <img src="/CRM_Logo.png" alt="CRM Logo" className="auth-brand-logo" />
-              <span className="auth-brand-text">CRM SYSTEM</span>
-            </div>
-            <div className="auth-brand-chip">Trial Workspace</div>
-
-            <div className="auth-illustration" aria-hidden="true">
-              <div className="auth-illustration-gear" />
-              <div className="auth-illustration-window">
-                <div className="auth-illustration-screen">
-                  <div className="auth-illustration-list">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <div className="auth-illustration-bars">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                </div>
-              </div>
-              <div className="auth-illustration-card auth-illustration-card-left" />
-              <div className="auth-illustration-card auth-illustration-card-right" />
-            </div>
-          </div>
-
-          <div className="auth-feature-list">
-            <div className="auth-feature-item">
-              <span className="auth-feature-title">Start your 5-day free trial</span>
-              <span className="auth-feature-copy">
-                Get full access to all CRM features immediately after signing up.
-              </span>
-            </div>
-            <div className="auth-feature-item">
-              <span className="auth-feature-title">Quick setup</span>
-              <span className="auth-feature-copy">
-                Enter your basic details to generate your isolated workspace and sample data.
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <section className="auth-card auth-card-register">
-          <div className="auth-header auth-header-register">
-            <h2 className="auth-title">Get Started</h2>
-            <p className="auth-subtitle">Create your demo account in seconds.</p>
-          </div>
-
-          {error && <div className="auth-error">{error}</div>}
-          {success && <div className="alert">{success}</div>}
-
-          <form onSubmit={handleSubmit} className="auth-form" noValidate>
-            <div className="auth-form-grid">
-              <div className="auth-group full-width">
-                <label className="auth-label" htmlFor="register-full-name">
-                  Name
-                </label>
-                <div className={`auth-input-wrap${fieldError.fullName ? ' auth-input-wrap-invalid' : ''}`}>
-                  <span className="auth-input-icon"><FiUser /></span>
-                  <input
-                    id="register-full-name"
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    className={`auth-input auth-input-with-icon${fieldError.fullName ? ' auth-input-invalid' : ''}`}
-                    placeholder="Your Full Name"
-                    autoComplete="name"
-                    autoFocus
-                    maxLength={60}
-                    required
-                  />
-                </div>
-                {fieldError.fullName && (
-                  <small className="auth-field-error">{fieldError.fullName}</small>
-                )}
-              </div>
-
-              <div className="auth-group full-width">
-                <label className="auth-label" htmlFor="register-email">
-                  Email
-                </label>
-                <div className={`auth-input-wrap${fieldError.email ? ' auth-input-wrap-invalid' : ''}`}>
-                  <span className="auth-input-icon"><FiMail /></span>
-                  <input
-                    id="register-email"
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    className={`auth-input auth-input-with-icon${fieldError.email ? ' auth-input-invalid' : ''}`}
-                    placeholder="example@email.com"
-                    autoComplete="email"
-                    maxLength={100}
-                    required
-                  />
-                </div>
-                {fieldError.email && (
-                  <small className="auth-field-error">{fieldError.email}</small>
-                )}
-              </div>
-
-              <div className="auth-group full-width">
-                <label className="auth-label" htmlFor="register-phone">
-                  Mobile
-                </label>
-                <div className={`auth-input-wrap${fieldError.phone ? ' auth-input-wrap-invalid' : ''}`}>
-                  <span className="auth-input-icon"><FiPhone /></span>
-                  <input
-                    id="register-phone"
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    className={`auth-input auth-input-with-icon${fieldError.phone ? ' auth-input-invalid' : ''}`}
-                    placeholder="10-digit mobile number"
-                    inputMode="numeric"
-                    maxLength={10}
-                    autoComplete="tel"
-                    required
-                  />
-                </div>
-                {fieldError.phone && (
-                  <small className="auth-field-error">{fieldError.phone}</small>
-                )}
-              </div>
-
-              <div className="auth-group full-width">
-                <label className="auth-label" htmlFor="register-password">
-                  Password
-                </label>
-                <div className={`auth-password-wrap${fieldError.password ? ' auth-password-wrap-invalid' : ''}`}>
-                  <span className="auth-input-icon"><FiLock /></span>
-                  <input
-                    id="register-password"
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    className={`auth-input auth-input-password${fieldError.password ? ' auth-input-invalid' : ''}`}
-                    placeholder="Choose a password"
-                    autoComplete="new-password"
-                    minLength={6}
-                    required
-                  />
-                </div>
-                {fieldError.password && (
-                  <small className="auth-field-error">{fieldError.password}</small>
-                )}
-                <small className="auth-field-hint">
-                  Use at least 6 characters with letters and numbers.
-                </small>
-              </div>
-            </div>
-
-            <button type="submit" disabled={loading} className="auth-button">
-              {loading ? 'Setting up workspace...' : 'Start Free Demo'}
-            </button>
-          </form>
-
-          <div className="auth-footer">
-            Already have an account?
-            <Link
-              to="/login"
-              state={{ from: { pathname: '/dashboard' }, entry: 'register' }}
-              className="auth-link"
-            >
-              Log in
+    <div className="auth-minimal-page">
+      <div className="auth-minimal-container">
+        <div className="auth-minimal-card">
+          <div className="auth-minimal-controls">
+            <Link to="/" className="back-btn" title="Back to Home">
+              <FiArrowLeft />
             </Link>
+            <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">
+              {theme === 'dark' ? <FiSun /> : <FiMoon />}
+            </button>
           </div>
-        </section>
+
+          {/* Form Side */}
+          <div className="auth-minimal-form-section">
+            <h1 className="auth-minimal-heading">Create your Account</h1>
+            
+            {error && <div className="auth-minimal-error">{error}</div>}
+
+            <form onSubmit={handleSubmit} className="auth-minimal-form">
+              <div className="auth-minimal-group">
+                <label htmlFor="fullName">Full Name</label>
+                <input
+                  id="fullName"
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="Enter Name"
+                  autoComplete="off"
+                  className={fieldError.fullName ? 'input-error' : ''}
+                />
+                {fieldError.fullName && <span className="auth-minimal-field-error">{fieldError.fullName}</span>}
+              </div>
+
+              <div className="auth-minimal-group">
+                <label htmlFor="email">Email Address</label>
+                <input
+                  id="email"
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="Enter Email"
+                  autoComplete="off"
+                  className={fieldError.email ? 'input-error' : ''}
+                />
+                {fieldError.email && <span className="auth-minimal-field-error">{fieldError.email}</span>}
+              </div>
+
+              <div className="auth-minimal-group">
+                <label htmlFor="phone">Mobile Number</label>
+                <input
+                  id="phone"
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="Enter Mobile"
+                  autoComplete="off"
+                  className={fieldError.phone ? 'input-error' : ''}
+                />
+                {fieldError.phone && <span className="auth-minimal-field-error">{fieldError.phone}</span>}
+              </div>
+
+              <div className="auth-minimal-group">
+                <label htmlFor="password">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="Choose Password"
+                  autoComplete="new-password"
+                  className={fieldError.password ? 'input-error' : ''}
+                />
+                {fieldError.password && <span className="auth-minimal-field-error">{fieldError.password}</span>}
+              </div>
+
+              <button type="submit" disabled={loading} className="auth-minimal-btn">
+                {loading ? <FiLoader className="spinner" /> : 'START FREE DEMO'}
+              </button>
+
+              <p className="auth-minimal-footer">
+                Already have an account? <Link to="/login">Log in</Link>
+              </p>
+            </form>
+          </div>
+
+          {/* Illustration Side */}
+          <div className="auth-minimal-image-section">
+            <div className="illustration-wrapper">
+              <img src="/minimal_login_illustration.png" alt="Illustration" />
+            </div>
+            <div className="illustration-circle-bg"></div>
+          </div>
+        </div>
       </div>
     </div>
   )

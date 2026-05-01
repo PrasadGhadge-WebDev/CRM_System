@@ -11,13 +11,13 @@
 }
 
 /* Override components to use intelligence styling within CRM context */
-.crmContent :is(.card, .crmPanel, .card-premium, .info-card-premium, .preview-card-premium, .detail-card, .lead-hero-shell, .note, .alert, .tableWrap, .glass-panel, .intel-form-card, .intel-card) {
+.crmContent :is(.card, .crmPanel, .card-premium, .info-card-premium, .preview-card-premium, .detail-card, .crm-detail-card, .lead-hero-shell, .note, .alert, .tableWrap, .glass-panel, .intel-form-card, .intel-card) {
   background: var(--bg-intelligence) !important;
   border: 1px solid var(--border) !important;
   box-shadow: var(--shadow-md) !important;
   backdrop-filter: none !important;
-  border-radius: 16px !important;
-  padding: 20px !important;
+  border-radius: 20px !important;
+  padding: 24px !important;
 }
 
 /* Glass Panels with subtle gradients depending on theme */

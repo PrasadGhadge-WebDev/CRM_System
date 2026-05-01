@@ -3,15 +3,13 @@ import { toast } from 'react-toastify'
 import { leadSourcesApi } from '../../../services/leadSources'
 import { Icon } from '../../../layouts/icons.jsx'
 
-const CATEGORIES = ['Paid', 'Organic', 'Referral', 'Direct'];
-
 export default function LeadSourceFormModal({ source, onClose, onSuccess }) {
   const isEdit = !!source
   const [loading, setLoading] = useState(false)
   const [model, setModel] = useState({
     name: '',
-    category: 'Direct',
-    cost_per_lead: 0,
+    order: 0,
+    color: '#3b82f6',
     is_default: false,
     status: 'active'
   })
@@ -20,8 +18,8 @@ export default function LeadSourceFormModal({ source, onClose, onSuccess }) {
     if (source) {
       setModel({
         name: source.name || '',
-        category: source.category || 'Direct',
-        cost_per_lead: source.cost_per_lead || 0,
+        order: source.order || 0,
+        color: source.color || '#3b82f6',
         is_default: !!source.is_default,
         status: source.status || 'active'
       })
@@ -41,7 +39,7 @@ export default function LeadSourceFormModal({ source, onClose, onSuccess }) {
         ...model,
         id: source?._id || source?.id,
       })
-      toast.success(isEdit ? 'Source updated' : 'Source created')
+      toast.success(isEdit ? 'Source parameters updated' : 'Lead channel initialized')
       onSuccess()
     } catch (err) {
       toast.error(err.message || 'Operation failed')
@@ -51,80 +49,87 @@ export default function LeadSourceFormModal({ source, onClose, onSuccess }) {
   }
 
   return (
-    <div className="crm-modal-overlay">
-      <div className="crm-modal card" style={{ maxWidth: '450px', width: '90%' }}>
-        <div className="crm-modal-header">
-          <h3 style={{ margin: 0 }}>{isEdit ? 'Edit Lead Source' : 'Add New Source'}</h3>
-          <button className="iconBtn" onClick={onClose}><Icon name="close" /></button>
+    <div className="crm-modal-portal-overlay">
+      <div className="crm-modal-sheet animate-sheet-in" style={{ maxWidth: '450px' }}>
+        <div className="crm-modal-sheet-header">
+           <div className="sheet-title-area">
+             <h2 className="sheet-title">{isEdit ? 'Modify Acquisition Node' : 'Initialize Acquisition Node'}</h2>
+             <p className="sheet-subtitle">Configure lead source identity and priority metrics</p>
+           </div>
         </div>
 
-        <form className="crm-modal-body stack gap-20" onSubmit={handleSubmit}>
-          <div className="stack tiny-gap">
-            <label className="text-small muted" style={{ fontWeight: 600 }}>Source Name *</label>
+        <form className="crm-modal-sheet-body stack gap-20" onSubmit={handleSubmit}>
+          <div className="sheet-field">
+            <label>Channel Identity *</label>
             <input
-              className="input"
+              className="input-premium"
               value={model.name}
               onChange={e => setModel(p => ({ ...p, name: e.target.value }))}
-              placeholder="e.g. Google Ads, Facebook"
+              placeholder="e.g. Google Ads, WhatsApp"
               required
             />
           </div>
 
           <div className="row gap-20">
-            <div className="stack tiny-gap" style={{ flex: 1 }}>
-              <label className="text-small muted" style={{ fontWeight: 600 }}>Category</label>
-              <select 
-                className="input" 
-                value={model.category} 
-                onChange={e => setModel(p => ({ ...p, category: e.target.value }))}
-              >
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            
-            <div className="stack tiny-gap" style={{ width: '120px' }}>
-               <label className="text-small muted" style={{ fontWeight: 600 }}>Avg. Cost (₹)</label>
+            <div className="sheet-field" style={{ flex: 1 }}>
+               <label>Display Priority</label>
                <input
-                 className="input"
+                 className="input-premium"
                  type="number"
-                 value={model.cost_per_lead}
-                 onChange={e => setModel(p => ({ ...p, cost_per_lead: Number(e.target.value) }))}
+                 value={model.order || 0}
+                 onChange={e => setModel(p => ({ ...p, order: Number(e.target.value) }))}
+               />
+            </div>
+            <div className="sheet-field" style={{ width: '120px' }}>
+               <label>Visual Token</label>
+               <input
+                 className="input-premium"
+                 type="color"
+                 style={{ padding: '4px', height: '44px' }}
+                 value={model.color || '#3b82f6'}
+                 onChange={e => setModel(p => ({ ...p, color: e.target.value }))}
                />
             </div>
           </div>
 
-          <div className="row justify-between align-center">
-             <label className="row tiny-gap align-center pointer">
-               <input 
-                 type="checkbox" 
-                 checked={model.is_default} 
-                 onChange={e => setModel(p => ({ ...p, is_default: e.target.checked }))} 
-               />
-               <span className="text-small">Set as Default Source</span>
+          <div className="row justify-between align-center" style={{ background: 'var(--bg-surface)', padding: '16px', borderRadius: '16px' }}>
+             <label className="row tiny-gap align-center pointer font-800 text-xs">
+                <input 
+                  type="checkbox" 
+                  checked={model.status === 'active'} 
+                  onChange={e => setModel(p => ({ ...p, status: e.target.checked ? 'active' : 'inactive' }))} 
+                />
+                <span>OPERATIONAL</span>
              </label>
 
-             <div className="row align-center gap-8">
-                <span className="text-small muted">Status:</span>
-                <select 
-                  className="input small" 
-                  style={{ width: '100px' }}
-                  value={model.status} 
-                  onChange={e => setModel(p => ({ ...p, status: e.target.value }))}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-             </div>
-          </div>
-
-          <div className="tableActions" style={{ marginTop: '10px' }}>
-            <button className="btn secondary" type="button" onClick={onClose} disabled={loading}>Cancel</button>
-            <button className="btn primary" type="submit" disabled={loading}>
-              {loading ? 'Saving...' : (isEdit ? 'Update Source' : 'Create Source')}
-            </button>
+             <label className="row tiny-gap align-center pointer font-800 text-xs">
+                <input 
+                  type="checkbox" 
+                  checked={model.is_default} 
+                  onChange={e => setModel(p => ({ ...p, is_default: e.target.checked }))} 
+                />
+                <span>SYSTEM DEFAULT</span>
+             </label>
           </div>
         </form>
+
+        <div className="crm-modal-sheet-footer">
+          <div className="flex gap-16 justify-end w-100">
+            <button className="crm-btn-premium glass" type="button" onClick={onClose} disabled={loading}>Cancel</button>
+            <button className="crm-btn-premium vibrant" type="submit" onClick={handleSubmit} disabled={loading}>
+              {loading ? <div className="spinner-mini" /> : (isEdit ? 'Sync Node' : 'Initialize')}
+            </button>
+          </div>
+        </div>
       </div>
+
+      <style>{`
+        .sheet-field { display: flex; flex-direction: column; gap: 8px; }
+        .sheet-field label { font-size: 0.75rem; font-weight: 700; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
+        .w-100 { width: 100%; }
+        .font-800 { font-weight: 800; }
+        .text-xs { font-size: 0.75rem; }
+      `}</style>
     </div>
   )
 }

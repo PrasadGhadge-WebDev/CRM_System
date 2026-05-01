@@ -133,9 +133,10 @@ export default function TicketDetail() {
     <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
       {/* Header Row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <Link to="/tickets" className="crm-btn-premium" style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
-          <span>← Back</span>
-        </Link>
+        <button onClick={() => navigate('/tickets')} className="back-btn-modern">
+          <Icon name="chevronLeft" />
+          <span>Back to Tickets</span>
+        </button>
         <div style={{ display: 'flex', gap: '12px' }}>
           {canManage && (
             <button onClick={() => updateStatus(ticket.status === 'closed' ? 'open' : 'closed')} className="crm-btn-premium" style={{ background: ticket.status === 'closed' ? 'var(--success)' : 'var(--danger)', color: '#ffffff', border: 'none', padding: '8px 16px', borderRadius: '8px' }}>

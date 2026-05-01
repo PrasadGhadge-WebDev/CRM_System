@@ -54,51 +54,75 @@ export default function PaymentsList() {
   return (
     <div className="stack">
       <section className="crm-fullscreen-shell">
-        <PageHeader
-          title="Payments Received"
-          description="Track and manage all customer payments in one place."
-          backTo="/"
-          actions={canAdd && (
-            <div className="crm-flex-end">
-              <button className="btn-premium action-vibrant" onClick={() => navigate('/payments/new')}>
-                <Icon name="plus" />
-                <span>Add Payment</span>
-              </button>
-            </div>
-          )}
-        />
+        <div className="users-page-header">
+          <h1 className="users-title">Payments Management</h1>
+          <p className="users-subtitle">Review collection history and financial transaction records</p>
+        </div>
 
-        <div className="crm-filter-panel">
-          <div className="crm-filter-cell">
-            <label className="crm-filter-label">Search Payments</label>
+        <div className="crm-stats-bar-compact">
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">TOTAL COLLECTED</span>
+            <span className="stat-pill-value active">₹{payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toLocaleString()}</span>
+          </div>
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">TRANSACTIONS</span>
+            <span className="stat-pill-value total">{total}</span>
+          </div>
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">AVG PAYMENT</span>
+            <span className="stat-pill-value pending">₹{total > 0 ? (payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) / total).toLocaleString(undefined, {maximumFractionDigits: 0}) : 0}</span>
+          </div>
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">METHODS</span>
+            <span className="stat-pill-value inactive">{new Set(payments.map(p => p.payment_method)).size}</span>
+          </div>
+        </div>
+
+        <div className="unified-action-bar">
+          <div className="search-filter-group">
             <div className="crm-search-input-wrap">
               <Icon name="search" className="search-icon" />
-              <input type="text" placeholder="Payment #, Customer Name..." value={q} onChange={e => { setQ(e.target.value); setPage(1); }} />
+              <input 
+                type="text" 
+                placeholder="Search payments..." 
+                value={q} 
+                className="crm-input"
+                onChange={e => { setQ(e.target.value); setPage(1); }} 
+              />
             </div>
-          </div>
 
-          <div className="crm-filter-cell">
-            <label className="crm-filter-label">Payment Method</label>
-            <select className="crm-input" value={method} onChange={e => { setMethod(e.target.value); setPage(1); }}>
+            <select className="crm-input filter-select" value={method} onChange={e => { setMethod(e.target.value); setPage(1); }}>
               <option value="">All Methods</option>
               <option value="Cash">Cash</option>
               <option value="Card">Card</option>
-              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Bank Transfer">Bank</option>
               <option value="Online">Online</option>
               <option value="Cheque">Cheque</option>
               <option value="UPI">UPI</option>
-              <option value="Other">Other</option>
             </select>
-          </div>
 
-          <div className="crm-filter-cell">
-            <label className="crm-filter-label">Start Date</label>
-            <input type="date" className="crm-input" value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1); }} />
-          </div>
+            <button
+              className="btn-premium-mini add-user-btn"
+              onClick={() => navigate('/payments/new')}
+            >
+              <Icon name="plus" size={16} />
+              <span>Add Payment</span>
+            </button>
 
-          <div className="crm-filter-cell">
-            <label className="crm-filter-label">End Date</label>
-            <input type="date" className="crm-input" value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }} />
+            {(q || method || startDate || endDate) && (
+              <button 
+                className="btn-clear-filters"
+                onClick={() => {
+                  setQ('')
+                  setMethod('')
+                  setStartDate('')
+                  setEndDate('')
+                  setPage(1)
+                }}
+              >
+                Clear All
+              </button>
+            )}
           </div>
         </div>
 
@@ -180,6 +204,45 @@ export default function PaymentsList() {
           </>
         )}
       </section>
+
+      <style>{`
+         .users-page-header { margin-bottom: 8px; }
+         .users-title { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+         .users-subtitle { font-size: 0.85rem; color: var(--text-dimmed); font-weight: 500; }
+
+         .unified-action-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 8px; flex-wrap: wrap; }
+         .search-filter-group { display: flex; align-items: center; gap: 16px; flex: 1; justify-content: space-between; }
+         .filter-select { max-width: 150px; }
+         .btn-clear-filters { background: none; border: none; color: var(--primary); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+         .btn-clear-filters:hover { text-decoration: underline; }
+
+         .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; justify-content: space-between; }
+         .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 10px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 130px; box-shadow: var(--shadow-sm); }
+         .stat-pill-label { font-size: 10px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
+         .stat-pill-value { font-size: 20px; font-weight: 900; }
+         .stat-pill-value.total { color: var(--text); }
+         .stat-pill-value.active { color: var(--success); }
+         .stat-pill-value.inactive { color: var(--danger); }
+         .stat-pill-value.pending { color: var(--warning); }
+
+         .crm-input { width: 100%; background: var(--bg-surface) !important; border: 1px solid var(--border-strong) !important; border-radius: 10px !important; padding: 8px 14px !important; color: var(--text) !important; font-size: 0.85rem !important; transition: all 0.2s; }
+         .crm-search-input-wrap { position: relative; width: 100%; flex: 1; max-width: none; }
+         .crm-search-input-wrap .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 1; color: var(--text-dimmed); font-size: 14px; }
+         .crm-search-input-wrap .crm-input { padding-left: 36px !important; }
+         
+         .add-user-btn { background: var(--primary) !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 0 20px !important; font-weight: 700 !important; height: 38px; display: flex; align-items: center; gap: 6px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2); font-size: 0.85rem; flex-shrink: 0; }
+         .add-user-btn:hover { background: var(--primary-hover) !important; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4); }
+
+         .crm-table th { padding: 12px 16px !important; border-bottom: 2px solid var(--border-strong) !important; color: var(--text-dimmed) !important; font-weight: 800 !important; font-size: 0.7rem !important; }
+         .crm-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--border-strong) !important; }
+         
+         @media (max-width: 1000px) {
+            .crm-stats-bar-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+            .stat-pill-mini { min-width: 0; padding: 10px; }
+            .stat-pill-value { font-size: 1.1rem; }
+            .add-user-btn { width: 100%; justify-content: center; }
+         }
+      `}</style>
     </div>
   )
 }

@@ -3,11 +3,21 @@ const mongoose = require('mongoose');
 const SystemSettingsSchema = new mongoose.Schema(
   {
     company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', unique: true, index: true },
+    companyName: { type: String, default: 'My CRM' },
+    defaultCurrency: { type: String, default: 'INR' },
+    dateFormat: { type: String, default: 'DD/MM/YYYY' },
+    timezone: { type: String, default: 'Asia/Kolkata' },
+    itemsPerPage: { type: Number, default: 10 },
+    enableEmailNotifications: { type: Boolean, default: true },
+    defaultLeadStatus: { type: String, default: 'NEW' },
+
     leadSources: [
       {
         name: { type: String, required: true, trim: true },
-        category: { type: String, enum: ['Paid', 'Organic', 'Referral', 'Direct'], default: 'Direct' },
+        category: { type: String, enum: ['Paid', 'Organic', 'Referral', 'Direct', 'Social', 'Other'], default: 'Direct' },
         isActive: { type: Boolean, default: true },
+        order: { type: Number, default: 0 },
+        color: { type: String, default: '#3b82f6' },
         isDeleted: { type: Boolean, default: false },
         deletedAt: { type: Date },
         deletedBy: { type: mongoose.Schema.Types.ObjectId, refPath: 'deletedByModel' },

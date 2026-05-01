@@ -49,8 +49,9 @@ body:not(.dark) {
   --topbar-bg: rgba(255, 255, 255, 0.9);
   --sidebar-item-active: rgba(44, 95, 138, 0.1);
   
-  --border: #E2E8F0;
-  --border-strong: #cbd5e1;
+  --border: #cbd5e1;
+  --border-strong: #94a3b8;
+  --border-subtle: #e2e8f0;
   
   --text: #1E2A3E;
   --text-muted: #5A6E7F;
@@ -92,8 +93,9 @@ body.dark {
   --topbar-bg: rgba(11, 19, 34, 0.8);
   --sidebar-item-active: rgba(59, 130, 246, 0.15);
 
-  --border: rgba(148, 163, 184, 0.16);
-  --border-strong: rgba(148, 163, 184, 0.26);
+  --border: rgba(148, 163, 184, 0.35);
+  --border-strong: rgba(148, 163, 184, 0.55);
+  --border-subtle: rgba(148, 163, 184, 0.2);
 
   --text: #f8fafc;
   --text-muted: #cbd5e1;

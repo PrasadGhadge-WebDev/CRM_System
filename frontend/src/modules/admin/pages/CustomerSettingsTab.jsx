@@ -4,125 +4,97 @@ import { settingsApi } from '../../../services/settings.js'
 import { Icon } from '../../../layouts/icons.jsx'
 
 export default function CustomerSettingsTab() {
-  const [types, setTypes] = useState([])
   const [categories, setCategories] = useState([])
+  const [newCategory, setNewCategory] = useState('')
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    settingsApi.get()
-      .then(res => {
-        setTypes(res.customerTypes || [])
-        setCategories(res.customerCategories || [])
-      })
-      .catch(e => toast.error('Failed to load customer settings'))
-      .finally(() => setLoading(false))
+    loadCategories()
   }, [])
 
-  const saveSettings = async (newTypes, newCats) => {
-    setSaving(true)
+  async function loadCategories() {
     try {
-      await settingsApi.update({ customerTypes: newTypes, customerCategories: newCats })
-      toast.success('Settings updated successfully')
-    } catch (e) {
-      toast.error('Failed to save settings')
-    } finally {
-      setSaving(false)
-    }
+      setLoading(true)
+      const data = await settingsApi.get()
+      setCategories(data?.customerCategories || ['Enterprise', 'Individual', 'Government', 'Non-Profit'])
+    } catch (e) { toast.error('Failed to load categories') } finally { setLoading(false) }
   }
 
-  const handleAddType = () => setTypes([...types, 'New Type'])
-  const handleRemoveType = (idx) => setTypes(types.filter((_, i) => i !== idx))
-  const handleTypeChange = (idx, val) => {
-    const next = [...types]; next[idx] = val; setTypes(next)
+  const handleAdd = async () => {
+    if (!newCategory.trim()) return
+    const updated = [...categories, newCategory.trim()]
+    try {
+      await settingsApi.update({ customerCategories: updated })
+      setCategories(updated)
+      setNewCategory('')
+      toast.success('Category added')
+    } catch (e) { toast.error('Save failed') }
   }
 
-  const handleAddCategory = () => setCategories([...categories, 'New Category'])
-  const handleRemoveCategory = (idx) => setCategories(categories.filter((_, i) => i !== idx))
-  const handleCategoryChange = (idx, val) => {
-    const next = [...categories]; next[idx] = val; setCategories(next)
+  const handleRemove = async (index) => {
+    const updated = categories.filter((_, i) => i !== index)
+    try {
+      await settingsApi.update({ customerCategories: updated })
+      setCategories(updated)
+      toast.success('Category removed')
+    } catch (e) { toast.error('Action failed') }
   }
-
-  if (loading) return <div className="center padding40 muted">Loading customer settings...</div>
 
   return (
-    <div className="stack gap-32">
-      <div className="grid2 gap-24">
-        {/* CUSTOMER TYPES */}
-        <div className="glass-panel intel-form-card">
-          <div className="card-header-premium">
-            <Icon name="users" />
-            <h3>Customer Types</h3>
-          </div>
-          <div className="card-body-premium stack gap-16">
-            <p className="text-xs muted">Define different classifications for your clients (e.g. Enterprise, Individual).</p>
-            <div className="stack gap-8">
-              {types.map((type, idx) => (
-                <div key={idx} className="flex gap-8 items-center">
-                  <input 
-                    className="input-premium" 
-                    value={type} 
-                    onChange={e => handleTypeChange(idx, e.target.value)} 
-                  />
-                  <button className="action-btn-mini danger" onClick={() => handleRemoveType(idx)}>
-                    <Icon name="trash" size={14} />
-                  </button>
-                </div>
-              ))}
-              <button className="btn-premium action-vibrant" onClick={handleAddType}>
-                <Icon name="plus" size={14} />
-                <span>Add Type</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* CUSTOMER CATEGORIES */}
-        <div className="glass-panel intel-form-card">
-          <div className="card-header-premium">
-            <Icon name="filter" />
-            <h3>Customer Categories</h3>
-          </div>
-          <div className="card-body-premium stack gap-16">
-            <p className="text-xs muted">Segmentation for reporting and filtering (e.g. Retail, Wholesale).</p>
-            <div className="stack gap-8">
-              {categories.map((cat, idx) => (
-                <div key={idx} className="flex gap-8 items-center">
-                  <input 
-                    className="input-premium" 
-                    value={cat} 
-                    onChange={e => handleCategoryChange(idx, e.target.value)} 
-                  />
-                  <button className="action-btn-mini danger" onClick={() => handleRemoveCategory(idx)}>
-                    <Icon name="trash" size={14} />
-                  </button>
-                </div>
-              ))}
-              <button className="btn-premium action-vibrant" onClick={handleAddCategory}>
-                <Icon name="plus" size={14} />
-                <span>Add Category</span>
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="categories-pane">
+      <div className="section-header-row">
+        <h2 className="heading-bold">Client Categories</h2>
+        <p style={{ color: '#9CA3AF', fontSize: '14px', margin: 0 }}>Define segmentation nodes for your customer database.</p>
       </div>
 
-      <div className="form-action-footer">
-        <button 
-          className="btn-premium action-vibrant" 
-          disabled={saving}
-          onClick={() => saveSettings(types, categories)}
-        >
-          {saving ? <div className="spinner-mini" /> : <Icon name="check" size={16} />}
-          <span>Save Intelligence Parameters</span>
-        </button>
+      <div className="settings-card">
+        <div className="add-category-row">
+          <input 
+            type="text" className="input-v9" placeholder="Enter new category name..." 
+            value={newCategory} onChange={e => setNewCategory(e.target.value)}
+            onKeyPress={e => e.key === 'Enter' && handleAdd()}
+          />
+          <button className="btn-primary-v9" onClick={handleAdd}>Add Category</button>
+        </div>
+
+        <div className="categories-list-grid">
+          {categories.map((cat, i) => (
+            <div key={i} className="category-tag-card">
+              <span className="cat-name">{cat}</span>
+              <button className="remove-cat-btn" onClick={() => handleRemove(i)}>×</button>
+            </div>
+          ))}
+          {categories.length === 0 && !loading && (
+            <div className="empty-state">No categories defined. Add one above to begin segmentation.</div>
+          )}
+        </div>
       </div>
 
       <style>{`
-        .card-header-premium { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .card-header-premium h3 { margin: 0; font-size: 0.95rem; font-weight: 800; }
-        .card-body-premium { padding: 20px; }
-        .form-action-footer { margin-top: 12px; padding: 20px; background: rgba(15, 23, 42, 0.4); border-radius: 20px; display: flex; justify-content: flex-end; }
+        .categories-pane { display: flex; flex-direction: column; gap: 24px; }
+        .section-header-row { margin-bottom: 8px; }
+        .heading-bold { font-size: 20px; font-weight: 700; color: #FFFFFF; margin-bottom: 8px; }
+
+        .settings-card { background: #1A1D2B; padding: 24px; border-radius: 10px; border: 1px solid #2D3040; }
+        
+        .add-category-row { display: flex; gap: 12px; margin-bottom: 32px; }
+        .input-v9 { flex: 1; background: #1F2232; border: 1px solid #2D3040; border-radius: 8px; padding: 12px; color: #FFFFFF; font-size: 14px; outline: none; }
+        .input-v9:focus { border-color: #3B82F6; }
+        
+        .btn-primary-v9 { background: #3B82F6; color: #FFFFFF; border: none; padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+        .categories-list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+        .category-tag-card { 
+          background: #1F2232; border: 1px solid #2D3040; padding: 14px 20px; border-radius: 8px; 
+          display: flex; justify-content: space-between; align-items: center; transition: 0.2s;
+        }
+        .category-tag-card:hover { border-color: #3B82F6; background: rgba(59, 130, 246, 0.05); }
+        .cat-name { font-size: 14px; font-weight: 700; color: #FFFFFF; }
+        
+        .remove-cat-btn { background: none; border: none; color: #6B7280; font-size: 20px; cursor: pointer; line-height: 1; }
+        .remove-cat-btn:hover { color: #EF4444; }
+
+        .empty-state { grid-column: 1 / -1; text-align: center; padding: 40px; color: #6B7280; font-size: 14px; }
       `}</style>
     </div>
   )

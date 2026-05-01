@@ -261,6 +261,23 @@ export function Icon({ name }) {
           <path {...stroke} d="m12 11.58 4.5-2.66V3.78L12 1.12 7.5 3.78v5.14l4.5 2.66Z" />
         </svg>
       )
+    case 'list':
+      return (
+        <svg {...common} aria-hidden="true">
+          <line {...stroke} x1="8" y1="6" x2="21" y2="6" />
+          <line {...stroke} x1="8" y1="12" x2="21" y2="12" />
+          <line {...stroke} x1="8" y1="18" x2="21" y2="18" />
+          <line {...stroke} x1="3" y1="6" x2="3.01" y2="6" />
+          <line {...stroke} x1="3" y1="12" x2="3.01" y2="12" />
+          <line {...stroke} x1="3" y1="18" x2="3.01" y2="18" />
+        </svg>
+      )
+    case 'columns':
+      return (
+        <svg {...common} aria-hidden="true">
+          <path {...stroke} d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18" />
+        </svg>
+      )
 
     case 'billing':
       return (
@@ -324,6 +341,12 @@ export function Icon({ name }) {
         <svg {...common} aria-hidden="true">
           <circle {...stroke} cx="12" cy="12" r="10" />
           <polyline {...stroke} points="12 6 12 12 16 14" />
+        </svg>
+      )
+    case 'shield':
+      return (
+        <svg {...common} aria-hidden="true">
+          <path {...stroke} d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       )
     default:

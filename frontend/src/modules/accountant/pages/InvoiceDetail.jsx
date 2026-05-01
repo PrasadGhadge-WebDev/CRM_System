@@ -70,9 +70,10 @@ export default function InvoiceDetail() {
     <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
       {/* Header Row */}
       <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <Link to="/invoices" className="crm-btn-premium" style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
-          <span>← Back</span>
-        </Link>
+        <button onClick={() => navigate('/invoices')} className="back-btn-modern">
+          <Icon name="chevronLeft" />
+          <span>Back to Invoices</span>
+        </button>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
            {canEdit && remaining > 0 && (
              <button className="crm-btn-premium" onClick={() => navigate(`/payments/new?invoiceId=${invoice.id}&customerId=${invoice.customer_id?._id || invoice.customer_id}`)} style={{ background: 'var(--success)', color: '#ffffff', border: 'none', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>

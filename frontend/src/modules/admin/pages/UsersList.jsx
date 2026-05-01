@@ -237,17 +237,6 @@ export default function UsersList() {
         </div>
 
         <div className="unified-action-bar">
-          <button
-            className="btn-premium-mini add-user-btn"
-            onClick={() => {
-              const next = new URLSearchParams(searchParams)
-              next.set('add', 'true')
-              setSearchParams(next)
-            }}
-          >
-            <Icon name="plus" size={16} />
-            <span>Add New User</span>
-          </button>
 
           <div className="search-filter-group">
             <div className="crm-search-input-wrap">
@@ -298,6 +287,18 @@ export default function UsersList() {
               <option value="inactive">Inactive</option>
               <option value="pending">Pending</option>
             </select>
+
+            <button
+              className="btn-premium-mini add-user-btn"
+              onClick={() => {
+                const next = new URLSearchParams(searchParams)
+                next.set('add', 'true')
+                setSearchParams(next)
+              }}
+            >
+              <Icon name="plus" size={16} />
+              <span>Add User</span>
+            </button>
 
             {(q || role || status) && (
               <button 
@@ -480,30 +481,30 @@ export default function UsersList() {
 
       <style>{`
          .crm-table th {
-            padding: 18px 24px !important;
+            padding: 12px 16px !important;
             font-size: 0.7rem !important;
             font-weight: 800 !important;
             color: var(--primary) !important;
             letter-spacing: 0.1em !important;
             text-transform: uppercase !important;
-            border-bottom: 2px solid var(--border) !important;
+            border-bottom: 2px solid var(--border-strong) !important;
             opacity: 0.9;
          }
 
-         .crm-table-row { transition: background 0.2s ease, transform 0.1s ease; cursor: pointer; border-bottom: 1px solid var(--border) !important; }
+         .crm-table-row { transition: background 0.2s ease, transform 0.1s ease; cursor: pointer; border-bottom: 1px solid var(--border-strong) !important; }
          .crm-table-row:hover { background: var(--bg-hover) !important; }
-         .crm-table-row td { padding: 16px 24px !important; }
+         .crm-table-row td { padding: 10px 16px !important; }
          
          .tableAvatarFallback { 
-            width: 44px; 
-            height: 44px; 
+            width: 40px; 
+            height: 40px; 
             border-radius: 50%; 
             color: white; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
             font-weight: 800; 
-            font-size: 1.1rem; 
+            font-size: 1rem; 
             text-shadow: 0 1px 2px rgba(0,0,0,0.1);
          }
          /* Dynamic background colors for initials */
@@ -511,15 +512,15 @@ export default function UsersList() {
          .crm-table-row:nth-child(3n+2) .tableAvatarFallback { background: #10b981; } /* Green */
          .crm-table-row:nth-child(3n+3) .tableAvatarFallback { background: #8b5cf6; } /* Purple */
          
-         .users-avatar-img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-sm); }
+         .users-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-sm); }
          
-         .usersIdentityCell { display: flex; flex-direction: column; gap: 4px; }
-         .usersPrimaryText { color: var(--text); font-size: 0.95rem; font-weight: 700; }
+         .usersIdentityCell { display: flex; flex-direction: column; gap: 2px; }
+         .usersPrimaryText { color: var(--text); font-size: 0.9rem; font-weight: 700; }
          
          .user-role-badge { 
-            padding: 2px 10px; 
-            border-radius: 6px; 
-            font-size: 10px; 
+            padding: 2px 8px; 
+            border-radius: 4px; 
+            font-size: 9px; 
             font-weight: 800; 
             text-transform: uppercase; 
             width: fit-content;
@@ -529,65 +530,69 @@ export default function UsersList() {
          .user-role-badge.EMPLOYEE { background: #3B82F6; }
          .user-role-badge.ADMIN { background: #ef4444; }
          .user-role-badge.MANAGER { background: #f59e0b; }
+         .user-role-badge.ACCOUNTANT { background: #0D9488; }
          
-         .crm-action-group { display: flex; gap: 12px; justify-content: flex-end; }
-         .modern-action-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-dimmed); display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; cursor: pointer; }
+         .crm-action-group { display: flex; gap: 8px; justify-content: flex-end; }
+         .modern-action-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text-dimmed); display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; cursor: pointer; }
          .modern-action-btn:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-1px); }
          .modern-action-btn.danger:hover { background: var(--bg-hover); color: var(--danger); border-color: var(--danger); }
-         .users-page-header { margin-bottom: 24px; }
-         .users-title { font-size: 1.5rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }
-         .users-subtitle { font-size: 0.9rem; color: var(--text-dimmed); font-weight: 500; }
+         .users-page-header { margin-bottom: 8px; }
+         .users-title { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+         .users-subtitle { font-size: 0.85rem; color: var(--text-dimmed); font-weight: 500; }
 
          .unified-action-bar { 
             display: flex; 
             align-items: center; 
             justify-content: space-between; 
-            gap: 20px; 
-            margin-bottom: 24px; 
+            gap: 16px; 
+            margin-bottom: 8px; 
             flex-wrap: wrap;
          }
          .search-filter-group { 
             display: flex; 
             align-items: center; 
-            gap: 12px; 
+            gap: 10px; 
             flex: 1; 
-            justify-content: flex-end; 
+            justify-content: space-between; 
          }
-         .filter-select { max-width: 160px; }
+         .filter-select { max-width: 150px; }
          
          .btn-clear-filters { 
             background: none; 
             border: none; 
             color: var(--primary); 
             font-weight: 700; 
-            font-size: 0.85rem; 
+            font-size: 0.8rem; 
             cursor: pointer; 
-            padding: 4px 8px; 
+            padding: 2px 6px; 
             transition: all 0.2s; 
          }
          .btn-clear-filters:hover { text-decoration: underline; color: var(--primary-hover); }
 
-         .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-bottom: 32px; }
-         .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border); padding: 16px 24px; border-radius: 16px; display: flex; flex-direction: column; gap: 4px; min-width: 160px; box-shadow: var(--shadow-sm); }
-         .stat-pill-label { font-size: 11px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
-         .stat-pill-value { font-size: 24px; font-weight: 900; }
+          .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; justify-content: space-between; }
+          .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 10px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 130px; box-shadow: var(--shadow-sm); }
+         .stat-pill-label { font-size: 10px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
+         .stat-pill-value { font-size: 20px; font-weight: 900; }
          .stat-pill-value.total { color: var(--text); }
          .stat-pill-value.active { color: var(--success); }
          .stat-pill-value.inactive { color: var(--text-dimmed); }
          .stat-pill-value.pending { color: var(--warning); }
 
-         .crm-table-wrap { border-radius: 20px; overflow: hidden; }
+         .crm-table-wrap { border-radius: 16px; overflow: hidden; }
 
-         .crm-input { width: 100%; background: var(--bg-surface) !important; border: 1px solid var(--border-strong) !important; border-radius: 12px !important; padding: 10px 16px !important; color: var(--text) !important; font-size: 0.9rem !important; transition: all 0.2s; }
-         .crm-search-input-wrap { position: relative; width: 100%; max-width: 300px; }
-         .crm-search-input-wrap .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); z-index: 1; color: var(--text-dimmed); }
-         .crm-search-input-wrap .crm-input { padding-left: 40px !important; }
+         .crm-input { width: 100%; background: var(--bg-surface) !important; border: 1px solid var(--border-strong) !important; border-radius: 10px !important; padding: 8px 14px !important; color: var(--text) !important; font-size: 0.85rem !important; transition: all 0.2s; }
+         .crm-search-input-wrap { position: relative; width: 100%; flex: 1; max-width: none; }
+         .crm-search-input-wrap .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 1; color: var(--text-dimmed); font-size: 14px; }
+         .crm-search-input-wrap .crm-input { padding-left: 36px !important; }
          
-         .add-user-btn { background: var(--primary) !important; color: white !important; border: none !important; border-radius: 12px !important; padding: 10px 20px !important; font-weight: 700 !important; height: 42px; display: flex; align-items: center; gap: 8px; }
-         .add-user-btn:hover { background: var(--primary-hover) !important; transform: translateY(-1px); }
+          .add-user-btn { background: var(--primary) !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 0 20px !important; font-weight: 700 !important; height: 38px; display: flex; align-items: center; gap: 6px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2); font-size: 0.85rem; flex-shrink: 0; }
+          .add-user-btn:hover { background: var(--primary-hover) !important; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4); }
+          @media (max-width: 1000px) {
+            .add-user-btn { width: 100%; justify-content: center; }
+          }
 
-         .bulk-actions-group { display: flex; gap: 8px; align-items: center; padding-left: 12px; border-left: 2px solid var(--border); margin-left: 8px; }
-         .btn-bulk { background: var(--bg-card); border: 1px solid var(--border); padding: 8px 14px; border-radius: 10px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; color: var(--text-muted); }
+         .bulk-actions-group { display: flex; gap: 6px; align-items: center; padding-left: 10px; border-left: 2px solid var(--border); margin-left: 6px; }
+         .btn-bulk { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 4px; cursor: pointer; transition: all 0.2s; color: var(--text-muted); }
          .btn-bulk:hover { border-color: var(--primary); color: var(--primary); }
          .btn-bulk.action-danger { color: var(--danger); }
          .btn-bulk.action-danger:hover { background: var(--bg-hover); border-color: var(--danger); }
@@ -603,30 +608,30 @@ export default function UsersList() {
             .crm-stats-bar-compact { 
                display: grid; 
                grid-template-columns: 1fr 1fr; 
-               gap: 12px; 
+               gap: 16px; 
             }
-            .stat-pill-mini { min-width: 0; padding: 12px; }
-            .stat-pill-value { font-size: 1.2rem; }
-            .stat-pill-label { font-size: 10px; }
+            .stat-pill-mini { min-width: 0; padding: 10px; }
+            .stat-pill-value { font-size: 1.1rem; }
+            .stat-pill-label { font-size: 9px; }
          }
          
          .crm-status-pill-modern {
-            padding: 6px 14px;
-            border-radius: 10px;
-            font-size: 0.7rem;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 0.65rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
          }
-         .status-dot { width: 8px; height: 8px; border-radius: 50%; }
-         .status-active { background: var(--bg-hover); color: var(--success); border: 1px solid var(--border); }
+         .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+         .status-active { background: var(--bg-hover); color: var(--success); border: 1px solid var(--border-strong); }
          .status-active .status-dot { background: var(--success); }
-         .status-pending { background: var(--bg-hover); color: var(--warning); border: 1px solid var(--border); }
+         .status-pending { background: var(--bg-hover); color: var(--warning); border: 1px solid var(--border-strong); }
          .status-pending .status-dot { background: var(--warning); }
-         .status-inactive { background: var(--bg-hover); color: var(--text-dimmed); border: 1px solid var(--border); }
+         .status-inactive { background: var(--bg-hover); color: var(--text-dimmed); border: 1px solid var(--border-strong); }
          .status-inactive .status-dot { background: var(--text-dimmed); }
 
          @media (max-width: 900px) {

@@ -77,16 +77,16 @@ export default function App() {
         <ScrollToTop />
         <EnterToNextField />
         <Routes>
-        <Route element={<PublicLayout />}>
-          <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/features" element={<FeaturesPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/access-denied" element={<AccessDenied />} />
-          <Route path="/trial-expired" element={<TrialExpiredPage />} />
-        </Route>
+          <Route path="/register" element={<Login />} />
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/access-denied" element={<AccessDenied />} />
+            <Route path="/trial-expired" element={<TrialExpiredPage />} />
+          </Route>
 
         <Route
           element={

@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { activitiesApi } from '../../../services/activities'
-import PageHeader from '../../../components/PageHeader'
-import Pagination from '../../../components/Pagination'
-import { Icon } from '../../../layouts/icons'
+import Pagination from '../../../components/Pagination.jsx'
+import { Icon } from '../../../layouts/icons.jsx'
 import { useToastFeedback } from '../../../utils/useToastFeedback'
 
 export default function ActivityLogs() {
@@ -44,11 +43,10 @@ export default function ActivityLogs() {
   return (
     <div className="stack">
       <section className="crm-fullscreen-shell">
-        <PageHeader
-          title="Institutional Audit"
-          description="Track system-wide actions, data state changes, and personnel operations in real-time."
-          backTo="/"
-        />
+        <div className="users-page-header">
+          <h1 className="users-title">Institutional Audit</h1>
+          <p className="users-subtitle">Track system-wide actions, data state changes, and personnel operations</p>
+        </div>
 
         <div className="crm-table-wrap shadow-soft">
           <div className="crm-table-scroll">
@@ -88,11 +86,11 @@ export default function ActivityLogs() {
                       </td>
                       <td>
                         <div className="crm-user-mention">
-                            <div className="crm-user-dot" />
-                            <div className="stack">
-                                <span style={{ color: 'var(--text)', fontWeight: 600 }}>{activity.user_name || activity.user?.name || 'System'}</span>
-                                <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-dimmed)' }}>{activity.user_role || 'Core'}</span>
-                            </div>
+                          <div className="crm-user-dot" />
+                          <div className="stack">
+                            <span style={{ color: 'var(--text)', fontWeight: 600 }}>{activity.user_name || activity.user?.name || 'System'}</span>
+                            <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-dimmed)' }}>{activity.user_role || 'Core'}</span>
+                          </div>
                         </div>
                       </td>
                       <td>
@@ -135,6 +133,11 @@ export default function ActivityLogs() {
             setPage(1)
           }}
         />
+        <style>{`
+          .users-page-header { margin-bottom: 8px; }
+          .users-title { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+          .users-subtitle { font-size: 0.85rem; color: var(--text-dimmed); font-weight: 500; }
+        `}</style>
       </section>
     </div>
   )

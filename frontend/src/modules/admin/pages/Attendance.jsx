@@ -14,19 +14,16 @@ export default function Attendance() {
 
   return (
     <div className="stack crmContent page-enter">
-      <PageHeader
-        title="Attendance & Leave Management"
-        description="Track employee presence, manage leave requests, and monitor operational capacity."
-        backTo="/"
-        actions={
-          <div className="leadsHeaderActions">
-            <button className="btn primary">
-              <Icon name="plus" size={16} />
-              <span>Mark Attendance</span>
-            </button>
+        <div className="users-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h1 className="users-title">Attendance & Leave</h1>
+            <p className="users-subtitle">Track employee presence and monitor operational capacity</p>
           </div>
-        }
-      />
+          <button className="btn-premium-mini add-user-btn" style={{ height: '38px', padding: '0 20px' }}>
+            <Icon name="plus" size={16} />
+            <span>Mark Attendance</span>
+          </button>
+        </div>
 
       <div className="dashboard-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginTop: '24px' }}>
         {stats.map(s => (

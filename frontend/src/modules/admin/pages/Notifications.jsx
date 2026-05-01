@@ -39,11 +39,9 @@ export default function Notifications() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Notifications</h1>
-          <p className="page-subtitle muted">Keep track of important updates and alerts.</p>
-        </div>
+      <div className="users-page-header">
+        <h1 className="users-title">Notifications</h1>
+        <p className="users-subtitle">Keep track of important system updates and operational alerts</p>
       </div>
 
       {loading ? (
@@ -69,6 +67,11 @@ export default function Notifications() {
           ))}
         </div>
       )}
+      <style>{`
+         .users-page-header { margin-bottom: 24px; }
+         .users-title { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+         .users-subtitle { font-size: 0.85rem; color: var(--text-dimmed); font-weight: 500; }
+       `}</style>
     </div>
   )
 }

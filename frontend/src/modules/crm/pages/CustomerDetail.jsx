@@ -106,8 +106,9 @@ export default function CustomerDetail() {
     <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
       {/* Header Row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <Link to="/customers" className="crm-btn-premium" style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
-          <span>← Back</span>
+        <Link to="/customers" className="back-btn-modern">
+          <Icon name="chevron-left" size={18} />
+          <span>Back to List</span>
         </Link>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="crm-btn-premium" onClick={() => setIsFollowupOpen(true)} style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>

@@ -349,9 +349,14 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
                   <div className="sheet-field">
                     <label>Role</label>
                     <select className="crm-input" value={model.role} onChange={e => handleChange('role', e.target.value)}>
-                      {['HR', 'Accountant', 'Manager', 'Employee'].map(roleName => (
-                        <option key={roleName} value={roleName}>{roleName}</option>
+                      {visibleRoleChoices.map(role => (
+                        <option key={role.id || role._id || role.name} value={role.name}>{role.name}</option>
                       ))}
+                      {visibleRoleChoices.length === 0 && (
+                        ['HR', 'Accountant', 'Manager', 'Employee'].map(roleName => (
+                          <option key={roleName} value={roleName}>{roleName}</option>
+                        ))
+                      )}
                     </select>
                   </div>
                   <div className="sheet-field">

@@ -99,84 +99,88 @@ export default function SupportList() {
   return (
     <div className="stack">
       <section className="crm-fullscreen-shell">
-        <PageHeader 
-          title="Customer Support" 
-          description="Manage and track customer issues."
-          backTo="/" 
-          actions={
-            <div className="crm-flex-end crm-gap-12">
-              {isAccountant && (
-                <button 
-                  className={`btn-premium ${filters.category === 'Billing' ? 'action-info active-glow' : 'action-secondary'}`}
-                  onClick={setBillingFilter}
-                >
-                  <Icon name="reports" />
-                  <span>Billing Tickets</span>
-                </button>
-              )}
-              {canManage && (
-                <button 
-                  className={`btn-premium ${filters.is_escalated ? 'action-warning active-glow' : 'action-secondary'}`}
-                  onClick={toggleEscalated}
-                >
-                  <Icon name="bell" />
-                  <span>Escalations</span>
-                </button>
-              )}
-              <Link to="/tickets/new" className="btn-premium action-vibrant">
-                <Icon name="plus" />
-                <span>Create Ticket</span>
-              </Link>
-            </div>
-          }
-        />
+        <div className="users-page-header">
+          <h1 className="users-title">Support Management</h1>
+          <p className="users-subtitle">Oversee customer help requests and service level compliance</p>
+        </div>
 
-        <div className="crm-filter-panel">
-          <div className="crm-filter-cell">
-            <label className="crm-filter-label">Search Tickets</label>
+        <div className="crm-stats-bar-compact">
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">TOTAL TICKETS</span>
+            <span className="stat-pill-value total">{total}</span>
+          </div>
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">OPEN</span>
+            <span className="stat-pill-value active">{items.filter(t => t.status === 'open').length}</span>
+          </div>
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">URGENT</span>
+            <span className="stat-pill-value inactive">{items.filter(t => t.priority === 'urgent').length}</span>
+          </div>
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">ESCALATED</span>
+            <span className="stat-pill-value pending">{items.filter(t => t.is_escalated).length}</span>
+          </div>
+        </div>
+
+        <div className="unified-action-bar">
+          <div className="search-filter-group">
             <div className="crm-search-input-wrap">
               <Icon name="search" className="search-icon" />
               <input
                 type="text"
-                placeholder="ID, Subject, Client..."
+                className="crm-input"
+                placeholder="Search tickets..."
                 value={filters.q}
                 onChange={(e) => handleFilterChange({ q: e.target.value })}
               />
             </div>
-          </div>
 
-          <div className="crm-filter-cell">
-            <label className="crm-filter-label">Status</label>
-            <select className="crm-input" value={filters.status} onChange={(e) => handleFilterChange({ status: e.target.value })}>
+            <select className="crm-input filter-select" value={filters.status} onChange={(e) => handleFilterChange({ status: e.target.value })}>
               <option value="">All Statuses</option>
               <option value="open">Open</option>
-              <option value="in-progress">In Progress</option>
+              <option value="in-progress">In-Progress</option>
               <option value="resolved">Resolved</option>
               <option value="closed">Closed</option>
             </select>
-          </div>
 
-          <div className="crm-filter-cell">
-            <label className="crm-filter-label">Priority</label>
-            <select className="crm-input" value={filters.priority} onChange={(e) => handleFilterChange({ priority: e.target.value })}>
-              <option value="">All Priorities</option>
+            <select className="crm-input filter-select" value={filters.priority} onChange={(e) => handleFilterChange({ priority: e.target.value })}>
+              <option value="">All Priority</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
               <option value="urgent">Urgent</option>
             </select>
-          </div>
 
-          <div className="crm-filter-cell">
-            <label className="crm-filter-label">Category</label>
-            <select className="crm-input" value={filters.category} onChange={(e) => handleFilterChange({ category: e.target.value })}>
-              <option value="">All Categories</option>
-              <option value="Support">Support</option>
-              <option value="Billing">Billing</option>
-              <option value="Technical">Technical</option>
-              <option value="Bug">Bug</option>
-              <option value="General">General</option>
-            </select>
+            <button
+              className="btn-premium-mini add-user-btn"
+              onClick={() => navigate('/tickets/new')}
+            >
+              <Icon name="plus" size={16} />
+              <span>Add Ticket</span>
+            </button>
+
+            {(filters.q || filters.status || filters.priority || filters.category || filters.is_escalated) && (
+              <button 
+                className="btn-clear-filters"
+                onClick={() => {
+                  setFilters({
+                    q: '',
+                    status: '',
+                    priority: '',
+                    category: '',
+                    is_escalated: false,
+                    customer_is_vip: '',
+                    sortField: 'created_at',
+                    sortOrder: 'desc',
+                    page: 1,
+                    limit: 20
+                  })
+                }}
+              >
+                Clear All
+              </button>
+            )}
           </div>
         </div>
 
@@ -276,12 +280,44 @@ export default function SupportList() {
         />
       </section>
 
+
       <style>{`
-        .support-avatar { width: 40px; height: 40px; border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--primary); }
-        .support-info { display: flex; flex-direction: column; gap: 2px; }
-        .support-subject { font-size: 0.95rem; }
-        .support-meta { font-size: 0.75rem; color: var(--text-dimmed); }
-        .row-escalated { background: var(--danger-soft, rgba(239, 68, 68, 0.05)); }
+         .users-page-header { margin-bottom: 8px; }
+         .users-title { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+         .users-subtitle { font-size: 0.85rem; color: var(--text-dimmed); font-weight: 500; }
+
+         .unified-action-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 8px; flex-wrap: wrap; }
+         .search-filter-group { display: flex; align-items: center; gap: 16px; flex: 1; justify-content: space-between; }
+         .filter-select { max-width: 150px; }
+         .btn-clear-filters { background: none; border: none; color: var(--primary); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+         .btn-clear-filters:hover { text-decoration: underline; }
+
+         .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; justify-content: space-between; }
+         .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 10px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 130px; box-shadow: var(--shadow-sm); }
+         .stat-pill-label { font-size: 10px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
+         .stat-pill-value { font-size: 20px; font-weight: 900; }
+         .stat-pill-value.total { color: var(--text); }
+         .stat-pill-value.active { color: var(--success); }
+         .stat-pill-value.inactive { color: var(--danger); }
+         .stat-pill-value.pending { color: var(--warning); }
+
+         .crm-input { width: 100%; background: var(--bg-surface) !important; border: 1px solid var(--border-strong) !important; border-radius: 10px !important; padding: 8px 14px !important; color: var(--text) !important; font-size: 0.85rem !important; transition: all 0.2s; }
+         .crm-search-input-wrap { position: relative; width: 100%; flex: 1; max-width: none; }
+         .crm-search-input-wrap .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 1; color: var(--text-dimmed); font-size: 14px; }
+         .crm-search-input-wrap .crm-input { padding-left: 36px !important; }
+         
+         .add-user-btn { background: var(--primary) !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 0 20px !important; font-weight: 700 !important; height: 38px; display: flex; align-items: center; gap: 6px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2); font-size: 0.85rem; flex-shrink: 0; }
+         .add-user-btn:hover { background: var(--primary-hover) !important; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4); }
+
+         .crm-table th { padding: 12px 16px !important; border-bottom: 2px solid var(--border-strong) !important; color: var(--text-dimmed) !important; font-weight: 800 !important; font-size: 0.7rem !important; }
+         .crm-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--border-strong) !important; }
+         
+         @media (max-width: 1000px) {
+            .crm-stats-bar-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+            .stat-pill-mini { min-width: 0; padding: 10px; }
+            .stat-pill-value { font-size: 1.1rem; }
+            .add-user-btn { width: 100%; justify-content: center; }
+         }
       `}</style>
     </div>
   )

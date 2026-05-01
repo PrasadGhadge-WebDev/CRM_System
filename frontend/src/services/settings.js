@@ -1,15 +1,15 @@
 import { api } from './api.js';
 
 export const settingsApi = {
-  get: () => api.get('/settings').then(res => res.data),
-  update: (data) => api.put('/settings', data).then(res => res.data),
+  get: () => api.get('/api/settings'),
+  update: (data) => api.put('/api/settings', data),
   
   // Lead Sources (legacy aliases if needed)
-  saveSource: (data) => api.post('/settings/sources', data).then(res => res.data),
-  deleteSource: (id) => api.delete(`/settings/sources/${id}`).then(res => res.data),
+  saveSource: (data) => api.post('/api/settings/sources', data),
+  deleteSource: (id) => api.delete(`/api/settings/sources/${id}`),
   
   // Statuses (legacy aliases if needed)
-  saveStatus: (data) => api.post('/settings/statuses', data).then(res => res.data),
-  deleteStatus: (id) => api.delete(`/settings/statuses/${id}`).then(res => res.data),
-  reorderStatuses: (data) => api.put('/settings/statuses/reorder', data).then(res => res.data),
+  saveStatus: (data) => api.post('/api/settings/statuses', data),
+  deleteStatus: (id) => api.delete(`/api/settings/statuses/${id}`),
+  reorderStatuses: (data) => api.put('/api/settings/statuses/reorder', data),
 };

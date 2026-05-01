@@ -1,259 +1,282 @@
-import { useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import {
-  FiAtSign,
-  FiCheckCircle,
-  FiEye,
-  FiEyeOff,
-  FiLoader,
-  FiLock,
-  FiShield,
-  FiZap,
-} from 'react-icons/fi'
+import { useState, useEffect } from 'react'
+import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom'
+import { FiEye, FiEyeOff, FiLoader, FiArrowLeft, FiSun, FiMoon } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
-import { validateLoginForm } from '../utils/authValidation'
-import { useToastFeedback } from '../utils/useToastFeedback.js'
-import '../styles/auth.css'
+import '../styles/auth-minimal.css'
 
-const REMEMBERED_LOGIN_KEY = 'rememberedLoginIdentifier'
+export default function AuthPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { user, login, register: registerUser } = useAuth()
 
-export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  // Toggle state
+  const [isRegister, setIsRegister] = useState(location.pathname === '/register')
+
+  // Form states
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: ''
+  })
   const [fieldErrors, setFieldErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
 
-  const { user, login } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
-  useToastFeedback({ error })
+  useEffect(() => {
+    setIsRegister(location.pathname === '/register')
+    setFieldErrors({}) // Clear errors on toggle
+  }, [location.pathname])
 
-  const fromState = location.state?.from
-  const fromPath = typeof fromState === 'string' ? fromState : fromState?.pathname
-  const from = fromPath || '/dashboard'
-  const entrySource = location.state?.entry
+  useEffect(() => {
+    document.body.classList.toggle('dark', theme === 'dark')
+    localStorage.setItem('theme', theme)
+  }, [theme])
 
-  const handleForgotPassword = () => {
-    toast.info('Forgot password? Please contact admin to reset your access.')
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    // Clear error for this field when corrected
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => {
+        const next = { ...prev }
+        delete next[name]
+        return next
+      })
+    }
+  }
+
+  const validate = () => {
+    const errors = {}
+    const { name, email, phone, password, confirmPassword } = formData
+
+    // Email validation
+    if (!email) {
+      errors.email = 'Email is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Invalid email format'
+    }
+
+    // Password validation
+    if (!password) {
+      errors.password = 'Password is required'
+    } else if (password.length < 6) {
+      errors.password = 'Password must be at least 6 characters'
+    }
+
+    if (isRegister) {
+      // Name validation
+      if (!name) {
+        errors.name = 'Name is required'
+      } else if (name.length < 2) {
+        errors.name = 'Name must be at least 2 characters'
+      }
+
+      // Confirm Password
+      if (!confirmPassword) {
+        errors.confirmPassword = 'Please confirm your password'
+      } else if (confirmPassword !== password) {
+        errors.confirmPassword = 'Passwords do not match'
+      }
+
+      // Phone validation (Optional but if entered must be 10 digits)
+      if (phone && !/^\d{10}$/.test(phone)) {
+        errors.phone = 'Phone number must be exactly 10 digits'
+      }
+    }
+
+    return errors
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
+    const errors = validate()
+    setFieldErrors(errors)
 
-    const nextErrors = validateLoginForm({ email, password })
-    setFieldErrors(nextErrors)
-
-    if (Object.keys(nextErrors).length > 0) {
-      setError('Please fill all fields')
-      return
-    }
+    if (Object.keys(errors).length > 0) return
 
     setLoading(true)
     try {
-      const result = await login(email, password)
-
-      if (result.success) {
-        if (rememberMe) {
-          localStorage.setItem(REMEMBERED_LOGIN_KEY, email.trim())
+      if (isRegister) {
+        const result = await registerUser({
+          fullName: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password
+        })
+        if (result.success) {
+          toast.success('Account created successfully!')
+          navigate('/dashboard')
         } else {
-          localStorage.removeItem(REMEMBERED_LOGIN_KEY)
+          toast.error(result.message || 'Registration failed')
         }
-        toast.success('Logged in successfully')
-        navigate(from, { replace: true })
       } else {
-        setError(result.message || 'Failed to login')
+        const result = await login(formData.email, formData.password)
+        if (result.success) {
+          toast.success('Welcome back!')
+          navigate('/dashboard')
+        } else {
+          toast.error(result.message || 'Invalid credentials')
+        }
       }
     } catch (err) {
-      setError(err.message || 'An unexpected error occurred')
+      toast.error('An unexpected error occurred')
     } finally {
       setLoading(false)
     }
   }
 
-  if (user) {
-    return <Navigate to="/dashboard" replace />
-  }
+  if (user) return <Navigate to="/dashboard" replace />
 
   return (
-    <div className="auth-container">
-      <div className="auth-shell auth-shell-login">
-        <section className="auth-panel auth-panel-brand auth-panel-brand-login">
-          <div className="auth-panel-top">
-            <div className="auth-logo-wrap">
-              <img src="/CRM_Logo.png" alt="CRM Logo" className="auth-brand-logo" />
-              <span className="auth-brand-text">CRM SYSTEM</span>
-            </div>
-            <div className="auth-brand-chip">Workspace Access</div>
+    <div className="auth-minimal-page">
+      <div className="auth-minimal-container">
+        <div className="auth-minimal-card">
+          <div className="auth-minimal-controls">
+            <Link to="/" className="back-btn" title="Back to Home">
+              <FiArrowLeft />
+            </Link>
+            <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">
+              {theme === 'dark' ? <FiSun /> : <FiMoon />}
+            </button>
+          </div>
 
-            <div className="auth-illustration" aria-hidden="true">
-              <div className="auth-illustration-gear" />
-              <div className="auth-illustration-window">
-                <div className="auth-illustration-screen">
-                  <div className="auth-illustration-list">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
+          {/* Form Side */}
+          <div className="auth-minimal-form-section">
+            <h1 className="auth-minimal-heading">
+              {isRegister ? 'Create your Account' : 'Sign In to your Account'}
+            </h1>
+
+            <form onSubmit={handleSubmit} className="auth-minimal-form">
+              {isRegister && (
+                <>
+                  <div className="auth-minimal-group">
+                    <label htmlFor="name">Full Name</label>
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="Enter Full Name"
+                      autoComplete="off"
+                      className={fieldErrors.name ? 'input-error' : ''}
+                    />
+                    {fieldErrors.name && <span className="auth-minimal-field-error">{fieldErrors.name}</span>}
                   </div>
-                  <div className="auth-illustration-bars">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
+
+                  <div className="auth-minimal-group">
+                    <label htmlFor="phone">Phone Number (Optional)</label>
+                    <input
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      placeholder="Enter 10 Digit Mobile"
+                      autoComplete="off"
+                      className={fieldErrors.phone ? 'input-error' : ''}
+                    />
+                    {fieldErrors.phone && <span className="auth-minimal-field-error">{fieldErrors.phone}</span>}
                   </div>
-                </div>
-              </div>
-              <div className="auth-illustration-card auth-illustration-card-left" />
-              <div className="auth-illustration-card auth-illustration-card-right" />
-            </div>
-          </div>
+                </>
+              )}
 
-          <div className="auth-feature-list">
-            <div className="auth-feature-item">
-              <span className="auth-feature-icon" aria-hidden="true">
-                <FiShield />
-              </span>
-              <div className="auth-feature-content">
-                <span className="auth-feature-title">Quick and secure access</span>
-                <span className="auth-feature-copy">
-                  Sign in to continue managing leads, customers, and account activity.
-                </span>
+              <div className="auth-minimal-group">
+                <label htmlFor="email">Email Address</label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Enter Email"
+                  autoComplete="off"
+                  className={fieldErrors.email ? 'input-error' : ''}
+                />
+                {fieldErrors.email && <span className="auth-minimal-field-error">{fieldErrors.email}</span>}
               </div>
-            </div>
-            <div className="auth-feature-item">
-              <span className="auth-feature-icon" aria-hidden="true">
-                <FiCheckCircle />
-              </span>
-              <div className="auth-feature-content">
-                <span className="auth-feature-title">Role-based workflow</span>
-                <span className="auth-feature-copy">
-                  Keep admin actions and day-to-day work separated with controlled access.
-                </span>
-              </div>
-            </div>
-            <div className="auth-feature-item">
-              <span className="auth-feature-icon" aria-hidden="true">
-                <FiZap />
-              </span>
-              <div className="auth-feature-content">
-                <span className="auth-feature-title">Faster daily flow</span>
-                <span className="auth-feature-copy">
-                  Jump back into deals, notes, tasks, and follow-ups without extra navigation.
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
 
-        <section className="auth-card auth-card-login">
-          <div className="auth-header auth-header-login">
-            {entrySource ? <div className="auth-brand-chip">Arrived from {entrySource}</div> : null}
-            <h2 className="auth-title">Welcome back</h2>
-           <p className="auth-subtitle">
-  Sign in to continue to your workspace.
-</p>
-          </div>
-
-          {error && <div className="auth-error">{error}</div>}
-
-          <form onSubmit={handleSubmit} className="auth-form" noValidate autoComplete="off">
-            <div className="auth-form-grid">
-              <div className="auth-group">
-                <label className="auth-label" htmlFor="login-email">
-                  Email or Username
-                </label>
-                <div className={`auth-input-wrap${fieldErrors.email ? ' auth-input-wrap-invalid' : ''}`}>
-                  <span className="auth-input-icon" aria-hidden="true">
-                    <FiAtSign />
-                  </span>
+              <div className="auth-minimal-group">
+                <label htmlFor="password">Password</label>
+                <div className="password-input-wrap">
                   <input
-                    id="login-email"
-                    type="text"
-                    value={email}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      setEmail(val)
-                      setError('')
-                      const errors = validateLoginForm({ email: val, password })
-                      setFieldErrors((current) => ({ ...current, email: errors.email || '' }))
-                    }}
-                    className={`auth-input auth-input-with-icon${fieldErrors.email ? ' auth-input-invalid' : ''}`}
-                    placeholder="Enter email or username"
-                    autoComplete="off"
-                    autoFocus
-                  />
-                </div>
-                {fieldErrors.email && <small className="auth-field-error">{fieldErrors.email}</small>}
-              </div>
-
-              <div className="auth-group">
-                <label className="auth-label" htmlFor="login-password">
-                  Password
-                </label>
-                <div className={`auth-password-wrap${fieldErrors.password ? ' auth-password-wrap-invalid' : ''}`}>
-                  <span className="auth-input-icon" aria-hidden="true">
-                    <FiLock />
-                  </span>
-                  <input
-                    id="login-password"
+                    id="password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      setPassword(val)
-                      setError('')
-                      const errors = validateLoginForm({ email, password: val })
-                      setFieldErrors((current) => ({ ...current, password: errors.password || '' }))
-                    }}
-                    className={`auth-input auth-input-password${fieldErrors.password ? ' auth-input-invalid' : ''}`}
-                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Enter Password"
                     autoComplete="new-password"
+                    className={fieldErrors.password ? 'input-error' : ''}
                   />
                   <button
                     type="button"
-                    className="auth-password-toggle"
-                    onClick={() => setShowPassword((current) => !current)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <FiEyeOff /> : <FiEye />}
                   </button>
                 </div>
-                {fieldErrors.password && <small className="auth-field-error">{fieldErrors.password}</small>}
+                {fieldErrors.password && <span className="auth-minimal-field-error">{fieldErrors.password}</span>}
               </div>
-            </div>
 
-            <div className="auth-form-row">
-              <label className="auth-check">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                <span>Remember Me</span>
-              </label>
-
-              <button type="button" className="auth-inline-action" onClick={handleForgotPassword}>
-                Forgot Password?
-              </button>
-            </div>
-
-            <button type="submit" disabled={loading} className={`auth-button${loading ? ' auth-button-loading' : ''}`}>
-              {loading ? (
-                <>
-                  <FiLoader className="auth-button-spinner" />
-                  <span>Logging in...</span>
-                </>
-              ) : (
-                'Log In'
+              {isRegister && (
+                <div className="auth-minimal-group">
+                  <label htmlFor="confirmPassword">Confirm Password</label>
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    placeholder="Re-enter Password"
+                    autoComplete="new-password"
+                    className={fieldErrors.confirmPassword ? 'input-error' : ''}
+                  />
+                  {fieldErrors.confirmPassword && <span className="auth-minimal-field-error">{fieldErrors.confirmPassword}</span>}
+                </div>
               )}
-            </button>
-          </form>
-        </section>
+
+              <div className="auth-minimal-options">
+                {!isRegister && (
+                  <>
+                    <label className="checkbox-container">
+                      <input type="checkbox" />
+                      <span className="checkmark"></span>
+                      Remember me
+                    </label>
+                    <Link to="#" className="forgot-link">Forgot password?</Link>
+                  </>
+                )}
+              </div>
+
+              <button type="submit" disabled={loading} className="auth-minimal-btn">
+                {loading ? <FiLoader className="spinner" /> : (isRegister ? 'REGISTER' : 'SIGN IN')}
+              </button>
+
+              <p className="auth-minimal-footer">
+                {isRegister ? (
+                  <>Already have an account? <Link to="/login">Log in</Link></>
+                ) : (
+                  <>Not registered yet? <Link to="/register">Create an account</Link></>
+                )}
+              </p>
+            </form>
+          </div>
+
+          {/* Illustration Side */}
+          <div className="auth-minimal-image-section">
+            <div className="illustration-wrapper">
+              <img src="/minimal_login_illustration.png" alt="Illustration" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
