@@ -6,7 +6,12 @@ import { usersApi } from '../../../services/users.js'
 import { dealsApi } from '../../../services/deals.js'
 import { toast } from 'react-toastify'
 
-const STAGES = ['New', 'Qualified', 'Proposal Sent', 'Negotiation', 'Won', 'Lost']
+import { 
+  validateRequired, 
+  validateNonNegativeNumber 
+} from '../../../utils/formValidation.js'
+
+const STAGES = ['Prospecting', 'Qualification', 'Needs Analysis', 'Proposal', 'Negotiation', 'Won', 'Lost']
 
 export default function DealModal({ deal, isOpen, onClose, onSave, customerId }) {
   const [loading, setLoading] = useState(false)
@@ -23,10 +28,12 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
 
   const [customers, setCustomers] = useState([])
   const [employees, setEmployees] = useState([])
+  const [fieldErrors, setFieldErrors] = useState({})
 
   useEffect(() => {
     if (isOpen) {
       loadInitialData()
+      setFieldErrors({})
       if (deal && deal.id) {
         setFormData({
           name: deal.name || '',
@@ -66,10 +73,37 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
     }
   }
 
+  function validate() {
+    const errors = {}
+    
+    const nameErr = validateRequired('Opportunity Name', formData.name)
+    if (nameErr) errors.name = nameErr
+
+    const custErr = validateRequired('Customer', formData.customer_id)
+    if (custErr) errors.customer_id = custErr
+
+    const valErr = validateNonNegativeNumber('Value', formData.value)
+    if (valErr) errors.value = valErr
+    else if (Number(formData.value) <= 0) errors.value = 'Value must be greater than 0'
+
+    const ownerErr = validateRequired('Assigned Staff', formData.assigned_to)
+    if (ownerErr) errors.assigned_to = ownerErr
+
+    if (formData.stage === 'Lost') {
+      const lostErr = validateRequired('Reason for Loss', formData.lost_reason)
+      if (lostErr) errors.lost_reason = lostErr
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   async function handleSubmit(e) {
     if (e) e.preventDefault()
-    if (!formData.name || !formData.customer_id) return toast.warn('Deal Name and Customer are required')
-    if (formData.value <= 0) return toast.warn('Deal Amount must be a positive number')
+    if (!validate()) {
+      const firstError = Object.values(fieldErrors)[0] || 'Please fix validation errors'
+      return toast.warn(firstError)
+    }
 
     setLoading(true)
     try {
@@ -113,36 +147,48 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                 <div className="sheet-field full-width">
                   <label>Opportunity Name</label>
                   <input
-                    className="crm-input"
+                    className={`crm-input ${fieldErrors.name ? 'error' : ''}`}
                     autoFocus
                     value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    onChange={e => {
+                      setFormData({ ...formData, name: e.target.value })
+                      if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: '' }))
+                    }}
                     placeholder="e.g. Q4 Infrastructure Renewal"
                     required
                   />
+                  {fieldErrors.name && <span className="error-text">{fieldErrors.name}</span>}
                 </div>
                 <div className="sheet-field">
                   <label>Associated Customer</label>
                   <select 
-                    className="crm-input"
+                    className={`crm-input ${fieldErrors.customer_id ? 'error' : ''}`}
                     value={formData.customer_id}
-                    onChange={e => setFormData({ ...formData, customer_id: e.target.value })}
+                    onChange={e => {
+                      setFormData({ ...formData, customer_id: e.target.value })
+                      if (fieldErrors.customer_id) setFieldErrors(prev => ({ ...prev, customer_id: '' }))
+                    }}
                     required
                     disabled={!!customerId}
                   >
                     <option value="">Select Customer...</option>
                     {customers.map(c => <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>)}
                   </select>
+                  {fieldErrors.customer_id && <span className="error-text">{fieldErrors.customer_id}</span>}
                 </div>
                 <div className="sheet-field">
                   <label>Projected Value (₹)</label>
                   <input
-                    className="crm-input"
+                    className={`crm-input ${fieldErrors.value ? 'error' : ''}`}
                     type="number"
                     value={formData.value}
-                    onChange={e => setFormData({ ...formData, value: Number(e.target.value) })}
+                    onChange={e => {
+                      setFormData({ ...formData, value: Number(e.target.value) })
+                      if (fieldErrors.value) setFieldErrors(prev => ({ ...prev, value: '' }))
+                    }}
                     placeholder="0.00"
                   />
+                  {fieldErrors.value && <span className="error-text">{fieldErrors.value}</span>}
                 </div>
               </div>
             </section>
@@ -167,14 +213,18 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                 <div className="sheet-field">
                   <label>Assigned Staff</label>
                   <select 
-                    className="crm-input"
+                    className={`crm-input ${fieldErrors.assigned_to ? 'error' : ''}`}
                     value={formData.assigned_to}
-                    onChange={e => setFormData({ ...formData, assigned_to: e.target.value })}
+                    onChange={e => {
+                      setFormData({ ...formData, assigned_to: e.target.value })
+                      if (fieldErrors.assigned_to) setFieldErrors(prev => ({ ...prev, assigned_to: '' }))
+                    }}
                     required
                   >
                     <option value="">Select owner...</option>
                     {employees.map(u => <option key={u.id || u._id} value={u.id || u._id}>{u.name}</option>)}
                   </select>
+                  {fieldErrors.assigned_to && <span className="error-text">{fieldErrors.assigned_to}</span>}
                 </div>
                 <div className="sheet-field">
                   <label>Target Closure Date</label>
@@ -199,13 +249,17 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                   <div className="sheet-field full-width">
                     <label>Reason for Loss</label>
                     <textarea 
-                      className="crm-input"
+                      className={`crm-input ${fieldErrors.lost_reason ? 'error' : ''}`}
                       style={{ minHeight: '80px' }}
                       placeholder="Why was the deal closed?..."
                       value={formData.lost_reason}
-                      onChange={e => setFormData({ ...formData, lost_reason: e.target.value })}
+                      onChange={e => {
+                        setFormData({ ...formData, lost_reason: e.target.value })
+                        if (fieldErrors.lost_reason) setFieldErrors(prev => ({ ...prev, lost_reason: '' }))
+                      }}
                       required
                     />
+                    {fieldErrors.lost_reason && <span className="error-text">{fieldErrors.lost_reason}</span>}
                   </div>
                 )}
                 <div className="sheet-field full-width">

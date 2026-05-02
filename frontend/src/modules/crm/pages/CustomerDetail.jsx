@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import { customersApi } from '../../../services/customers.js'
 import { dealsApi } from '../../../services/deals.js'
 import { paymentsApi } from '../../../services/payments.js'
+import { invoicesApi } from '../../../services/invoices.js'
 import Timeline from '../../../components/Timeline.jsx'
 import PageHeader from '../../../components/PageHeader.jsx'
 import FollowupModal from '../../../components/FollowupModal.jsx'
@@ -37,6 +38,7 @@ export default function CustomerDetail() {
   const [customer, setCustomer] = useState(null)
   const [deals, setDeals] = useState([])
   const [payments, setPayments] = useState([])
+  const [invoices, setInvoices] = useState([])
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -50,16 +52,18 @@ export default function CustomerDetail() {
 
   const loadCustomerData = useCallback(async () => {
     try {
-      const [c, d, n, p] = await Promise.all([
+      const [c, d, n, p, i] = await Promise.all([
         customersApi.get(id),
         dealsApi.list({ customer_id: id, limit: 'all' }),
         customersApi.listNotes(id),
-        paymentsApi.list({ customer_id: id, limit: 'all' })
+        paymentsApi.list({ customer_id: id, limit: 'all' }),
+        invoicesApi.list({ customer_id: id, limit: 'all' })
       ])
       setCustomer(c)
       setDeals(d.items || [])
       setNotes(n || [])
       setPayments(p.items || [])
+      setInvoices(i.items || [])
     } catch (e) {
       setError(e.message || 'Failed to load intelligence')
     } finally {
@@ -141,13 +145,10 @@ export default function CustomerDetail() {
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
               <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', margin: 0 }}>{customer.name}</h1>
-              <span style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', padding: '2px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border)' }}>
-                {customer.status || 'Active'}
+              <span className={`crm-status-pill-modern status-${(customer.status || 'Active').toLowerCase().replace(/\s+/g, '')}`}>
+                <div className="status-dot" />
+                <span>{customer.status || 'Active'}</span>
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600, marginLeft: '4px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }} />
-                <span>Active</span>
-              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '20px', color: 'var(--text-dimmed)', fontSize: '0.9rem', flexWrap: 'wrap' }}>
@@ -238,9 +239,9 @@ export default function CustomerDetail() {
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>🔌</span> Connectivity
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)', fontWeight: 700 }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
-                  Active
+                <div className={`crm-status-pill-modern status-${(customer.status || 'Active').toLowerCase().replace(/\s+/g, '')}`} style={{ border: 'none', background: 'transparent', padding: 0 }}>
+                  <div className="status-dot" />
+                  <span style={{ fontWeight: 700 }}>{customer.status || 'Active'}</span>
                 </div>
               </div>
             </div>
@@ -271,6 +272,7 @@ export default function CustomerDetail() {
         {[
           { id: 'summary', label: 'Summary', icon: 'dashboard', roles: ['Admin', 'Manager', 'Employee', 'Accountant', 'HR'] },
           { id: 'deals', label: 'Deals', icon: 'deals', roles: ['Admin', 'Manager', 'Employee', 'Accountant'] },
+          { id: 'invoices', label: 'Invoices', icon: 'reports', roles: ['Admin', 'Manager', 'Accountant'] },
           { id: 'payments', label: 'Payments', icon: 'reports', roles: ['Admin', 'Manager', 'Accountant'] },
           { id: 'notes', label: 'Notes', icon: 'notes', roles: ['Admin', 'Manager', 'Employee'] },
           { id: 'activity', label: 'Activity History', icon: 'reports', roles: ['Admin', 'Manager', 'Employee', 'Accountant'] }
@@ -342,6 +344,49 @@ export default function CustomerDetail() {
                   </table>
                 </div>
               ) : <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dimmed)' }}>No deals registered.</div>}
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'invoices' && (
+          <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Billing History</h3>
+            </div>
+            <div style={{ padding: '24px' }}>
+              {invoices.length > 0 ? (
+                <div className="crm-table-wrap">
+                  <table className="crm-table">
+                    <thead>
+                      <tr>
+                        <th>BILL #</th>
+                        <th>DATE</th>
+                        <th>DUE DATE</th>
+                        <th>TOTAL</th>
+                        <th>STATUS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoices.map(inv => (
+                        <tr key={inv.id}>
+                          <td><Link to={`/invoices/${inv.id}`} style={{ fontWeight: 600, color: 'var(--primary)' }}>#{inv.invoice_number}</Link></td>
+                          <td>{new Date(inv.invoice_date).toLocaleDateString()}</td>
+                          <td>{new Date(inv.due_date).toLocaleDateString()}</td>
+                          <td style={{ fontWeight: 700 }}>₹{inv.total_amount?.toLocaleString()}</td>
+                          <td>
+                            <span className={`crm-status-pill ${
+                              inv.status === 'Paid' ? 'success' : 
+                              inv.status === 'Partially Paid' ? 'warning' : 'danger'
+                            }`}>
+                              {inv.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dimmed)' }}>No invoices generated.</div>}
             </div>
           </section>
         )}
@@ -447,6 +492,34 @@ export default function CustomerDetail() {
             grid-template-columns: 1fr !important;
           }
         }
+
+        .crm-status-pill-modern {
+           padding: 4px 12px;
+           border-radius: 8px;
+           font-size: 0.65rem;
+           font-weight: 700;
+           text-transform: uppercase;
+           letter-spacing: 0.05em;
+           display: inline-flex;
+           align-items: center;
+           gap: 6px;
+           background: var(--bg-surface);
+           color: var(--text-muted);
+           border: 1px solid var(--border-strong);
+        }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
+
+        .status-active { color: #10b981; border-color: #bbf7d0; background: #f0fdf4; }
+        .status-active .status-dot { background: #10b981; box-shadow: 0 0 6px #10b981; }
+
+        .status-inactive { color: #64748b; border-color: #e2e8f0; background: #f8fafc; }
+        .status-inactive .status-dot { background: #64748b; }
+
+        .status-lost { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
+        .status-lost .status-dot { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+
+        .status-repeat { color: #8b5cf6; border-color: #ddd6fe; background: #f5f3ff; }
+        .status-repeat .status-dot { background: #8b5cf6; box-shadow: 0 0 6px #8b5cf6; }
       `}</style>
     </div>
   )

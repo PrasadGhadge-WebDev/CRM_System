@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { Icon } from '../../../layouts/icons.jsx'
 import Pagination from '../../../components/Pagination.jsx'
@@ -11,6 +11,9 @@ import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
 import { useToastFeedback } from '../../../utils/useToastFeedback.js'
 import { useAuth } from '../../../context/AuthContext.jsx'
 import { usersApi } from '../../../services/users.js'
+import SearchableSelect from '../components/SearchableSelect.jsx'
+import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
+import StatusDropdown from '../components/StatusDropdown.jsx'
 
 function stopRowNavigation(event) {
   event.stopPropagation()
@@ -37,16 +40,20 @@ export default function CustomersList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [summary, setSummary] = useState({ total: 0, byStatus: {} })
   const [statusOptions, setStatusOptions] = useState([])
 
   useToastFeedback({ error })
 
   const [filters, setFilters] = useState({
     q: searchParams.get('q') || '',
-    customer_type: searchParams.get('customer_type') || '',
     status: searchParams.get('status') || '',
+    city: searchParams.get('city') || '',
     assigned_to: searchParams.get('assigned_to') || '',
-    is_vip: searchParams.get('is_vip') || '',
+    startDate: searchParams.get('startDate') || '',
+    endDate: searchParams.get('endDate') || '',
+    sortField: searchParams.get('sortField') || 'created_at',
+    sortOrder: searchParams.get('sortOrder') || 'desc',
     page: Math.max(1, Number(searchParams.get('page')) || 1),
     limit: Math.min(100, Math.max(1, Number(searchParams.get('limit')) || 20)),
   })
@@ -56,10 +63,13 @@ export default function CustomersList() {
   useEffect(() => {
     const next = new URLSearchParams()
     if (debouncedQ.trim()) next.set('q', debouncedQ.trim())
-    if (filters.customer_type) next.set('customer_type', filters.customer_type)
     if (filters.status) next.set('status', filters.status)
+    if (filters.city) next.set('city', filters.city)
     if (filters.assigned_to) next.set('assigned_to', filters.assigned_to)
-    if (filters.is_vip) next.set('is_vip', filters.is_vip)
+    if (filters.startDate) next.set('startDate', filters.startDate)
+    if (filters.endDate) next.set('endDate', filters.endDate)
+    if (filters.sortField !== 'created_at') next.set('sortField', filters.sortField)
+    if (filters.sortOrder !== 'desc') next.set('sortOrder', filters.sortOrder)
     if (filters.page > 1) next.set('page', String(filters.page))
     if (filters.limit !== 20) next.set('limit', String(filters.limit))
     setSearchParams(next, { replace: true })
@@ -71,6 +81,7 @@ export default function CustomersList() {
       const res = await customersApi.list({ ...filters, q: debouncedQ })
       setItems(res.items || [])
       setTotal(res.total || 0)
+      setSummary(res.summary || { total: 0, byStatus: {} })
     } catch { setError('Failed to load customers') } finally { setLoading(false) }
   }, [debouncedQ, filters])
 
@@ -96,8 +107,32 @@ export default function CustomersList() {
     } catch { toast.error('Export failed') } finally { setBusy(false) }
   }
 
+  async function onUpdateStatus(id, newStatus) {
+    try {
+      await customersApi.update(id, { status: newStatus })
+      toast.success(`Status updated to ${newStatus}`)
+      setItems(prev => prev.map(item => (item.id === id || item._id === id) ? { ...item, status: newStatus } : item))
+    } catch (err) {
+      toast.error(err.message || 'Update failed')
+    }
+  }
+
   function openCustomerDetails(id) {
     navigate(`/customers/${id}`)
+  }
+
+  function handleSort(field) {
+    setFilters(f => ({
+      ...f,
+      sortField: field,
+      sortOrder: f.sortField === field && f.sortOrder === 'asc' ? 'desc' : 'asc',
+      page: 1
+    }))
+  }
+
+  function getSortIcon(field) {
+    if (filters.sortField !== field) return 'chevron-right'
+    return filters.sortOrder === 'asc' ? 'chevron-up' : 'chevron-down'
   }
 
   return (
@@ -108,49 +143,76 @@ export default function CustomersList() {
           <p className="users-subtitle">Full database of active clients and business partners</p>
         </div>
 
-        <div className="crm-stats-bar-compact">
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">TOTAL CLIENTS</span>
-            <span className="stat-pill-value total">{total}</span>
+        <div className="crm-stats-bar-compact overflow-x-auto pb-8">
+          <div className="stat-pill-mini clickable" onClick={() => setFilters(f => ({ ...f, status: '', page: 1 }))} style={{ borderBottom: filters.status === '' ? '2px solid var(--primary)' : '' }}>
+            <span className="stat-pill-label">ALL CLIENTS</span>
+            <span className="stat-pill-value total">{summary.total}</span>
           </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">ACTIVE</span>
-            <span className="stat-pill-value active">{items.filter(c => String(c.status).toLowerCase().includes('active')).length}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">VIP</span>
-            <span className="stat-pill-value pending">{items.filter(c => c.is_vip).length}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">PENDING</span>
-            <span className="stat-pill-value inactive">{items.filter(c => String(c.status).toLowerCase().includes('pending') || String(c.status).toLowerCase().includes('inactive')).length}</span>
-          </div>
+          {Object.entries(summary.byStatus).map(([name, count]) => (
+            <div 
+              key={name} 
+              className="stat-pill-mini clickable" 
+              onClick={() => setFilters(f => ({ ...f, status: name, page: 1 }))}
+              style={{ borderBottom: filters.status === name ? '2px solid var(--primary)' : '' }}
+            >
+              <span className="stat-pill-label">{name.toUpperCase()}</span>
+              <span className="stat-pill-value">{count}</span>
+            </div>
+          ))}
         </div>
 
         <div className="unified-action-bar">
           <div className="search-filter-group">
-            <div className="crm-search-input-wrap">
-              <Icon name="search" className="search-icon" />
+            <ModernSearchBar
+              value={filters.q}
+              onChange={e => setFilters(f => ({ ...f, q: e.target.value, page: 1 }))}
+              placeholder="Search by name, phone, city, status, company, GST, website..."
+            />
+
+
+            <SearchableSelect
+              value={filters.status}
+              onChange={val => setFilters(f => ({ ...f, status: val, page: 1 }))}
+              options={[
+                { value: '', label: 'All Statuses' },
+                ...(statusOptions.length > 0 
+                  ? statusOptions.map(s => ({ value: s.name, label: s.name }))
+                  : Object.keys(summary.byStatus).map(name => ({ value: name, label: name }))
+                )
+              ]}
+              placeholder="All Statuses"
+              icon="activity"
+            />
+
+            {!isEmployee && (
+              <SearchableSelect
+                value={filters.assigned_to}
+                onChange={val => setFilters(f => ({ ...f, assigned_to: val, page: 1 }))}
+                options={[
+                  { value: '', label: 'All Assigned' },
+                  ...employees.map(emp => ({ value: emp.id || emp._id, label: emp.name }))
+                ]}
+                placeholder="All Assigned"
+                icon="user"
+              />
+            )}
+
+            <div className="date-range-filter" style={{ display: 'flex', gap: '8px' }}>
               <input 
-                type="text" 
+                type="date" 
                 className="crm-input" 
-                placeholder="Search customers..." 
-                value={filters.q} 
-                onChange={e => setFilters(f => ({ ...f, q: e.target.value, page: 1 }))} 
+                style={{ width: '130px' }}
+                value={filters.startDate} 
+                onChange={e => setFilters(f => ({ ...f, startDate: e.target.value, page: 1 }))} 
+              />
+              <input 
+                type="date" 
+                className="crm-input" 
+                style={{ width: '130px' }}
+                value={filters.endDate} 
+                onChange={e => setFilters(f => ({ ...f, endDate: e.target.value, page: 1 }))} 
               />
             </div>
-
-            <select className="crm-input filter-select" value={filters.customer_type} onChange={e => setFilters(f => ({ ...f, customer_type: e.target.value, page: 1 }))}>
-              <option value="">All Types</option>
-              <option value="Lead">Lead</option>
-              <option value="Active">Active</option>
-              <option value="Partner">Partner</option>
-            </select>
-
-            <select className="crm-input filter-select" value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value, page: 1 }))}>
-              <option value="">All Statuses</option>
-              {statusOptions.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-            </select>
 
             <button
               className="btn-premium-mini add-user-btn"
@@ -160,16 +222,19 @@ export default function CustomersList() {
               <span>Add Customer</span>
             </button>
 
-            {(filters.q || filters.status || filters.customer_type || filters.assigned_to) && (
+            {(filters.q || filters.status || filters.assigned_to || filters.startDate || filters.endDate) && (
               <button 
                 className="btn-clear-filters"
                 onClick={() => {
                   setFilters({
                     q: '',
-                    customer_type: '',
                     status: '',
+                    city: '',
                     assigned_to: '',
-                    is_vip: '',
+                    startDate: '',
+                    endDate: '',
+                    sortField: 'created_at',
+                    sortOrder: 'desc',
                     page: 1,
                     limit: 20
                   })
@@ -195,13 +260,25 @@ export default function CustomersList() {
                 <table className="crm-table">
                   <thead style={{ background: 'var(--bg-surface)' }}>
                     <tr>
-                      <th style={{ width: '70px' }}>PROFILE</th>
-                      <th style={{ minWidth: '220px' }}>CUSTOMER NAME</th>
-                      <th style={{ minWidth: '180px' }} className="tablet-hide">CONTACT INFO</th>
-                      <th style={{ width: '130px' }}>CATEGORY</th>
-                      <th style={{ width: '130px' }}>STATUS</th>
-                      <th style={{ minWidth: '170px' }} className="tablet-hide">ASSIGNED TO</th>
-                      <th className="text-right" style={{ width: '130px' }}>ACTIONS</th>
+                      <th style={{ minWidth: '200px' }} className="sortable" onClick={() => handleSort('name')}>
+                        NAME <Icon name={getSortIcon('name')} size={12} />
+                      </th>
+                      <th style={{ minWidth: '150px' }} className="sortable" onClick={() => handleSort('phone')}>
+                        PHONE <Icon name={getSortIcon('phone')} size={12} />
+                      </th>
+                      <th style={{ minWidth: '170px' }} className="sortable" onClick={() => handleSort('assigned_to')}>
+                        ASSIGNED TO <Icon name={getSortIcon('assigned_to')} size={12} />
+                      </th>
+                      <th style={{ width: '130px' }} className="sortable" onClick={() => handleSort('status')}>
+                        STATUS <Icon name={getSortIcon('status')} size={12} />
+                      </th>
+                      <th style={{ minWidth: '150px' }} className="sortable" onClick={() => handleSort('created_at')}>
+                        CREATED DATE <Icon name={getSortIcon('created_at')} size={12} />
+                      </th>
+                      <th style={{ minWidth: '180px' }} className="sortable" onClick={() => handleSort('last_interaction_date')}>
+                        LAST INTERACTION <Icon name={getSortIcon('last_interaction_date')} size={12} />
+                      </th>
+                      <th className="text-right" style={{ width: '100px' }}>ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -221,38 +298,44 @@ export default function CustomersList() {
                               }
                             }}
                           >
-                            <td className="mobile-hide crm-clickable-cell">
-                              <div className="tableAvatarFallback">
-                                {(customer.name || 'C').charAt(0).toUpperCase()}
-                              </div>
-                            </td>
-                            <td className="crm-clickable-cell">
+                            <td>
                               <div className="customersIdentityCell">
                                 <div className="customersPrimaryText">{customer.name}</div>
-                                <div className="customersSecondaryText">{customer.industry || 'General Business'}</div>
+                                <div className="customersSecondaryText">{customer.company_name || 'Individual'}</div>
                               </div>
                             </td>
-                            <td className="tablet-hide crm-clickable-cell">
-                              <div className="customersContactCell">
-                                <div className="contactMain">{customer.email || '—'}</div>
-                                <div className="contactSub">{customer.phone || '—'}</div>
-                              </div>
+                            <td>
+                              <div className="contactMain">{customer.phone || '—'}</div>
+                              <div className="contactSub">{customer.email || '—'}</div>
                             </td>
-                            <td className="crm-clickable-cell">
-                              <span className="customersTypeBadge">
-                                {customer.customer_type || 'STANDARD'}
-                              </span>
-                            </td>
-                            <td className="crm-clickable-cell">
-                              <span className="crm-status-pill-modern">
-                                <div className="status-dot" />
-                                {customer.status || 'ACTIVE'}
-                              </span>
-                            </td>
-                            <td className="tablet-hide crm-clickable-cell">
+                            <td>
                               <div className="customersOwnerCell">
                                 <span className="ownerName">{customer.assigned_to?.name || 'Unassigned'}</span>
                                 <span className="ownerRole">{customer.assigned_to?.role || 'Staff'}</span>
+                              </div>
+                            </td>
+                            <td onClick={stopRowNavigation}>
+                              <StatusDropdown 
+                                status={customer.status} 
+                                options={statusOptions.length > 0 
+                                  ? statusOptions.map(s => ({ name: s.name, color: s.color }))
+                                  : (Object.keys(summary.byStatus).length > 0 
+                                      ? Object.keys(summary.byStatus).map(name => ({ name, color: 'var(--primary)' }))
+                                      : ['Active', 'Inactive', 'Lost', 'Repeat'].map(name => ({ name, color: 'var(--primary)' }))
+                                    )
+                                } 
+                                onChange={(newStatus) => onUpdateStatus(id, newStatus)}
+                                disabled={!isAdminOrManager}
+                              />
+                            </td>
+                            <td>
+                              <div className="customersSecondaryText">
+                                {customer.created_at ? new Date(customer.created_at).toLocaleDateString() : '—'}
+                              </div>
+                            </td>
+                            <td>
+                              <div className="customersSecondaryText">
+                                {customer.last_interaction ? new Date(customer.last_interaction).toLocaleDateString() : '—'}
                               </div>
                             </td>
                             <td className="text-right" onClick={stopRowNavigation}>
@@ -342,20 +425,32 @@ export default function CustomersList() {
         }
 
         .crm-status-pill-modern {
-           padding: 6px 14px;
-           border-radius: 10px;
-           font-size: 0.7rem;
+           padding: 4px 12px;
+           border-radius: 8px;
+           font-size: 0.65rem;
            font-weight: 700;
            text-transform: uppercase;
            letter-spacing: 0.05em;
            display: inline-flex;
            align-items: center;
            gap: 6px;
-           background: var(--success-soft, rgba(16, 185, 129, 0.08)); 
-           color: var(--success); 
-           border: 1px solid var(--success-soft, rgba(16, 185, 129, 0.15));
+           background: var(--bg-surface);
+           color: var(--text-muted);
+           border: 1px solid var(--border-strong);
         }
-        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
+
+        .status-active { color: #10b981; border-color: #bbf7d0; background: #f0fdf4; }
+        .status-active .status-dot { background: #10b981; box-shadow: 0 0 6px #10b981; }
+
+        .status-inactive { color: #64748b; border-color: #e2e8f0; background: #f8fafc; }
+        .status-inactive .status-dot { background: #64748b; }
+
+        .status-lost { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
+        .status-lost .status-dot { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+
+        .status-repeat { color: #8b5cf6; border-color: #ddd6fe; background: #f5f3ff; }
+        .status-repeat .status-dot { background: #8b5cf6; box-shadow: 0 0 6px #8b5cf6; }
 
          .users-page-header { margin-bottom: 8px; }
          .users-title { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
@@ -377,9 +472,7 @@ export default function CustomersList() {
          .stat-pill-value.pending { color: var(--warning); }
 
          .crm-input { width: 100%; background: var(--bg-surface) !important; border: 1px solid var(--border-strong) !important; border-radius: 10px !important; padding: 8px 14px !important; color: var(--text) !important; font-size: 0.85rem !important; transition: all 0.2s; }
-         .crm-search-input-wrap { position: relative; width: 100%; flex: 1; max-width: none; }
-         .crm-search-input-wrap .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 1; color: var(--text-dimmed); font-size: 14px; }
-         .crm-search-input-wrap .crm-input { padding-left: 36px !important; }
+
          
          .add-user-btn { background: var(--primary) !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 0 20px !important; font-weight: 700 !important; height: 38px; display: flex; align-items: center; gap: 6px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2); font-size: 0.85rem; flex-shrink: 0; }
          .add-user-btn:hover { background: var(--primary-hover) !important; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4); }
@@ -387,6 +480,11 @@ export default function CustomersList() {
          .crm-table th { padding: 12px 16px !important; border-bottom: 2px solid var(--border-strong) !important; }
          .crm-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--border-strong) !important; }
          
+         .crm-table th.sortable { cursor: pointer; transition: background 0.2s; position: relative; padding-right: 24px !important; }
+         .crm-table th.sortable:hover { background: var(--bg-card) !important; }
+         .crm-table th.sortable i { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); opacity: 0.5; }
+         .crm-table th.sortable:hover i { opacity: 1; color: var(--primary); }
+
          @media (max-width: 1000px) {
             .crm-stats-bar-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
             .stat-pill-mini { min-width: 0; padding: 10px; }

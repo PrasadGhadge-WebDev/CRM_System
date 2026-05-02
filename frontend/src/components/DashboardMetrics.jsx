@@ -3,9 +3,8 @@ import '../styles/dashboardMetrics.css'
 
 export default function DashboardMetrics({ metrics, loading }) {
   const leadsTotal = metrics?.leads?.total ?? 0
-  const customersTotal = metrics?.customers?.total ?? 0
-  const followUpDue = metrics?.leads?.overdueCount ?? 0
   const totalRevenue = metrics?.summary?.totalRevenue ?? 0
+  const pendingPayments = metrics?.financials?.unpaidCount ?? 0
 
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-IN', {
@@ -23,22 +22,16 @@ export default function DashboardMetrics({ metrics, loading }) {
       className: 'leads'
     },
     {
-      label: 'Total Customers',
-      value: customersTotal,
-      icon: 'user',
-      className: 'customers'
-    },
-    {
-      label: 'Follow-up Due',
-      value: followUpDue,
-      icon: 'clock',
-      className: followUpDue > 0 ? 'followup-overdue' : 'followup-due'
-    },
-    {
       label: 'Total Revenue',
       value: formatCurrency(totalRevenue),
       icon: 'deals',
       className: 'revenue'
+    },
+    {
+      label: 'Pending Payments',
+      value: pendingPayments,
+      icon: 'billing',
+      className: 'payments'
     }
   ]
 

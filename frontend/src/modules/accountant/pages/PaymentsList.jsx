@@ -6,6 +6,7 @@ import { formatCurrency } from '../../../utils/formatters'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../../context/AuthContext'
 import PageHeader from '../../../components/PageHeader.jsx'
+import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
 
 export default function PaymentsList() {
   const { user } = useAuth()
@@ -18,6 +19,7 @@ export default function PaymentsList() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const limit = 20
+  const [summary, setSummary] = useState({ total: 0, byMethod: {}, totalAmount: 0 })
   const navigate = useNavigate()
 
   const canAdd = ['Admin', 'Accountant'].includes(user?.role)
@@ -29,6 +31,7 @@ export default function PaymentsList() {
       const res = await paymentsApi.list({ q, payment_method: method, startDate, endDate, page, limit })
       setPayments(res.items || [])
       setTotal(res.total || 0)
+      setSummary(res.summary || { total: 0, byMethod: {}, totalAmount: 0 })
     } catch (err) {
       toast.error('Failed to load payments')
     } finally {
@@ -59,46 +62,44 @@ export default function PaymentsList() {
           <p className="users-subtitle">Review collection history and financial transaction records</p>
         </div>
 
-        <div className="crm-stats-bar-compact">
+        <div className="crm-stats-bar-compact overflow-x-auto pb-8">
+          <div className="stat-pill-mini clickable" onClick={() => { setMethod(''); setPage(1); }} style={{ borderBottom: method === '' ? '2px solid var(--primary)' : '' }}>
+            <span className="stat-pill-label">ALL PAYMENTS</span>
+            <span className="stat-pill-value total">{summary.total}</span>
+          </div>
           <div className="stat-pill-mini">
             <span className="stat-pill-label">TOTAL COLLECTED</span>
-            <span className="stat-pill-value active">₹{payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toLocaleString()}</span>
+            <span className="stat-pill-value active">{formatCurrency(summary.totalAmount)}</span>
           </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">TRANSACTIONS</span>
-            <span className="stat-pill-value total">{total}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">AVG PAYMENT</span>
-            <span className="stat-pill-value pending">₹{total > 0 ? (payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) / total).toLocaleString(undefined, {maximumFractionDigits: 0}) : 0}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">METHODS</span>
-            <span className="stat-pill-value inactive">{new Set(payments.map(p => p.payment_method)).size}</span>
-          </div>
+          {Object.entries(summary.byMethod).map(([name, count]) => (
+            <div 
+              key={name} 
+              className="stat-pill-mini clickable" 
+              onClick={() => { setMethod(name); setPage(1); }}
+              style={{ borderBottom: method === name ? '2px solid var(--primary)' : '' }}
+            >
+              <span className="stat-pill-label">{name.toUpperCase()}</span>
+              <span className="stat-pill-value">{count}</span>
+            </div>
+          ))}
         </div>
 
         <div className="unified-action-bar">
           <div className="search-filter-group">
-            <div className="crm-search-input-wrap">
-              <Icon name="search" className="search-icon" />
-              <input 
-                type="text" 
-                placeholder="Search payments..." 
-                value={q} 
-                className="crm-input"
-                onChange={e => { setQ(e.target.value); setPage(1); }} 
-              />
-            </div>
+            <ModernSearchBar
+              value={q}
+              onChange={e => { setQ(e.target.value); setPage(1); }}
+              placeholder="Search by payment number, status, reference number, method, notes..."
+            />
 
             <select className="crm-input filter-select" value={method} onChange={e => { setMethod(e.target.value); setPage(1); }}>
               <option value="">All Methods</option>
               <option value="Cash">Cash</option>
               <option value="Card">Card</option>
-              <option value="Bank Transfer">Bank</option>
-              <option value="Online">Online</option>
-              <option value="Cheque">Cheque</option>
               <option value="UPI">UPI</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Online">Online Gateway</option>
             </select>
 
             <button
@@ -142,8 +143,9 @@ export default function PaymentsList() {
                       <th style={{ width: '140px', color: 'var(--text-dimmed)' }}>DATE</th>
                       <th style={{ minWidth: '200px', color: 'var(--text-dimmed)' }}>CUSTOMER NAME</th>
                       <th style={{ width: '160px', color: 'var(--text-dimmed)' }}>BILL NUMBER</th>
-                      <th style={{ width: '140px', color: 'var(--text-dimmed)' }}>PAYMENT METHOD</th>
-                      <th style={{ width: '160px', color: 'var(--text-dimmed)' }}>AMOUNT</th>
+                      <th style={{ width: '140px', color: 'var(--text-dimmed)' }}>METHOD</th>
+                      <th style={{ width: '130px', color: 'var(--text-dimmed)' }}>STATUS</th>
+                      <th style={{ width: '140px', color: 'var(--text-dimmed)' }}>AMOUNT</th>
                       {canDelete && <th className="text-right" style={{ width: '100px', color: 'var(--text-dimmed)' }}>ACTION</th>}
                     </tr>
                   </thead>
@@ -170,6 +172,15 @@ export default function PaymentsList() {
                             </div>
                           </td>
                           <td><span className="crm-status-pill info">{pay.payment_method}</span></td>
+                          <td>
+                            <span className={`crm-status-pill ${
+                              pay.status === 'Completed' || pay.status === 'Verified' ? 'success' : 
+                              pay.status === 'Failed' ? 'danger' : 
+                              pay.status === 'Refunded' ? 'warning' : 'info'
+                            }`}>
+                              {pay.status || 'Pending'}
+                            </span>
+                          </td>
                           <td><span className="font-numeric" style={{ fontWeight: 800, color: 'var(--success)' }}>{formatCurrency(pay.amount)}</span></td>
                           {canDelete && (
                             <td className="text-right" onClick={e => e.stopPropagation()}>

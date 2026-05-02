@@ -32,11 +32,12 @@ export const AuthProvider = ({ children }) => {
     setLoading(false)
   }, [])
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, role) => {
     try {
       const response = await api.post('/api/auth/login', {
         identifier: String(email ?? '').trim(),
         password,
+        role
       })
       const { user: nextUser, token } = response || {}
 

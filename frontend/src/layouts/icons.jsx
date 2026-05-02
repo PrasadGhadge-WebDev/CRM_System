@@ -178,8 +178,8 @@ export function Icon({ name }) {
     case 'deals':
       return (
         <svg {...common} aria-hidden="true">
-          <path {...stroke} d="M12 2v20" />
-          <path {...stroke} d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          <path {...stroke} d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+          <line {...stroke} x1="7" y1="7" x2="7" y2="7" />
         </svg>
       )
 
@@ -347,6 +347,22 @@ export function Icon({ name }) {
       return (
         <svg {...common} aria-hidden="true">
           <path {...stroke} d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      )
+    case 'more-horizontal':
+      return (
+        <svg {...common} aria-hidden="true">
+          <circle {...stroke} cx="12" cy="12" r="1" />
+          <circle {...stroke} cx="19" cy="12" r="1" />
+          <circle {...stroke} cx="5" cy="12" r="1" />
+        </svg>
+      )
+    case 'more-vertical':
+      return (
+        <svg {...common} aria-hidden="true">
+          <circle {...stroke} cx="12" cy="12" r="1" />
+          <circle {...stroke} cx="12" cy="5" r="1" />
+          <circle {...stroke} cx="12" cy="19" r="1" />
         </svg>
       )
     default:

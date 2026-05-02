@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar.jsx'
 import Topbar from './Topbar.jsx'
-import TrialStatusBar from '../components/TrialStatusBar.jsx'
 import { useAuth } from '../context/AuthContext'
 import { hasRequiredRole, NAV_ACCESS } from '../utils/accessControl'
 
@@ -21,11 +20,16 @@ export default function AppLayout() {
   const { user } = useAuth()
   const { pathname, search } = useLocation()
   const navigate = useNavigate()
-  const motionKey = `${pathname}${search}`
+  const motionKey = pathname // Only remount on path change, not query params change
 
   const [searchText, setSearchText] = useState('')
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 900)
+  
+  useEffect(() => {
+    const width = sidebarOpen ? '260px' : '80px'
+    document.documentElement.style.setProperty('--sidebar-current-width', width)
+  }, [sidebarOpen])
 
   useEffect(() => {
     document.body.classList.toggle('dark', theme === 'dark')
@@ -66,7 +70,6 @@ export default function AppLayout() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="crmContent">
-        <TrialStatusBar />
         <Topbar
           title={title}
           searchText={searchText}
@@ -91,55 +94,57 @@ export default function AppLayout() {
           <div className="crmRouteCanvas route-motion-shell crm-route-motion" key={motionKey}>
             <Outlet />
           </div>
+          {/* Internal Portal Target for Forms */}
+          <div id="modal-root-content"></div>
         </main>
 
         <footer className="crmFooter">
           <div className="crmFooterInner">
             <div className="crmFooterLinks">
-          <Link to="/">Dashboard</Link>
-          <span className="bullet">&bull;</span>
-          {hasRequiredRole(user?.role, NAV_ACCESS.customers) && (
-            <>
-              <Link to="/customers">Customers</Link>
+              <Link to="/">Dashboard</Link>
               <span className="bullet">&bull;</span>
-            </>
-          )}
-          {hasRequiredRole(user?.role, NAV_ACCESS.leads) && (
-            <>
-              <Link to="/leads">Leads</Link>
-              <span className="bullet">&bull;</span>
-            </>
-          )}
-          {hasRequiredRole(user?.role, NAV_ACCESS.deals) && (
-            <>
-              <Link to="/deals">Deals</Link>
-              <span className="bullet">&bull;</span>
-            </>
-          )}
-          {hasRequiredRole(user?.role, NAV_ACCESS.tickets) && (
-            <>
-              <Link to="/tickets">Tickets</Link>
-              <span className="bullet">&bull;</span>
-            </>
-          )}
-          {hasRequiredRole(user?.role, NAV_ACCESS.users) && (
-            <>
-              <Link to="/users">Users</Link>
-              <span className="bullet">&bull;</span>
-            </>
-          )}
-          {hasRequiredRole(user?.role, NAV_ACCESS.reports) && (
-            <>
-              <Link to="/reports">Reports</Link>
-              <span className="bullet">&bull;</span>
-            </>
-          )}
-          {hasRequiredRole(user?.role, NAV_ACCESS.trash) && (
-            <>
-              <Link to="/trash">Trash</Link>
-            </>
-          )}
-        </div>
+              {hasRequiredRole(user?.role, NAV_ACCESS.customers) && (
+                <>
+                  <Link to="/customers">Customers</Link>
+                  <span className="bullet">&bull;</span>
+                </>
+              )}
+              {hasRequiredRole(user?.role, NAV_ACCESS.leads) && (
+                <>
+                  <Link to="/leads">Leads</Link>
+                  <span className="bullet">&bull;</span>
+                </>
+              )}
+              {hasRequiredRole(user?.role, NAV_ACCESS.deals) && (
+                <>
+                  <Link to="/deals">Deals</Link>
+                  <span className="bullet">&bull;</span>
+                </>
+              )}
+              {hasRequiredRole(user?.role, NAV_ACCESS.tickets) && (
+                <>
+                  <Link to="/tickets">Tickets</Link>
+                  <span className="bullet">&bull;</span>
+                </>
+              )}
+              {hasRequiredRole(user?.role, NAV_ACCESS.users) && (
+                <>
+                  <Link to="/users">Users</Link>
+                  <span className="bullet">&bull;</span>
+                </>
+              )}
+              {hasRequiredRole(user?.role, NAV_ACCESS.reports) && (
+                <>
+                  <Link to="/reports">Reports</Link>
+                  <span className="bullet">&bull;</span>
+                </>
+              )}
+              {hasRequiredRole(user?.role, NAV_ACCESS.trash) && (
+                <>
+                  <Link to="/trash">Trash</Link>
+                </>
+              )}
+            </div>
 
             <div className="crmFooterCopy">
               &copy; {new Date().getFullYear()} CRM System. All rights reserved.

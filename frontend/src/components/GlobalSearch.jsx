@@ -45,10 +45,10 @@ export default function GlobalSearch() {
 
   return (
     <div className="global-search-container" ref={dropdownRef}>
-      <div className="topbarSearch">
-        <Icon name="search" />
+      <div className="crm-search-bar-modern">
         <input
           placeholder="Search leads, customers, deals..."
+          className="crm-search-input"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value)
@@ -56,7 +56,9 @@ export default function GlobalSearch() {
           }}
           onFocus={() => setIsOpen(true)}
         />
-        {loading && <div className="search-spinner" />}
+        <div className="search-action-icon" style={{ width: '32px', height: '32px', cursor: 'default' }}>
+          {loading ? <div className="search-spinner" style={{ margin: 0 }} /> : <Icon name="search" size={14} />}
+        </div>
       </div>
 
       {isOpen && (query.length > 2 || loading) && (

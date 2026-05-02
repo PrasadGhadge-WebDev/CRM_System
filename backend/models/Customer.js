@@ -24,7 +24,7 @@ const CustomerSchema = new mongoose.Schema(
     postal_code: { type: String, trim: true },
     
     // Lifecycle & Engagement (Step 6 & 8)
-    status: { type: String, enum: ['Active', 'Inactive', 'Lost', 'Repeat'], default: 'Active', index: true },
+    status: { type: String, enum: ['Active', 'Inactive', 'Lead', 'Prospect', 'Lost'], default: 'Active', index: true },
     last_interaction_date: { type: Date },
     next_followup_date: { type: Date },
     

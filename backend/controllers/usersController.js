@@ -123,7 +123,17 @@ exports.listUsers = asyncHandler(async (req, res) => {
     filter.role = normalizeRole(role) || String(role).trim();
   }
   if (search) {
-    filter.$or = [{ name: search }, { username: search }, { email: search }, { phone: search }];
+    filter.$or = [
+      { name: search },
+      { username: search },
+      { email: search },
+      { phone: search },
+      { role: search },
+      { status: search },
+      { employee_id: search },
+      { tags: search },
+      { address: search }
+    ];
   }
 
   const query = User.find(filter).populate('company_id', 'company_name status').sort(sort);
@@ -131,9 +141,27 @@ exports.listUsers = asyncHandler(async (req, res) => {
     query.skip((pageNum - 1) * limitNum).limit(limitNum);
   }
 
-  const [items, total] = await Promise.all([query, User.countDocuments(filter)]);
+  const summaryPipeline = [
+    { $match: filter },
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 }
+      }
+    }
+  ];
 
-  res.ok({ items, page: pageNum, limit: wantsAll ? 'all' : limitNum, total });
+  const [items, totalFiltered, statusStats] = await Promise.all([query, User.countDocuments(filter), User.aggregate(summaryPipeline)]);
+
+  const summary = {
+    total: totalFiltered,
+    byStatus: {}
+  };
+  statusStats.forEach(s => {
+    if (s._id) summary.byStatus[s._id] = s.count;
+  });
+
+  res.ok({ items, page: pageNum, limit: wantsAll ? 'all' : limitNum, total: totalFiltered, summary });
 });
 
 exports.createUser = asyncHandler(async (req, res) => {

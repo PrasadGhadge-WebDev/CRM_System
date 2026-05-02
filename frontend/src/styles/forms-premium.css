@@ -2,36 +2,39 @@
 
 .crm-modal-portal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: #f8fafc; /* Clean light background */
-  z-index: 1000000; /* Extremely high to cover everything including headers */
+  top: 78px; /* Topbar height */
+  left: var(--sidebar-current-width, 260px);
+  right: 0;
+  bottom: 0;
+  background: rgba(248, 250, 252, 0.4); /* Transparent light background */
+  backdrop-filter: blur(12px); /* Higher blur for "freeze" effect */
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 999; 
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden; /* Prevent background scrolling */
+  padding: 40px;
+  overflow: hidden; /* Prevent overlay itself from scrolling */
 }
 
 [data-theme='dark'] .crm-modal-portal-overlay {
-  background: #0f172a; /* Clean dark background */
+  background: rgba(15, 23, 42, 0.4);
 }
 
 .crm-modal-sheet {
   background: var(--bg-card);
-  width: 95%;
+  width: 100%;
   max-width: 900px;
-  max-height: 90vh;
+  max-height: calc(100vh - 156px); /* 100vh - (78px topbar + extra padding) */
   display: flex;
   flex-direction: column;
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.2);
   position: relative;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-radius: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: 24px; /* Slightly tighter radius for professional look */
   overflow: hidden;
   color: var(--text);
-  animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme='light'] .crm-modal-sheet {
@@ -108,6 +111,76 @@
 .crm-modal-sheet .crm-input:focus {
   border-color: var(--primary) !important;
   box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.1) !important;
+}
+
+.crm-modal-sheet .crm-input.error {
+  border-color: #ef4444 !important;
+}
+
+.crm-modal-sheet .crm-input.error:focus {
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Premium Icon-Input Group */
+.crm-input-group {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.crm-input-group:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+}
+
+.crm-input-group .input-icon-box {
+  width: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.02);
+  border-right: 1.5px solid var(--border-strong);
+  color: var(--text-dimmed);
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .crm-input-group .input-icon-box {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.crm-input-group input, 
+.crm-input-group select, 
+.crm-input-group textarea {
+  border: none !important;
+  background: transparent !important;
+  flex: 1;
+  padding: 12px 14px !important;
+  outline: none;
+  font-size: 0.95rem;
+  color: var(--text);
+  box-shadow: none !important;
+}
+
+.crm-input-group input::placeholder {
+  color: var(--text-dimmed);
+  opacity: 0.6;
+}
+
+.error-text {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #ef4444;
+  margin-top: 4px;
+  display: block;
+}
+
+.crm-input-group.error {
+  border-color: #ef4444 !important;
 }
 
 .crm-modal-sheet-footer {

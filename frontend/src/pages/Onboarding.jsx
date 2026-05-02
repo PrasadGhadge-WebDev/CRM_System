@@ -1,8 +1,11 @@
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { FiUser, FiMail, FiPhone, FiLock, FiCheckCircle, FiShield, FiArrowRight, FiArrowLeft, FiCircle } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { authApi } from '../services/auth'
+import PasswordInput from '../components/PasswordInput.jsx'
 import '../styles/auth.css'
+import '../styles/forms-premium.css'
 
 export default function Onboarding() {
   const navigate = useNavigate()
@@ -139,21 +142,16 @@ export default function Onboarding() {
                   />
                 </div>
               </div>
-              <div className="auth-group">
-                <label className="auth-label">Password</label>
-                <div className="auth-password-wrap">
-                  <span className="auth-input-icon"><FiLock /></span>
-                  <input
-                    type="password"
-                    name="password"
-                    className="auth-input auth-input-password"
-                    required
-                    placeholder="Enter your temp password"
-                    value={credentials.password}
-                    onChange={onCredentialsChange}
-                  />
-                </div>
-              </div>
+              <PasswordInput
+                id="password"
+                name="password"
+                label="Password"
+                value={credentials.password}
+                onChange={onCredentialsChange}
+                placeholder="Enter your temp password"
+                wrapperClass="auth-group"
+                autoComplete="current-password"
+              />
               <button className="auth-button" disabled={loading}>
                 {loading ? 'Verifying...' : 'Verify & Continue'}
                 {!loading && <FiArrowRight />}

@@ -18,6 +18,7 @@ router.put('/:id', validateObjectId('id'), preventDemoEdit, controller.updateLea
 router.patch('/:id/followup', validateObjectId('id'), preventDemoEdit, controller.updateFollowup);
 router.patch('/:id/status', validateObjectId('id'), preventDemoEdit, controller.updateLeadStatus);
 router.delete('/:id', validateObjectId('id'), preventDemoDelete, controller.deleteLead);
+router.post('/:id/convert-to-deal', validateObjectId('id'), controller.convertToDeal);
 
 router.get('/:id/notes', validateObjectId('id'), controller.listLeadNotes);
 router.post('/:id/notes', validateObjectId('id'), controller.addLeadNote);

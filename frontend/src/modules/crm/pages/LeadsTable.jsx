@@ -26,7 +26,9 @@ export default function LeadsTable({
   onFilterChange,
   statusOptions = [],
   employeeOptions = [],
-  userRole
+  userRole,
+  onOpenNotes,
+  onOpenTimeline
 }) {
   const navigate = useNavigate()
   const [selectedIds, setSelectedIds] = useState([])
@@ -269,25 +271,34 @@ export default function LeadsTable({
                 </td>
                 <td className="lt-text-right">
                   <div className="lt-actions">
-                    {String(l.status || '').toLowerCase() === 'new' && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleQuickAction(l.id || l._id, 'Contacted'); }} 
-                        title="Mark as Contacted" 
-                        className="lt-act-quick"
-                      >
-                        <Icon name="check" size={14} />
-                      </button>
-                    )}
                     <button onClick={(e) => { e.stopPropagation(); navigate(`/leads/${l.id || l._id}/edit`); }} title="Edit Details" className="lt-act-edit"><Icon name="edit" size={14} /></button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleFollowUp(l); }} 
-                      title="Follow-up Management" 
-                      className="lt-act-call"
-                      style={{ borderColor: getFollowupDueStatus(l.nextFollowupDate) === 'overdue' ? '#ef4444' : '' }}
-                    >
-                      <Icon name="phone" size={14} />
-                    </button>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id || l._id); }} title="Delete" className="lt-act-del"><Icon name="trash" size={14} /></button>
+                    
+                    <details className="lt-actions-overflow" onClick={e => e.stopPropagation()}>
+                      <summary className="lt-act-more" title="More Options">
+                        <Icon name="more-vertical" size={14} />
+                      </summary>
+                      <div className="lt-overflow-menu shadow-soft">
+                        {String(l.status || '').toLowerCase() === 'new' && (
+                          <button className="lt-overflow-item" onClick={() => handleQuickAction(l.id || l._id, 'Contacted')}>
+                            <Icon name="check" size={14} />
+                            <span>Mark Contacted</span>
+                          </button>
+                        )}
+                        <button className="lt-overflow-item" onClick={() => onOpenNotes(l)}>
+                          <Icon name="notes" size={14} />
+                          <span>Add Note</span>
+                        </button>
+                        <button className="lt-overflow-item" onClick={() => onOpenTimeline(l)}>
+                          <Icon name="activity" size={14} />
+                          <span>Timeline</span>
+                        </button>
+                        <button className="lt-overflow-item" onClick={() => handleFollowUp(l)}>
+                          <Icon name="phone" size={14} />
+                          <span>Follow-up</span>
+                        </button>
+                      </div>
+                    </details>
                   </div>
                 </td>
               </tr>
@@ -441,8 +452,58 @@ export default function LeadsTable({
         .lt-actions button:hover { transform: translateY(-2px); }
         .lt-actions button.lt-act-quick:hover { border-color: #22c55e; color: #22c55e; background: rgba(34, 197, 94, 0.1); }
         .lt-actions button.lt-act-edit:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .lt-actions button.lt-act-note:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+        .lt-actions button.lt-act-time:hover { border-color: #8b5cf6; color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
         .lt-actions button.lt-act-call:hover { border-color: #fbbf24; color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
         .lt-actions button.lt-act-del:hover { border-color: #ef4444; color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        
+        .lt-actions-overflow { position: relative; }
+        .lt-actions-overflow summary { list-style: none; outline: none; }
+        .lt-actions-overflow summary::-webkit-details-marker { display: none; }
+        .lt-act-more { padding: 8px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; cursor: pointer; transition: all 0.2s; }
+        .lt-act-more:hover { background: var(--bg-surface); color: var(--primary); border-color: var(--primary); }
+
+        .lt-overflow-menu {
+          position: absolute;
+          right: 0;
+          top: calc(100% + 8px);
+          background: rgba(30, 41, 59, 0.95);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 14px;
+          padding: 6px;
+          z-index: 100;
+          min-width: 180px;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .lt-overflow-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 12px;
+          border-radius: 8px;
+          color: #cbd5e1;
+          font-size: 0.8rem;
+          font-weight: 700;
+          background: transparent;
+          border: none;
+          width: 100%;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .lt-overflow-item:hover {
+          background: rgba(255,255,255,0.05);
+          color: var(--primary);
+        }
+
+        .lt-overflow-item svg { color: #64748b; }
+        .lt-overflow-item:hover svg { color: var(--primary); }
         
         .lt-empty { text-align: center; padding: 60px; color: #64748b; font-style: italic; font-size: 1rem; }
 

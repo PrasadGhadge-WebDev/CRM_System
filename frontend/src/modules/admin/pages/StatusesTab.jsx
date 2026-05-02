@@ -10,6 +10,7 @@ export default function StatusesTab() {
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [form, setForm] = useState({ name: '', order: 1, color: '#3B82F6', isFinal: false, type: 'lead' })
+  const [initialForm, setInitialForm] = useState(null)
   const [editingId, setEditingId] = useState(null)
 
   useEffect(() => {
@@ -30,6 +31,11 @@ export default function StatusesTab() {
 
   const handleSave = async (e) => {
     e.preventDefault()
+    
+    if (editingId && initialForm && JSON.stringify(form) === JSON.stringify(initialForm)) {
+      return toast.info('No changes detected')
+    }
+
     try {
       await statusesApi.save({ ...form, id: editingId })
       toast.success('Pipeline stage synchronized')
@@ -125,11 +131,16 @@ export default function StatusesTab() {
                                 {item.isFinal ? 'TERMINAL' : 'FLUID'}
                               </span>
                             </td>
-                            <td className="text-right">
-                              <div className="crm-action-group">
-                                <button className="modern-action-btn" onClick={() => { setEditingId(item.id); setForm(item); setIsModalOpen(true); }}>
-                                  <Icon name="edit" size={14} />
-                                </button>
+                              <td className="text-right">
+                                <div className="crm-action-group">
+                                  <button className="modern-action-btn" onClick={() => { 
+                                    setEditingId(item.id); 
+                                    setForm(item); 
+                                    setInitialForm(item);
+                                    setIsModalOpen(true); 
+                                  }}>
+                                    <Icon name="edit" size={14} />
+                                  </button>
                                 <button className="modern-action-btn danger" onClick={() => handleDelete(item.id)}>
                                   <Icon name="trash" size={14} />
                                 </button>

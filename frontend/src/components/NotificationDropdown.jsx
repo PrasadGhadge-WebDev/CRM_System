@@ -2,9 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useNotifications } from '../context/NotificationContext'
 import { Icon } from '../layouts/icons.jsx'
-import { DotLottieReact } from '@lottiefiles/dotlottie-react'
+import { FiBell } from 'react-icons/fi'
 import LottieEmpty from './LottieEmpty.jsx'
-import bellData from '../assets/bell-animation.json'
 
 export default function NotificationDropdown() {
   const { 
@@ -40,14 +39,8 @@ export default function NotificationDropdown() {
 
   return (
     <div className="notificationCenter" ref={dropdownRef}>
-      <button className="iconBtn" onClick={() => setOpen(!open)} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px' }}>
-        <div style={{ width: '24px', height: '24px' }}>
-          <DotLottieReact
-            data={bellData}
-            loop={unreadCount > 0}
-            autoplay={unreadCount > 0}
-          />
-        </div>
+      <button className="iconBtn" onClick={() => setOpen(!open)} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', fontSize: '20px' }}>
+        <FiBell />
         {unreadCount > 0 && <span className="badgeCount">{unreadCount}</span>}
       </button>
 

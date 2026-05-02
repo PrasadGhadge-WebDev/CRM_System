@@ -46,6 +46,7 @@ export default function RolesTab() {
     globalPerms: { export: false, import: false, reports: false, manageUsers: false },
     status: 'Active' 
   })
+  const [initialForm, setInitialForm] = useState(null)
 
   useEffect(() => { loadRoles() }, [])
 
@@ -114,6 +115,12 @@ export default function RolesTab() {
       status: form.status.toLowerCase()
     }
 
+    if (editingId && initialForm) {
+      if (JSON.stringify(form) === JSON.stringify(initialForm)) {
+        return toast.info('No changes detected')
+      }
+    }
+
     try {
       if (editingId && !String(editingId).startsWith('sample')) {
         await rolesApi.update(editingId, payload)
@@ -145,13 +152,15 @@ export default function RolesTab() {
       }
     })
 
-    setForm({
+    const nextForm = {
       name: role.name,
       description: role.description || '',
       permissions,
       globalPerms,
       status: role.status ? (role.status.charAt(0).toUpperCase() + role.status.slice(1)) : 'Active'
-    })
+    }
+    setForm(nextForm)
+    setInitialForm(nextForm)
     setIsModalOpen(true)
   }
 
@@ -332,14 +341,17 @@ export default function RolesTab() {
 
       <div className="role-top-action-bar">
         <div className="search-filter-group-v7">
-          <div className="search-box-v7">
-            <Icon name="eye" size={16} />
+          <div className="crm-search-bar-modern" style={{ maxWidth: '400px' }}>
             <input 
               type="text" 
               placeholder="Search Role..." 
+              className="crm-search-input"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
+            <button className="search-action-icon" onClick={handleApplyFilters}>
+              <Icon name="search" />
+            </button>
           </div>
           <select 
             className="filter-select-v7"
@@ -437,11 +449,7 @@ export default function RolesTab() {
         .role-top-action-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; margin-top: 32px; gap: 20px; }
         .search-filter-group-v7 { display: flex; align-items: center; gap: 12px; flex: 1; }
         
-        .search-box-v7 { 
-          flex: 1; max-width: 400px; display: flex; align-items: center; gap: 10px; 
-          background: #1A1D2B; border: 1px solid #2D3040; border-radius: 10px; padding: 0 14px; height: 42px;
-        }
-        .search-box-v7 input { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 14px; }
+
         
         .filter-select-v7 { 
           background: #1A1D2B; border: 1px solid #2D3040; color: white; border-radius: 10px; 

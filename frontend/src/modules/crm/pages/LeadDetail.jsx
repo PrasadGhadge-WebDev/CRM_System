@@ -262,6 +262,16 @@ export default function LeadDetail() {
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }} />
                 <span>Current</span>
               </div>
+              {isConverted && (
+                <Link 
+                  to={`/customers/${lead.convertedCustomerId?._id || lead.convertedCustomerId?.id || lead.convertedCustomerId}`}
+                  className="crm-status-pill-modern status-active"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <Icon name="user" size={12} />
+                  <span>View Customer Profile</span>
+                </Link>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '20px', color: 'var(--text-dimmed)', fontSize: '0.9rem', flexWrap: 'wrap' }}>

@@ -10,11 +10,18 @@ const LeadSchema = new mongoose.Schema(
     lastName: { type: String, required: true, trim: true, index: true },
     name: { type: String, required: true, trim: true }, // Combined for display
     email: { type: String, required: true, trim: true, lowercase: true, index: true },
-    phone: { type: String, trim: true, index: true },
+    phone: { type: String, required: true, trim: true, index: true },
+    alternate_phone: { type: String, trim: true },
     company: { type: String, trim: true, index: true },
-    source: { type: String, required: true, trim: true, index: true }, // Can be name or ID from SystemSettings
-    status: { type: String, required: true, trim: true, default: 'new', index: true }, // From SystemSettings
-    priority: { type: String, enum: ['Hot', 'Warm', 'Cold'], default: 'Warm', index: true },
+    source: { type: String, required: true, trim: true, default: 'Referral', index: true },
+    status: { type: String, required: true, trim: true, default: 'New', index: true },
+    priority: { type: String, enum: ['High', 'Medium', 'Low'], default: 'Medium', index: true },
+    interested_product: { type: String, trim: true },
+    budget_range: { 
+      type: String, 
+      enum: ['Below 10k', '10k-50k', '50k-1L', '1L-5L', '5L+', ''],
+      default: '' 
+    },
     dealAmount: { type: Number, default: 0 },
     currency: { type: String, default: 'INR' },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, refPath: 'assignedToModel', required: true, index: true },
@@ -42,17 +49,18 @@ const LeadSchema = new mongoose.Schema(
       reminderOffsets: [{ type: String, enum: ['15m', '30m', '1h', '1d'] }],
       isDone: { type: Boolean, default: false }
     }],
-    followupLock: { type: Boolean, default: false }, // For transaction locking
-    lastRequestId: { type: String }, // For idempotency
-    notes: { type: String, trim: true },
+    followupLock: { type: Boolean, default: false },
+    lastRequestId: { type: String },
+    notes: { type: String, trim: true, maxlength: 500 },
+    remarks_internal: { type: String, trim: true }, // Motty
     address: { type: String, trim: true },
     city: { type: String, trim: true },
-    state: { type: String, trim: true },
+    state: { type: String, trim: true, default: 'Maharashtra' },
     pincode: { type: String, trim: true },
     
-    // Internal tracking
     convertedCustomerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', index: true },
     convertedAt: { type: Date },
+    lostReason: { type: String, trim: true },
     lastActivityAt: { type: Date, default: Date.now },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } },

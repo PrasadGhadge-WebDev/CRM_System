@@ -46,10 +46,29 @@ exports.getTickets = asyncHandler(async (req, res) => {
 
   if (q && q.trim()) {
     const search = { $regex: q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
-    filter.$or = [{ ticket_id: search }, { subject: search }, { description: search }, { category: search }];
+    filter.$or = [
+      { ticket_id: search },
+      { subject: search },
+      { description: search },
+      { category: search },
+      { priority: search },
+      { status: search },
+      { escalation_reason: search },
+      { solution: search }
+    ];
   }
 
-  const [items, total] = await Promise.all([
+  const summaryPipeline = [
+    { $match: filter },
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 }
+      }
+    }
+  ];
+
+  const [items, totalFiltered, statusStats] = await Promise.all([
     SupportTicket.find(filter)
       .populate('customer_id', 'name email')
       .populate('user_customer_id', 'name email')
@@ -58,9 +77,18 @@ exports.getTickets = asyncHandler(async (req, res) => {
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum),
     SupportTicket.countDocuments(filter),
+    SupportTicket.aggregate(summaryPipeline)
   ]);
 
-  res.ok({ items, total, page: pageNum, limit: limitNum });
+  const summary = {
+    total: totalFiltered,
+    byStatus: {}
+  };
+  statusStats.forEach(s => {
+    if (s._id) summary.byStatus[s._id] = s.count;
+  });
+
+  res.ok({ items, total: totalFiltered, page: pageNum, limit: limitNum, summary });
 });
 
 // @desc    Get single ticket by ID

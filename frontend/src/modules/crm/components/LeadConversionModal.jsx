@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { usersApi } from '../../../services/users.js'
 import { leadSourcesApi } from '../../../services/leadSources.js'
 import { customersApi } from '../../../services/customers.js'
 import { Icon } from '../../../layouts/icons.jsx'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../../context/AuthContext.jsx'
+import { validateRequired } from '../../../utils/formValidation.js'
 
 export default function LeadConversionModal({ isOpen, lead, onClose, onConverted }) {
   const { user } = useAuth()
-  const isAdmin = user?.role === 'Admin'
   const [employees, setEmployees] = useState([])
   const [sources, setSources] = useState([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
 
   const [form, setForm] = useState({
     assigned_to: '',
@@ -23,6 +25,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
   useEffect(() => {
     if (!isOpen || !lead) return
     setLoading(true)
+    setFieldErrors({})
     Promise.all([
       usersApi.list({ limit: 'all' }),
       leadSourcesApi.list()
@@ -32,15 +35,27 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
       setForm({
         assigned_to: lead.assignedTo?._id || lead.assignedTo?.id || lead.assignedTo || '',
         source: lead.source || '',
-        initial_note: `Lead changed to customer. Lead ID: ${lead.leadId}`
+        initial_note: '' // Removed default auto-filled note
       })
-    }).finally(() => setLoading(false))
+    }).catch(() => toast.error('Failed to load data')).finally(() => setLoading(false))
   }, [isOpen, lead])
 
+  function validate() {
+    const errors = {}
+    const assignErr = validateRequired('Assigned User', form.assigned_to)
+    if (assignErr) errors.assigned_to = assignErr
+    const sourceErr = validateRequired('Source', form.source)
+    if (sourceErr) errors.source = sourceErr
+    
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   async function handleSubmit(e) {
-    e.preventDefault()
-    if (!form.assigned_to || !form.source) {
-      return toast.warn('Please select user and source')
+    if (e) e.preventDefault()
+    if (!validate()) {
+      const first = Object.values(fieldErrors)[0] || 'Please fill required fields'
+      return toast.warn(first)
     }
 
     setSaving(true)
@@ -55,7 +70,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
       onConverted(res)
       onClose()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not convert lead')
+      setFieldErrors(prev => ({ ...prev, _form: err.response?.data?.message || 'Could not convert lead' }))
     } finally {
       setSaving(false)
     }
@@ -63,120 +78,96 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
 
   if (!isOpen) return null
 
-  return (
-    <div className={`modal-overlay-premium ${isAdmin ? 'admin-header-open' : ''}`}>
-      <div className="modal-content-glass">
-        <form onSubmit={handleSubmit} className="conversion-form-shell">
-          <div className="conversion-header-vibrant">
-             <div className="header-glow" />
-             <div className="header-main">
-                <div className="header-icon-box">
-                  <Icon name="check" size={24} />
-                </div>
-                <div className="header-text">
-                  <h2>Convert Lead</h2>
-                  <p>Convert <strong>{lead?.name}</strong> to customer.</p>
-                </div>
-             </div>
+  const modalContent = (
+    <div className="crm-modal-portal-overlay">
+      <div className="crm-modal-sheet" style={{ maxWidth: '600px' }}>
+        <div className="crm-modal-sheet-header">
+          <div className="sheet-title-area">
+            <h2 className="sheet-title">Convert Lead to Customer</h2>
+            <p className="sheet-subtitle">Finalize details for <strong>{lead?.name}</strong> to initiate customer profile.</p>
           </div>
+        </div>
 
-          <div className="conversion-body">
-            <div className="conversion-field">
-              <label>Assigned User</label>
-              <div className="select-wrap-modern">
-                <select 
-                  className="input-premium-select"
-                  value={form.assigned_to}
-                  onChange={e => setForm({...form, assigned_to: e.target.value})}
-                  required
-                >
-                  <option value="">Select user</option>
-                  {employees.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
-                </select>
-                <div className="select-arrow"><Icon name="chevron-down" size={12} /></div>
+        <form className="crm-modal-sheet-body custom-scrollbar" onSubmit={handleSubmit}>
+          {fieldErrors._form && (
+            <div className="crm-form-error-banner" style={{ margin: '0 40px 20px', padding: '12px 20px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 700 }}>
+              {fieldErrors._form}
+            </div>
+          )}
+          <div className="sheet-content-container">
+            <section className="form-sheet-section no-border">
+              <div className="form-sheet-section-header">
+                <Icon name="userPlus" />
+                <span>Account Finalization</span>
               </div>
-            </div>
+              
+              <div className="form-sheet-grid">
+                <div className="sheet-field">
+                  <label>Assign Account To</label>
+                  <select 
+                    className={`crm-input ${fieldErrors.assigned_to ? 'error' : ''}`}
+                    value={form.assigned_to}
+                    onChange={e => {
+                      setForm({...form, assigned_to: e.target.value})
+                      if (fieldErrors.assigned_to) setFieldErrors(prev => ({ ...prev, assigned_to: '' }))
+                    }}
+                    required
+                  >
+                    <option value="">Select Staff Member...</option>
+                    {employees.map(u => <option key={u.id || u._id} value={u.id || u._id}>{u.name} ({u.role})</option>)}
+                  </select>
+                  {fieldErrors.assigned_to && <span className="error-text">{fieldErrors.assigned_to}</span>}
+                </div>
 
-            <div className="conversion-field">
-              <label>Source</label>
-              <div className="select-wrap-modern">
-                <select 
-                  className="input-premium-select"
-                  value={form.source}
-                  onChange={e => setForm({...form, source: e.target.value})}
-                  required
-                >
-                  <option value="">Select source</option>
-                  {sources.map(s => <option key={s.id || s.name} value={s.name}>{s.name}</option>)}
-                </select>
-                <div className="select-arrow"><Icon name="chevron-down" size={12} /></div>
+                <div className="sheet-field">
+                  <label>Confirmed Source</label>
+                  <select 
+                    className={`crm-input ${fieldErrors.source ? 'error' : ''}`}
+                    value={form.source}
+                    onChange={e => {
+                      setForm({...form, source: e.target.value})
+                      if (fieldErrors.source) setFieldErrors(prev => ({ ...prev, source: '' }))
+                    }}
+                    required
+                  >
+                    <option value="">Select origin source...</option>
+                    {sources.map(s => <option key={s.id || s.name} value={s.name}>{s.name}</option>)}
+                  </select>
+                  {fieldErrors.source && <span className="error-text">{fieldErrors.source}</span>}
+                </div>
+
+                <div className="sheet-field full-width">
+                  <label>Conversion Notes / Interaction Summary</label>
+                  <textarea 
+                    className="crm-input"
+                    style={{ minHeight: '120px' }}
+                    placeholder="Describe any initial requirements or key discussion points..."
+                    value={form.initial_note}
+                    onChange={e => setForm({...form, initial_note: e.target.value})}
+                  />
+                </div>
               </div>
-            </div>
-
-            <div className="conversion-field">
-              <label>Note</label>
-              <textarea 
-                className="textarea-premium"
-                placeholder="Add a short note"
-                value={form.initial_note}
-                onChange={e => setForm({...form, initial_note: e.target.value})}
-              />
-            </div>
-          </div>
-
-          <div className="conversion-footer">
-            <button type="button" onClick={onClose} className="btn-modern-ghost">Cancel</button>
-            <button 
-              type="submit" 
-              disabled={saving}
-              className="btn-modern-vibrant"
-            >
-              {saving ? 'Saving...' : 'Convert'}
-            </button>
+            </section>
           </div>
         </form>
+
+        <div className="crm-modal-sheet-footer">
+          <p className="footer-hint">This action creates a permanent customer record.</p>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <button type="button" className="crm-btn-premium glass" onClick={onClose}>Cancel</button>
+            <button 
+              type="submit" 
+              onClick={handleSubmit}
+              disabled={saving}
+              className="crm-btn-premium vibrant"
+            >
+              {saving ? 'Converting...' : 'Confirm Conversion'}
+            </button>
+          </div>
+        </div>
       </div>
-
-      <style>{`
-        .modal-overlay-premium { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px; animation: modalFadeIn 0.3s ease; }
-        .modal-overlay-premium.admin-header-open { align-items: flex-start; padding-top: 72px; }
-        .modal-content-glass { width: 100%; max-width: 520px; background: var(--bg-surface); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 28px; overflow: hidden; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5); animation: modalZoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-        
-        .conversion-form-shell { display: flex; flex-direction: column; }
-        .conversion-header-vibrant { position: relative; padding: 32px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.1)); border-bottom: 1px solid rgba(255, 255, 255, 0.05); overflow: hidden; }
-        .header-glow { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%); pointer-events: none; }
-        .header-main { display: flex; align-items: center; gap: 20px; position: relative; z-index: 1; }
-        .header-icon-box { width: 48px; height: 48px; background: var(--primary); color: white; border-radius: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4); }
-        .header-text h2 { margin: 0; font-size: 1.5rem; font-weight: 900; color: var(--text); }
-        .header-text p { margin: 4px 0 0; font-size: 0.9rem; color: var(--text-dimmed); }
-        .header-text strong { color: var(--text); }
-
-        .conversion-body { padding: 32px; display: grid; gap: 24px; }
-        .conversion-field label { display: block; font-size: 0.72rem; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
-        
-        .select-wrap-modern { position: relative; }
-        .input-premium-select { width: 100%; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; color: var(--text); font-size: 0.95rem; outline: none; appearance: none; cursor: pointer; transition: all 0.2s ease; }
-        .input-premium-select:focus { border-color: var(--primary); background: rgba(255, 255, 255, 0.08); }
-        .input-premium-select option { background: var(--bg-surface); color: var(--text); }
-        .select-arrow { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-dimmed); }
-        
-        .textarea-premium { width: 100%; min-height: 100px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 16px; color: var(--text); font-size: 0.95rem; outline: none; resize: none; transition: all 0.2s ease; }
-        .textarea-premium:focus { border-color: var(--primary); background: rgba(255, 255, 255, 0.08); }
-
-        .conversion-footer { padding: 24px 32px; background: rgba(0, 0, 0, 0.2); border-top: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: flex-end; gap: 16px; }
-        .btn-modern-ghost { background: none; border: none; color: var(--text-muted); font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: color 0.2s ease; }
-        .btn-modern-ghost:hover { color: var(--text); }
-        .btn-modern-vibrant { background: var(--primary); color: white; border: none; border-radius: 12px; padding: 12px 28px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2); }
-        .btn-modern-vibrant:hover { transform: translateY(-2px); filter: brightness(1.1); }
-        .btn-modern-vibrant:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
-
-        @media (max-width: 768px) {
-          .modal-overlay-premium.admin-header-open { padding-top: 20px; }
-        }
-
-        @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalZoomIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-      `}</style>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

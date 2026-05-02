@@ -6,8 +6,7 @@ export default function QuickBoard({ tasks = [], loading }) {
   const quickActions = [
     { label: 'Add Lead', to: '/leads/new', icon: 'plus', primary: true },
     { label: 'Add Customer', to: '/customers/new', icon: 'user', primary: false },
-    { label: 'New Deal', to: '/deals/new', icon: 'briefcase', primary: false },
-    { label: 'Mark Attendance', to: '/attendance', icon: 'calendar', primary: false }
+    { label: 'New Deal', to: '/deals/new', icon: 'briefcase', primary: false }
   ]
 
   return (

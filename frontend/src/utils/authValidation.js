@@ -7,6 +7,26 @@ function normalizeText(value) {
   return String(value ?? '').trim()
 }
 
+export function validateLoginField(name, value) {
+  const trimmed = normalizeText(value)
+
+  switch (name) {
+    case 'email':
+    case 'identifier':
+      if (!trimmed) return 'Email or Username is required'
+      if (trimmed.includes('@') && !EMAIL_REGEX.test(trimmed.toLowerCase())) {
+        return 'Enter a valid email address'
+      }
+      return ''
+    case 'password':
+      if (!value) return 'Password is required'
+      if (value.length < 6) return 'Password must be at least 6 characters'
+      return ''
+    default:
+      return ''
+  }
+}
+
 export function validateRegisterField(name, value) {
   const trimmed = normalizeText(value)
 

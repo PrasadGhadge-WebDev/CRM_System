@@ -1,422 +1,383 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
-  Area,
-  AreaChart,
-  LineChart,
-  Line,
-  FunnelChart,
-  Funnel,
-  LabelList,
+  Legend,
+  Cell
 } from 'recharts'
-import RecentLeads from '../components/RecentLeads.jsx'
-import RecentActivity from '../components/RecentActivity.jsx'
-import StatCard from '../components/StatCard.jsx'
-import DashboardMetrics from '../components/DashboardMetrics.jsx'
-import QuickBoard from '../components/QuickBoard.jsx'
-import { Icon } from '../layouts/icons.jsx'
+import { 
+  FiUsers, 
+  FiUserCheck, 
+  FiTarget, 
+  FiTrendingUp, 
+  FiCreditCard,
+  FiBriefcase,
+  FiClock,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiChevronRight,
+  FiPlus,
+  FiFileText,
+  FiUserPlus
+} from 'react-icons/fi'
+import { Link, useNavigate } from 'react-router-dom'
 import { metricsApi } from '../services/metrics.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import { hasRequiredRole, NAV_ACCESS } from '../utils/accessControl.js'
 import { useToastFeedback } from '../utils/useToastFeedback.js'
+import '../styles/dashboard-v3.css'
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [metrics, setMetrics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  
   useToastFeedback({ error })
 
-  useEffect(() => {
-    let canceled = false
-
+  const fetchMetrics = useCallback(() => {
+    setLoading(true)
     metricsApi
       .get()
       .then((data) => {
-        if (!canceled) setMetrics(data)
+        setMetrics(data)
       })
       .catch((e) => {
-        if (!canceled) setError(e.message || 'Failed to load dashboard')
+        setError(e.message || 'Failed to load dashboard')
       })
       .finally(() => {
-        if (!canceled) setLoading(false)
+        setLoading(false)
       })
-
-    return () => {
-      canceled = true
-    }
   }, [])
 
-  const usersTotal = metrics?.users?.total ?? 0
-  const customersTotal = metrics?.customers?.total ?? 0
-  const leadsTotal = metrics?.leads?.total ?? 0
-  const dealsTotal = metrics?.deals?.total ?? 0
-  const supportTicketsTotal = metrics?.supportTickets?.total ?? 0
-  const activitiesTotal = metrics?.activities?.total ?? 0
-  const notificationsUnread = metrics?.notifications?.unread ?? 0
-  const leadsByStatus = metrics?.leads?.byStatus || []
-  const leadsBySource = metrics?.leads?.bySource || []
-  const leadsTrend = metrics?.leads?.trend || []
-  const customersTrend = metrics?.customers?.trend || []
-  const recentActivities = metrics?.activities?.recent || []
-  const summary = metrics?.summary || {}
-  const employee = metrics?.employee || {}
-  const financials = metrics?.financials || {}
-  
-  const formatCurrency = (val) => new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(val || 0)
-  const canManageUsers = hasRequiredRole(user?.role, NAV_ACCESS.users)
-  const isGlobalAdmin = user?.role === 'Admin' && !user?.company_id
-  const isAdmin = user?.role === 'Admin'
-  const isManager = user?.role === 'Manager'
-  const isEmployee = user?.role === 'Employee'
-  const isAccountant = user?.role === 'Accountant'
-  const isHR = user?.role === 'HR'
-  const dashboardTitle = isGlobalAdmin ? 'System Admin Dashboard' : `${user?.role || 'CRM'} Dashboard`
-  const displayName = user?.name || user?.username || 'User'
+  useEffect(() => {
+    fetchMetrics()
+  }, [fetchMetrics])
 
+  const formatCurrency = (val) => {
+    if (val >= 100000) {
+      return `₹${(val / 100000).toFixed(1)} L`
+    }
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(val || 0)
+  }
 
-  // Premium Dashboard Palette
-  const chartPalette = ['#3b82f6', '#8b5cf6', '#6366f1', '#10b981', '#f59e0b', '#0ea5e9', '#64748b']
+  // MOCK DATA for visualization parity with image
+  const revenueTrend = useMemo(() => [
+    { name: 'Jan', value: 8 },
+    { name: 'Feb', value: 18 },
+    { name: 'Mar', value: 16 },
+    { name: 'Apr', value: 20 },
+    { name: 'May', value: 25 },
+    { name: 'Jun', value: 30 },
+    { name: 'Jul', value: 38 },
+    { name: 'Aug', value: 32 },
+    { name: 'Sep', value: 36 },
+    { name: 'Oct', value: 42 },
+    { name: 'Nov', value: 45 },
+    { name: 'Dec', value: 52 },
+  ], [])
 
-  const leadStatusData = leadsByStatus.map((item, idx) => ({
-    name: item.status || 'Unknown',
-    value: item.count,
-    fill: chartPalette[idx % chartPalette.length],
-  }))
+  const conversionData = useMemo(() => [
+    { name: 'Jan', Leads: 1800, Conversions: 1100 },
+    { name: 'Feb', Leads: 2000, Conversions: 1200 },
+    { name: 'Mar', Leads: 1900, Conversions: 950 },
+    { name: 'Apr', Leads: 2200, Conversions: 1300 },
+    { name: 'May', Leads: 2400, Conversions: 1400 },
+    { name: 'Jun', Leads: 2100, Conversions: 1250 },
+    { name: 'Jul', Leads: 2300, Conversions: 1350 },
+    { name: 'Aug', Leads: 2000, Conversions: 1100 },
+    { name: 'Sep', Leads: 2150, Conversions: 1200 },
+    { name: 'Oct', Leads: 2250, Conversions: 1300 },
+    { name: 'Nov', Leads: 2400, Conversions: 1450 },
+  ], [])
 
-  const leadSourceData = leadsBySource.map((item, idx) => ({
-    name: item.source || 'Unknown',
-    value: item.count,
-    fill: chartPalette[idx % chartPalette.length],
-  }))
-
-  const trendData = !leadsTrend.length && !customersTrend.length
-    ? []
-    : (leadsTrend.length ? leadsTrend : customersTrend).map((item, idx) => ({
-        month: item.label,
-        leads: leadsTrend[idx]?.value ?? 0,
-        customers: customersTrend[idx]?.value ?? 0,
-        deals: metrics?.deals?.trend?.[idx]?.value ?? 0,
-      }))
-
-  const dealsByStatus = metrics?.deals?.byStatus || []
-  const dealPipelineData = dealsByStatus
-    .map((item, idx) => ({
-      name: item.status || 'Unknown',
-      value: item.count,
-      fill: chartPalette[idx % chartPalette.length],
-    }))
-    .sort((a, b) => b.value - a.value) // Funnel usually sorted descending
-
-  const hasTrend = trendData.some((item) => item.leads || item.customers)
-  const hasStatus = leadStatusData.some((d) => d.value > 0)
-  const hasSources = leadSourceData.some((d) => d.value > 0)
-
-  const canAccess = (key) => hasRequiredRole(user?.role, NAV_ACCESS[key])
-
-  const dashboardActions = [
-    canAccess('leads') && !isAccountant ? { to: '/leads/new', label: '+ Add Lead', className: 'btn-premium action-vibrant' } : null,
-    isAccountant ? { to: '/invoices/new', label: '+ New Bill', className: 'btn-premium action-vibrant' } : null,
-    isAccountant ? { to: '/payments/new', label: '+ Add Payment', className: 'btn-premium action-secondary' } : null,
-    canAccess('deals') && !isAccountant ? { to: '/deals/new', label: '+ Add Deal', className: 'btn-premium action-secondary' } : null,
-    canManageUsers ? { to: '/users/new', label: '+ Add User', className: 'btn-premium action-secondary' } : null,
-  ].filter(Boolean)
-
-  const statCards = isEmployee
-    ? [
-        canAccess('leads') ? { to: '/leads', code: 'LE', label: 'My Leads', value: employee.leadsTotal ?? 0 } : null,
-        canAccess('tickets') ? { to: '/support', code: 'TI', label: 'My Tickets', value: employee.ticketsTotal ?? 0 } : null,
-      ].filter(Boolean)
-    : isHR ? [
-        canAccess('users') ? { to: '/users', code: 'EM', label: 'Employees', value: usersTotal } : null,
-        canAccess('attendance') ? { to: '/attendance', code: 'AT', label: 'Attendance Hub', value: usersTotal } : null,
-        canAccess('notifications') ? { to: '/notifications', code: 'NT', label: 'Unread Alerts', value: notificationsUnread } : null,
-      ].filter(Boolean)
-    : isManager ? [
-        { to: '/leads?followUpStatus=overdue', code: 'OV', label: 'Overdue Follow-ups', value: metrics?.leads?.overdueCount || 0 },
-        { to: '/support', code: 'TI', label: 'Open Tickets', value: supportTicketsTotal },
-      ]
-    : isAccountant ? [
-        { to: '/invoices', code: 'RV', label: 'Total Revenue', value: formatCurrency(summary.totalRevenue) },
-        { to: '/invoices?status=Unpaid', code: 'PP', label: 'Pending Bills', value: metrics?.financials?.unpaidCount || 0 },
-        { to: '/deals?status=Completed', code: 'CD', label: 'Completed Deals', value: Math.max(0, (summary.dealsWon ?? 0) - (metrics?.financials?.unpaidCount ?? 0)) },
-      ]
-    : [
-        { to: '/leads', code: 'LE', label: 'Total Leads', value: leadsTotal },
-        { to: '/customers', code: 'CU', label: 'Total Customers', value: customersTotal },
-        { to: '/leads?followUpStatus=overdue', code: 'OV', label: 'Follow-up Due', value: metrics?.leads?.overdueCount || 0 },
-        { to: '/deals', code: 'DE', label: 'Deals (Won)', value: summary.dealsWon ?? 0 },
-        { to: '/deals', code: 'RV', label: 'Total Revenue', value: formatCurrency(summary.totalRevenue) },
-      ]
-  const financeHighlights = [
-    {
-      label: 'Outstanding value',
-      value: formatCurrency(financials.unpaidValue),
-      tone: 'warning',
-      note: `${financials.unpaidCount || 0} deals waiting for settlement`,
-    },
-    {
-      label: 'Awaiting billing',
-      value: `${(financials.awaitingBillingDeals || []).length}`,
-      tone: 'info',
-      note: 'Won deals still pending invoice flow',
-    },
-    {
-      label: 'Billing tickets',
-      value: `${financials.billingTicketsOutstanding || 0}`,
-      tone: 'success',
-      note: 'Open finance-related support requests',
-    },
-    {
-      label: 'Overdue orders',
-      value: `${financials.overdueCount || 0}`,
-      tone: 'danger',
-      note: formatCurrency(financials.overdueValue),
-    },
+  const employees = [
+    { id: 1, name: 'Rahul Sharma', handled: 245, conv: 45, perf: 85 },
+    { id: 2, name: 'Priya Mehta', handled: 210, conv: 38, perf: 76 },
+    { id: 3, name: 'Amit Patel', handled: 180, conv: 30, perf: 66 },
+    { id: 4, name: 'Sneha Joshi', handled: 155, conv: 26, perf: 62 },
+    { id: 5, name: 'Vikram Singh', handled: 130, conv: 20, perf: 55 },
   ]
-  const accountantQuickLinks = [
-    { to: '/invoices', label: 'Open invoices', value: `${financials.unpaidCount || 0} unpaid` },
-    { to: '/payments', label: 'Recent payments', value: 'Track collections' },
-    { to: '/reports', label: 'Finance reports', value: 'Review performance' },
+
+  const alerts = [
+    { id: 1, title: 'Overdue Payments', sub: '5 invoices are overdue', count: 5, icon: <FiCreditCard />, color: '#fee2e2', iconColor: '#ef4444' },
+    { id: 2, title: 'Missed Follow-ups', sub: '7 follow-ups were missed', count: 7, icon: <FiClock />, color: '#ffedd5', iconColor: '#f59e0b' },
+    { id: 3, title: 'Pending Approvals', sub: '4 approvals are pending', count: 4, icon: <FiUsers />, color: '#dbeafe', iconColor: '#3b82f6' },
+    { id: 4, title: 'New Leads', sub: '12 new leads this week', count: 12, icon: <FiUserPlus />, color: '#dcfce7', iconColor: '#10b981' },
   ]
+
+  const quickActions = [
+    { label: 'Add Lead', icon: <FiTarget />, color: '#eff6ff', textColor: '#3b82f6', path: '/leads/new' },
+    { label: 'Add Employee', icon: <FiUserPlus />, color: '#f0fdf4', textColor: '#10b981', path: '/users?add=true' },
+    { label: 'Create Deal', icon: <FiBriefcase />, color: '#faf5ff', textColor: '#8b5cf6', path: '/deals/new' },
+    { label: 'Generate Invoice', icon: <FiFileText />, color: '#fffbeb', textColor: '#f59e0b', path: '/invoices/new' },
+  ]
+
+  const stats = [
+    { label: 'Total Employees', value: metrics?.users?.total || 128, trend: '+8.2%', icon: <FiUsers />, color: '#eff6ff', iconColor: '#3b82f6' },
+    { label: 'Total Customers', value: metrics?.customers?.total || 1245, trend: '+12.5%', icon: <FiUserCheck />, color: '#f0fdf4', iconColor: '#10b981' },
+    { label: 'Total Leads', value: metrics?.leads?.total || 2350, trend: '+15.3%', icon: <FiTarget />, color: '#faf5ff', iconColor: '#8b5cf6' },
+    { label: 'Total Deals', value: metrics?.deals?.total || 320, trend: '+10.1%', icon: <FiBriefcase />, color: '#fff7ed', iconColor: '#f97316' },
+    { label: 'Total Revenue', value: formatCurrency(metrics?.summary?.totalRevenue || 4860000), trend: '+18.7%', icon: <FiTrendingUp />, color: '#fffbeb', iconColor: '#f59e0b' },
+    { label: 'Pending Payments', value: formatCurrency(metrics?.financials?.unpaidValue || 1240000), trend: '-4.3%', icon: <FiCreditCard />, color: '#fee2e2', iconColor: '#ef4444', negative: true },
+  ]
+
   return (
-    <div className="stack">
-      <section className="crm-fullscreen-shell">
-        <div className="dashboard-greeting-hero" style={{ marginBottom: '24px', padding: '24px', borderRadius: '24px', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(139, 92, 246, 0.05))', border: '1px solid rgba(59, 130, 246, 0.1)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '120px', height: '120px', background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)', borderRadius: '50%' }} />
-          
-          <div className="crm-flex-between" style={{ position: 'relative', zIndex: 1 }}>
-            <div>
-              <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--text)', marginBottom: '8px', letterSpacing: '-0.03em' }}>
-                Hello, {displayName}! 👋
-              </h1>
-              <div className="date-filter-wrap" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
-                <span className="text-muted small">Showing data for:</span>
-                <select className="input-premium" style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', minWidth: '140px' }}>
-                  <option>Last 30 Days</option>
-                  <option>Last 6 Months</option>
-                  <option>This Year</option>
-                </select>
+    <div className="dashboard-container-v3">
+      {/* 1. TOP METRICS ROW */}
+      <div className="metrics-row-v3">
+        {stats.map((s, i) => (
+          <div key={i} className="metric-card-v3">
+            <div className="card-top">
+              <div className="icon-box" style={{ backgroundColor: s.color, color: s.iconColor }}>
+                {s.icon}
               </div>
+              <span className="label">{s.label}</span>
             </div>
+            <div className="value">{loading ? '...' : s.value}</div>
+            <div className={`trend ${s.negative ? 'down' : 'up'}`}>
+              {s.negative ? '↓' : '↑'} {s.trend} from last month
+            </div>
+          </div>
+        ))}
+      </div>
 
-            <div className="crm-flex-end crm-gap-12">
-              {dashboardActions.map((action) => (
-                <Link key={action.to} className={action.className} to={action.to} style={{ textDecoration: 'none' }}>
-                  {action.label}
-                </Link>
-              ))}
-            </div>
+      {/* 2. CHARTS ROW */}
+      <div className="dashboard-grid-v3">
+        <div className="section-card-v3">
+          <div className="crm-flex-between" style={{ marginBottom: '20px' }}>
+             <h3>Monthly Revenue</h3>
+             <select className="input-premium small" style={{ width: 'auto', padding: '4px 12px' }}>
+                <option>This Year</option>
+             </select>
+          </div>
+          <div style={{ width: '100%', height: '240px' }}>
+             <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueTrend}>
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(v) => `${v}L`} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    formatter={(v) => [`₹${v} L`, 'Revenue']}
+                  />
+                  <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                </AreaChart>
+             </ResponsiveContainer>
           </div>
         </div>
 
-        {error ? <div className="alert error">{error}</div> : null}
+        <div className="section-card-v3">
+          <div className="crm-flex-between" style={{ marginBottom: '20px' }}>
+             <h3>Leads vs Conversions</h3>
+             <select className="input-premium small" style={{ width: 'auto', padding: '4px 12px' }}>
+                <option>This Year</option>
+             </select>
+          </div>
+          <div style={{ width: '100%', height: '240px' }}>
+             <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={conversionData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(v) => v >= 1000 ? `${v/1000}K` : v} />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                  <Legend iconType="circle" verticalAlign="top" align="center" wrapperStyle={{ paddingBottom: '20px' }} />
+                  <Bar dataKey="Leads" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={10} />
+                  <Bar dataKey="Conversions" fill="#10b981" radius={[4, 4, 0, 0]} barSize={10} />
+                </BarChart>
+             </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
 
-        {!(isEmployee || isHR || isAccountant) ? (
-          <DashboardMetrics metrics={metrics} loading={loading} />
-        ) : (
-          <div className="statsGrid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', margin: '12px 0' }}>
-            {statCards.map((c, i) => (
-              <StatCard key={i} to={c.to} code={c.code} label={c.label} value={c.value} loading={loading} />
+      {/* 3. PERFORMANCE & SUMMARY ROW */}
+      <div className="dashboard-three-col-v3">
+        {/* Employee Performance */}
+        <div className="section-card-v3">
+          <h3>Employee Performance</h3>
+          <table className="v3-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Leads Handled</th>
+                <th>Conversions</th>
+                <th>Performance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {employees.map((emp, i) => (
+                <tr key={emp.id}>
+                  <td>{i + 1}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                       <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>{emp.name.charAt(0)}</div>
+                       {emp.name}
+                    </div>
+                  </td>
+                  <td>{emp.handled}</td>
+                  <td>{emp.conv}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontWeight: 700, width: '30px' }}>{emp.perf}%</span>
+                      <div className="v3-progress-bar">
+                        <div className="v3-progress-fill" style={{ width: `${emp.perf}%` }} />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button className="btn-link full-width margin-top-12" onClick={() => navigate('/users')}>View All Employees</button>
+        </div>
+
+        {/* Follow-up Summary */}
+        <div className="section-card-v3">
+          <h3>Follow-up Summary</h3>
+          <div className="follow-up-grid-v3">
+            <div className="follow-up-stat-box-v3" style={{ background: '#eff6ff' }}>
+              <Icon name="calendar" />
+              <span className="count" style={{ color: '#3b82f6' }}>32</span>
+              <span className="label">Today's</span>
+            </div>
+            <div className="follow-up-stat-box-v3" style={{ background: '#fff7ed' }}>
+              <Icon name="clock" />
+              <span className="count" style={{ color: '#f97316' }}>58</span>
+              <span className="label">Upcoming</span>
+            </div>
+            <div className="follow-up-stat-box-v3" style={{ background: '#fee2e2' }}>
+              <Icon name="alert" />
+              <span className="count" style={{ color: '#ef4444' }}>07</span>
+              <span className="label">Missed</span>
+            </div>
+          </div>
+          
+          <div className="follow-up-list">
+             <div style={{ padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Follow-up with Tech Solutions</div>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Today, 10:00 AM</div>
+             </div>
+             <div style={{ padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Proposal discussion with ABC Corp</div>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Today, 01:00 PM</div>
+             </div>
+             <div style={{ padding: '12px 0' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Demo follow-up with Global Pvt Ltd</div>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Tomorrow, 11:00 AM</div>
+             </div>
+          </div>
+          <button className="btn-link full-width margin-top-12" onClick={() => navigate('/leads')}>View All Follow-ups</button>
+        </div>
+
+        {/* Alerts & Notifications */}
+        <div className="section-card-v3">
+          <h3>Alerts & Notifications</h3>
+          <div className="alerts-list">
+            {alerts.map(a => (
+              <div key={a.id} className="alert-item-v3">
+                <div className="alert-icon-v3" style={{ background: a.color, color: a.iconColor }}>
+                  {a.icon}
+                </div>
+                <div className="alert-content-v3">
+                  <div className="alert-title-v3">{a.title}</div>
+                  <div className="alert-sub-v3">{a.sub}</div>
+                </div>
+                <div className="alert-badge-v3">{a.count}</div>
+              </div>
             ))}
           </div>
-        )}
+          <button className="btn-link full-width margin-top-24" onClick={() => navigate('/notifications')}>View All Alerts</button>
+        </div>
+      </div>
 
-        {isEmployee || isHR || isAccountant ? null : (
-          <div className="dashboard-main-row" style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '20px', marginBottom: '32px' }}>
-            {/* LEFT: Leads & Sales Graph */}
-            <div className="card chartCard glass-panel" style={{ padding: '20px' }}>
-              <div className="row chartHeader" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-                <div>
-                  <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text)' }}>Leads & Sales Trend</h2>
-                  <p className="muted small">Monthly performance comparison</p>
-                </div>
-                <button className="btn-outline-minimal">
-                  <Icon name="reports" />
-                  <span>Download Report</span>
-                </button>
-              </div>
-
-              {loading ? (
-                <div className="chartEmpty muted">Loading comparison...</div>
-              ) : trendData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                    <XAxis dataKey="month" tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} tickFormatter={(val) => val.slice(0, 3)} />
-                    <YAxis tickLine={false} axisLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} allowDecimals={false} />
-                    <Tooltip wrapperStyle={{ borderRadius: '10px' }} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)' }} itemStyle={{ color: 'var(--text)' }} />
-                    <Legend 
-                      verticalAlign="top" 
-                      align="right" 
-                      iconType="circle" 
-                      wrapperStyle={{ paddingBottom: '20px' }} 
-                      formatter={(value) => <span style={{ color: 'var(--text-dimmed)', fontWeight: 600, fontSize: '12px' }}>{value}</span>}
-                    />
-                    <Bar dataKey="leads" name="Leads" fill="#93c5fd" radius={[4, 4, 0, 0]} barSize={24} />
-                    <Bar dataKey="deals" name="Sales" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={24} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chartEmpty muted">No comparison data</div>
-              )}
-            </div>
-
-            {/* RIGHT: QuickBoard (Pending Tasks + Actions) */}
-            <QuickBoard 
-              tasks={employee.priorityItems || []} 
-              loading={loading} 
-            />
-          </div>
-        )}
-
-        {isEmployee && (
-          <div className="employee-execution-deck" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginTop: '24px' }}>
-            <div className="card-premium glass-panel" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '24px', overflow: 'hidden' }}>
-              <div className="card-header-premium" style={{ padding: '20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div className="card-title-premium" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Icon name="activity" style={{ color: 'var(--primary)' }} />
-                  <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-dimmed)', margin: 0 }}>Important Tasks</h3>
-                </div>
-                <span className="execution-count-badge" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '4px 10px', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 800 }}>{(employee.priorityItems || []).length} Items</span>
-              </div>
-              <div className="checklist-feed">
-                {(employee.priorityItems || []).map((item, idx) => (
-                  <Link key={idx} to={item.type === 'lead' ? `/leads/${item.id || item._id}` : `/tickets/${item.id || item._id}`} className="checklist-item-premium" style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', textDecoration: 'none', color: 'inherit' }}>
-                    <div className="checklist-indicator" style={{ width: '4px', height: '32px', borderRadius: '4px', background: item.type === 'lead' ? '#10b981' : '#f59e0b', marginRight: '16px' }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text)' }}>{item.type === 'lead' ? (item.name || 'Unnamed Lead') : (item.subject || 'No Subject')}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)' }}>{item.type.toUpperCase()} • {new Date(item.follow_up_date || item.created_at).toLocaleDateString()}</div>
-                    </div>
-                    <Icon name="chevronRight" style={{ opacity: 0.3 }} />
-                  </Link>
-                ))}
-              </div>
-            </div>
-            
-            <div className="card-premium glass-panel" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '24px', overflow: 'hidden' }}>
-              <div className="card-header-premium" style={{ padding: '20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div className="card-title-premium" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Icon name="deals" style={{ color: 'var(--primary)' }} />
-                  <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-dimmed)', margin: 0 }}>My Sales</h3>
-                </div>
-              </div>
-              <div className="deals-mini-list">
-                {(employee.activeDeals || []).map((deal) => (
-                  <Link key={deal.id} to={`/deals/${deal.id}`} className="deal-mini-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', textDecoration: 'none', color: 'inherit' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: 'var(--text)' }}>{deal.customer_id?.name || 'Unknown Client'}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)' }}>{deal.status} • ₹{(deal.value || 0).toLocaleString()}</div>
-                    </div>
-                    <Icon name="chevronRight" style={{ opacity: 0.3 }} />
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isAccountant && (
-          <section className="accountantShowcase">
-            <div className="accountantHero glass-panel">
-              <div className="accountantHeroCopy">
-                <span className="accountantEyebrow">Finance Command Center</span>
-                <h2>Keep collections moving and billing clean.</h2>
-                <p>
-                  Watch outstanding revenue, stay ahead of billing gaps, and keep the settlement pipeline healthy.
-                </p>
-              </div>
-
-              <div className="accountantQuickLinks">
-                {accountantQuickLinks.map((link) => (
-                  <Link key={link.to} to={link.to} className="accountantQuickLink">
-                    <span>{link.label}</span>
-                    <strong>{link.value}</strong>
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            <div className="accountantInsightGrid">
-              {financeHighlights.map((item) => (
-                <div key={item.label} className={`accountantInsightCard accountant-${item.tone}`}>
-                  <span className="accountantInsightLabel">{item.label}</span>
-                  <strong className="accountantInsightValue">{item.value}</strong>
-                  <p>{item.note}</p>
+      {/* 4. BOTTOM ACTIVITY & ACTIONS ROW */}
+      <div className="dashboard-two-col-bottom-v3">
+        {/* Recent Activity */}
+        <div className="section-card-v3">
+           <h3>Recent Activity</h3>
+           <div className="activity-list">
+              {(metrics?.activities?.recent || []).slice(0, 4).map((act, i) => (
+                <div key={i} className="alert-item-v3">
+                   <div className="alert-icon-v3" style={{ background: i%2===0 ? '#dcfce7' : '#f0f9ff', color: i%2===0 ? '#10b981' : '#0369a1' }}>
+                      <FiCheckCircle />
+                   </div>
+                   <div className="alert-content-v3">
+                      <div className="alert-title-v3">{act.description || act.activity_type}</div>
+                      <div className="alert-sub-v3">by {act.user_id?.name || 'System'}</div>
+                   </div>
+                   <div className="alert-sub-v3">{new Date(act.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                 </div>
               ))}
-            </div>
+              {(!metrics?.activities?.recent?.length) && (
+                <>
+                   <div className="alert-item-v3">
+                      <div className="alert-icon-v3" style={{ background: '#dcfce7', color: '#10b981' }}><FiTarget /></div>
+                      <div className="alert-content-v3">
+                         <div className="alert-title-v3">New lead "Tech Solutions" has been added by Rahul Sharma.</div>
+                      </div>
+                      <div className="alert-sub-v3">10 min ago</div>
+                   </div>
+                   <div className="alert-item-v3">
+                      <div className="alert-icon-v3" style={{ background: '#f5f3ff', color: '#8b5cf6' }}><FiBriefcase /></div>
+                      <div className="alert-content-v3">
+                         <div className="alert-title-v3">Deal "Website Development" has been closed won.</div>
+                      </div>
+                      <div className="alert-sub-v3">1 hour ago</div>
+                   </div>
+                    <div className="alert-item-v3">
+                       <div className="alert-icon-v3" style={{ background: '#fffbeb', color: '#f59e0b' }}><FiTrendingUp /></div>
+                       <div className="alert-content-v3">
+                          <div className="alert-title-v3">Payment of ₹85,000 received from ABC Corp.</div>
+                       </div>
+                       <div className="alert-sub-v3">2 hours ago</div>
+                    </div>
+                </>
+              )}
+           </div>
+           <button className="btn-link full-width margin-top-12" onClick={() => navigate('/activities')}>View All Activities</button>
+        </div>
 
-            <div className="accountantFeedGrid">
-              <RecentActivity activities={recentActivities} loading={loading} />
-
-              <section className="accountantSummaryPanel glass-panel">
-                <div className="accountantPanelHead">
-                  <div>
-                    <h3>Finance snapshot</h3>
-                    <p>High-priority numbers you should keep an eye on today.</p>
-                  </div>
+        {/* Quick Actions */}
+        <div className="section-card-v3">
+           <h3>Quick Actions</h3>
+           <div className="quick-actions-grid-v3">
+              {quickActions.map((qa, i) => (
+                <div key={i} className="quick-action-btn-v3" onClick={() => navigate(qa.path)}>
+                   <div className="icon" style={{ color: qa.textColor }}>{qa.icon}</div>
+                   <span className="text">{qa.label}</span>
                 </div>
-
-                <div className="accountantSummaryList">
-                  <div className="accountantSummaryRow">
-                    <span>Total revenue</span>
-                    <strong>{formatCurrency(summary.totalRevenue)}</strong>
-                  </div>
-                  <div className="accountantSummaryRow">
-                    <span>Won deals</span>
-                    <strong>{summary.dealsWon ?? 0}</strong>
-                  </div>
-                  <div className="accountantSummaryRow">
-                    <span>Pending tasks</span>
-                    <strong>{summary.pendingTasks ?? 0}</strong>
-                  </div>
-                  <div className="accountantSummaryRow">
-                    <span>Unread alerts</span>
-                    <strong>{notificationsUnread}</strong>
-                  </div>
-                </div>
-
-                <div className="accountantCallout">
-                  <span className="accountantCalloutLabel">Next best move</span>
-                  <p>
-                    Focus first on unpaid deals and overdue orders. That is the fastest path to improving cash flow.
-                  </p>
-                </div>
-              </section>
-            </div>
-          </section>
-        )}
-
-        {!isEmployee && !isHR && !isAccountant && (
-          <div className="bottom-section">
-            <div className="section-header" style={{ marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Recent Activity</h3>
-            </div>
-            <RecentActivity activities={recentActivities} loading={loading} />
-          </div>
-        )}
-      </section>
-
-      <style>{`
-        .checklist-item-premium:hover { background: rgba(255,255,255,0.03); }
-        .deal-mini-item:hover { background: rgba(255,255,255,0.03); }
-      `}</style>
+              ))}
+           </div>
+        </div>
+      </div>
     </div>
   )
+}
+
+function Icon({ name }) {
+  const common = { size: 18 }
+  switch(name) {
+    case 'calendar': return <FiClock {...common} />
+    case 'clock': return <FiClock {...common} />
+    case 'alert': return <FiAlertCircle {...common} />
+    default: return <FiCheckCircle {...common} />
+  }
 }

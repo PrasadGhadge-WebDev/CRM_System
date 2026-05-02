@@ -41,8 +41,20 @@ const paymentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Paid', 'Partial'],
-      default: 'Paid',
+      enum: ['Pending', 'Received', 'Verified', 'Completed', 'Failed', 'Refunded'],
+      default: 'Pending',
+    },
+    cheque_number: {
+      type: String,
+      trim: true,
+    },
+    bank_name: {
+      type: String,
+      trim: true,
+    },
+    received_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
     },
     transaction_id: {
       type: String,

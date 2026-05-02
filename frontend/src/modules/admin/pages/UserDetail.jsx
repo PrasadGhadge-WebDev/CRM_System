@@ -5,6 +5,7 @@ import PageHeader from '../../../components/PageHeader.jsx'
 import { usersApi } from '../../../services/users.js'
 import { useToastFeedback } from '../../../utils/useToastFeedback.js'
 import { Icon } from '../../../layouts/icons.jsx'
+import PasswordInput from '../../../components/PasswordInput.jsx'
 
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/
 
@@ -241,30 +242,22 @@ export default function UserDetail() {
 
           <form onSubmit={handleResetPassword} style={{ maxWidth: '800px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-              <div className="sheet-field">
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', display: 'block', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>New Secret Key</label>
-                <input 
-                  className="crm-input" 
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', padding: '10px 14px', borderRadius: '8px', width: '100%', color: 'var(--text)' }} 
-                  type="password" 
-                  required 
-                  placeholder="Min 6 characters" 
-                  value={resetForm.newPassword} 
-                  onChange={(e) => setResetForm((p) => ({ ...p, newPassword: e.target.value }))} 
-                />
-              </div>
-              <div className="sheet-field">
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', display: 'block', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>Confirm Identity</label>
-                <input 
-                  className="crm-input" 
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', padding: '10px 14px', borderRadius: '8px', width: '100%', color: 'var(--text)' }} 
-                  type="password" 
-                  required 
-                  placeholder="Repeat secret key" 
-                  value={resetForm.confirmPassword} 
-                  onChange={(e) => setResetForm((p) => ({ ...p, confirmPassword: e.target.value }))} 
-                />
-              </div>
+              <PasswordInput
+                label="New Secret Key"
+                value={resetForm.newPassword}
+                onChange={(e) => setResetForm((p) => ({ ...p, newPassword: e.target.value }))}
+                placeholder="Min 6 characters"
+                autoComplete="new-password"
+                wrapperClass="sheet-field"
+              />
+              <PasswordInput
+                label="Confirm Identity"
+                value={resetForm.confirmPassword}
+                onChange={(e) => setResetForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                placeholder="Repeat secret key"
+                autoComplete="new-password"
+                wrapperClass="sheet-field"
+              />
             </div>
             <button 
               className="crm-btn-premium" 

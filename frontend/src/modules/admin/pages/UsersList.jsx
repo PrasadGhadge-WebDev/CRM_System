@@ -13,6 +13,8 @@ import { useAuth } from '../../../context/AuthContext'
 import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
 import { useToastFeedback } from '../../../utils/useToastFeedback.js'
 import UserForm from './UserForm.jsx'
+import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
+import StatusDropdown from '../../crm/components/StatusDropdown.jsx'
 
 function stopRowNavigation(event) {
   event.stopPropagation()
@@ -45,6 +47,7 @@ export default function UsersList() {
   const [page, setPage] = useState(pageParam)
   const [limit, setLimit] = useState(limitParam)
   const [total, setTotal] = useState(0)
+  const [summary, setSummary] = useState({ total: 0, byStatus: {} })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedUsers, setSelectedUsers] = useState([])
@@ -117,6 +120,7 @@ export default function UsersList() {
         if (canceled) return
         setItems(res.items || [])
         setTotal(Number(res.total) || 0)
+        setSummary(res.summary || { total: 0, byStatus: {} })
         setSelectedUsers([])
       })
       .catch((e) => {
@@ -206,6 +210,16 @@ export default function UsersList() {
     }
   }
 
+  async function onUpdateStatus(id, newStatus) {
+    try {
+      await usersApi.update(id, { status: newStatus })
+      toast.success(`Status updated to ${newStatus}`)
+      setItems(prev => prev.map(item => (String(item.id || item._id) === String(id)) ? { ...item, status: newStatus } : item))
+    } catch (err) {
+      toast.error(err.message || 'Update failed')
+    }
+  }
+
   const isAllSelected = items.length > 0 && selectedUsers.length === items.length
   const isSomeSelected = selectedUsers.length > 0 && selectedUsers.length < items.length
 
@@ -217,41 +231,35 @@ export default function UsersList() {
           <p className="users-subtitle">Overview of team access and identity control</p>
         </div>
 
-        <div className="crm-stats-bar-compact">
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">TOTAL</span>
-            <span className="stat-pill-value total">{total}</span>
+        <div className="crm-stats-bar-compact overflow-x-auto pb-8">
+          <div className="stat-pill-mini clickable" onClick={() => { setStatus(''); setPage(1); }} style={{ borderBottom: status === '' ? '2px solid var(--primary)' : '' }}>
+            <span className="stat-pill-label">ALL USERS</span>
+            <span className="stat-pill-value total">{summary.total}</span>
           </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">ACTIVE</span>
-            <span className="stat-pill-value active">{items.filter(u => u.status === 'active').length}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">INACTIVE</span>
-            <span className="stat-pill-value inactive">{items.filter(u => u.status === 'inactive').length}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">PENDING</span>
-            <span className="stat-pill-value pending">{items.filter(u => u.status === 'pending').length}</span>
-          </div>
+          {Object.entries(summary.byStatus).map(([name, count]) => (
+            <div 
+              key={name} 
+              className="stat-pill-mini clickable" 
+              onClick={() => { setStatus(name); setPage(1); }}
+              style={{ borderBottom: status === name ? '2px solid var(--primary)' : '' }}
+            >
+              <span className="stat-pill-label">{name.toUpperCase()}</span>
+              <span className="stat-pill-value">{count}</span>
+            </div>
+          ))}
         </div>
 
         <div className="unified-action-bar">
 
           <div className="search-filter-group">
-            <div className="crm-search-input-wrap">
-              <Icon name="search" className="search-icon" />
-              <input
-                type="text"
-                placeholder="Search users..."
-                className="crm-input"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value)
-                  setPage(1)
-                }}
-              />
-            </div>
+            <ModernSearchBar
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value)
+                setPage(1)
+              }}
+              placeholder="Search by name, username, email, role, phone, tags, address..."
+            />
 
             {!isHR && (
               <select
@@ -359,16 +367,19 @@ export default function UsersList() {
                               />
                             </th>
                           ) : null}
-                          <th style={{ width: '70px' }}>PROFILE</th>
-                          <th style={{ minWidth: '220px' }}>IDENTITY & ACCESS</th>
-                          <th style={{ minWidth: '220px' }} className="tablet-hide">
-                            EMAIL ADDRESS
+                          <th style={{ width: '60px' }}>PROFILE</th>
+                          <th style={{ minWidth: '160px' }}>IDENTITY</th>
+                          <th style={{ minWidth: '180px' }} className="tablet-hide">
+                            CONTACT INFO
                           </th>
-                          <th style={{ minWidth: '160px' }}>STATUS</th>
-                          <th style={{ minWidth: '170px' }} className="tablet-hide">
+                          <th style={{ minWidth: '120px' }}>STATUS</th>
+                          <th style={{ minWidth: '130px' }} className="tablet-hide">
+                            LOGIN INFO
+                          </th>
+                          <th style={{ minWidth: '130px' }} className="tablet-hide">
                             JOINED DATE
                           </th>
-                          <th className="text-right" style={{ width: '130px' }}>
+                          <th className="text-right" style={{ width: '100px' }}>
                             ACTIONS
                           </th>
                         </tr>
@@ -413,12 +424,45 @@ export default function UsersList() {
                               </td>
                               <td className="tablet-hide">
                                 <div className="usersEmailText">{user.email || '—'}</div>
+                                <div className="usersPhoneText" style={{ fontSize: '11px', color: 'var(--text-dimmed)', marginTop: '4px' }}>
+                                  {user.phone || '—'}
+                                </div>
                               </td>
-                              <td>
-                                <span className={`crm-status-pill-modern ${user.status === 'active' ? 'status-active' : user.status === 'pending' ? 'status-pending' : 'status-inactive'}`}>
-                                  <div className="status-dot" />
-                                  {user.status || 'PENDING'}
-                                </span>
+                              <td onClick={stopRowNavigation}>
+                                <StatusDropdown 
+                                  status={user.status} 
+                                  options={[
+                                    { name: 'active', color: '#10b981' },
+                                    { name: 'inactive', color: '#64748b' },
+                                    { name: 'pending', color: '#f59e0b' }
+                                  ]} 
+                                  onChange={(newStatus) => onUpdateStatus(id, newStatus)}
+                                  disabled={!isAdminOrManager}
+                                  size="small"
+                                />
+                              </td>
+                              <td className="tablet-hide">
+                                <div className="usersLoginCell" style={{ display: 'flex', flexDirection: 'column' }}>
+                                  {user.last_login ? (
+                                    <>
+                                      <span className="usersLoginDate" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
+                                        {new Date(user.last_login).toLocaleDateString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          year: 'numeric'
+                                        })}
+                                      </span>
+                                      <span className="usersLoginTime" style={{ fontSize: '11px', color: 'var(--text-dimmed)', marginTop: '2px' }}>
+                                        {new Date(user.last_login).toLocaleTimeString('en-US', {
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span style={{ color: 'var(--text-dimmed)', fontSize: '12px' }}>Never</span>
+                                  )}
+                                </div>
                               </td>
                               <td className="tablet-hide">
                                 <div className="usersDateCell">
@@ -650,6 +694,29 @@ export default function UsersList() {
           }}
         />
       )}
+      
+      <style>{`
+        .crm-fullscreen-shell {
+          padding: 12px 20px !important;
+          gap: 12px !important;
+        }
+        .users-page-header {
+          margin-bottom: 8px;
+        }
+        .crm-table th, .crm-table td {
+          padding: 10px 12px !important;
+        }
+        .usersIdentityCell {
+          gap: 8px;
+        }
+        .user-role-badge {
+          padding: 2px 6px;
+          font-size: 10px;
+        }
+        .crm-table-wrap {
+          margin-top: 4px;
+        }
+      `}</style>
     </div>
   )
 }

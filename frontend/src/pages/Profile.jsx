@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { authApi } from '../services/auth'
 import { useToastFeedback } from '../utils/useToastFeedback.js'
+import { Icon } from '../layouts/icons.jsx'
 
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -136,7 +137,9 @@ export default function Profile() {
           <div className="crm-hero-side-stack">
             <div className="crm-hero-stat-card vibrant-border">
               <span className="crm-hero-stat-label">Member Since</span>
-              <span className="crm-hero-stat-value">April 2026</span>
+              <span className="crm-hero-stat-value">
+                {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : 'April 2026'}
+              </span>
             </div>
           </div>
         </div>

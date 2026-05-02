@@ -12,7 +12,7 @@ import {
   FiTrendingUp,
   FiClock,
   FiFileText,
-  FiDollarSign,
+  FiCreditCard,
   FiSettings,
   FiTrash2,
   FiUserCheck,
@@ -172,7 +172,7 @@ const LandingPage = () => {
             <p>Review reports and deal analytics from the app's reporting pages.</p>
           </div>
           <div className="value-card">
-            <FiDollarSign className="value-icon" />
+            <FiCreditCard className="value-icon" />
             <h3>Billing and Settings</h3>
             <p>Use the billing area, admin user management, and app settings where your role allows it.</p>
           </div>

@@ -9,6 +9,12 @@ import PageHeader from '../../../components/PageHeader.jsx'
 import { supportApi } from '../../../services/workflow.js'
 import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
 import { useAuth } from '../../../context/AuthContext.jsx'
+import StatusDropdown from '../components/StatusDropdown.jsx'
+import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
+
+function stopRowNavigation(event) {
+  event.stopPropagation()
+}
 
 export default function SupportList() {
   const navigate = useNavigate()
@@ -23,6 +29,7 @@ export default function SupportList() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [summary, setSummary] = useState({ total: 0, byStatus: {} })
 
   const [filters, setFilters] = useState({
     q: searchParams.get('q') || '',
@@ -61,6 +68,7 @@ export default function SupportList() {
       const res = await supportApi.list({ ...filters, q: debouncedQ, all: user?.role === 'Admin' ? true : undefined })
       setItems(Array.isArray(res) ? res : res.items || [])
       setTotal(res.total || (Array.isArray(res) ? res.length : 0))
+      setSummary(res.summary || { total: 0, byStatus: {} })
     } catch {
       setError('Failed to load tickets')
     } finally {
@@ -84,6 +92,16 @@ export default function SupportList() {
     }
   }
 
+  async function onUpdateStatus(id, newStatus) {
+    try {
+      await supportApi.update(id, { status: newStatus })
+      toast.success(`Status updated to ${newStatus}`)
+      setItems(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item))
+    } catch (err) {
+      toast.error(err.message || 'Update failed')
+    }
+  }
+
   const handleFilterChange = (newFilters) => {
     setFilters(prev => ({ ...prev, ...newFilters, page: 1 }))
   }
@@ -100,41 +118,35 @@ export default function SupportList() {
     <div className="stack">
       <section className="crm-fullscreen-shell">
         <div className="users-page-header">
-          <h1 className="users-title">Support Management</h1>
+          <h1 className="users-title">Ticket Management</h1>
           <p className="users-subtitle">Oversee customer help requests and service level compliance</p>
         </div>
 
-        <div className="crm-stats-bar-compact">
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">TOTAL TICKETS</span>
-            <span className="stat-pill-value total">{total}</span>
+        <div className="crm-stats-bar-compact overflow-x-auto pb-8">
+          <div className="stat-pill-mini clickable" onClick={() => handleFilterChange({ status: '' })} style={{ borderBottom: filters.status === '' ? '2px solid var(--primary)' : '' }}>
+            <span className="stat-pill-label">ALL TICKETS</span>
+            <span className="stat-pill-value total">{summary.total}</span>
           </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">OPEN</span>
-            <span className="stat-pill-value active">{items.filter(t => t.status === 'open').length}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">URGENT</span>
-            <span className="stat-pill-value inactive">{items.filter(t => t.priority === 'urgent').length}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">ESCALATED</span>
-            <span className="stat-pill-value pending">{items.filter(t => t.is_escalated).length}</span>
-          </div>
+          {Object.entries(summary.byStatus).map(([name, count]) => (
+            <div 
+              key={name} 
+              className="stat-pill-mini clickable" 
+              onClick={() => handleFilterChange({ status: name })}
+              style={{ borderBottom: filters.status === name ? '2px solid var(--primary)' : '' }}
+            >
+              <span className="stat-pill-label">{name.toUpperCase()}</span>
+              <span className="stat-pill-value">{count}</span>
+            </div>
+          ))}
         </div>
 
         <div className="unified-action-bar">
           <div className="search-filter-group">
-            <div className="crm-search-input-wrap">
-              <Icon name="search" className="search-icon" />
-              <input
-                type="text"
-                className="crm-input"
-                placeholder="Search tickets..."
-                value={filters.q}
-                onChange={(e) => handleFilterChange({ q: e.target.value })}
-              />
-            </div>
+            <ModernSearchBar
+              value={filters.q}
+              onChange={(e) => handleFilterChange({ q: e.target.value })}
+              placeholder="Search by ticket ID, subject, category, customer, solution, escalation reason..."
+            />
 
             <select className="crm-input filter-select" value={filters.status} onChange={(e) => handleFilterChange({ status: e.target.value })}>
               <option value="">All Statuses</option>
@@ -238,10 +250,18 @@ export default function SupportList() {
                               {t.priority}
                             </span>
                           </td>
-                          <td>
-                            <span className={`crm-status-pill ${t.status === 'open' ? 'info' : t.status === 'in-progress' ? 'warning' : 'success'}`}>
-                              {t.status}
-                            </span>
+                          <td onClick={stopRowNavigation}>
+                            <StatusDropdown 
+                              status={t.status} 
+                              options={[
+                                { name: 'open', color: '#3b82f6' },
+                                { name: 'in-progress', color: '#f59e0b' },
+                                { name: 'resolved', color: '#10b981' },
+                                { name: 'closed', color: '#64748b' }
+                              ]} 
+                              onChange={(newStatus) => onUpdateStatus(t.id, newStatus)}
+                              disabled={!canManage}
+                            />
                           </td>
                           <td>
                              <div className="crm-user-mention">
@@ -302,9 +322,7 @@ export default function SupportList() {
          .stat-pill-value.pending { color: var(--warning); }
 
          .crm-input { width: 100%; background: var(--bg-surface) !important; border: 1px solid var(--border-strong) !important; border-radius: 10px !important; padding: 8px 14px !important; color: var(--text) !important; font-size: 0.85rem !important; transition: all 0.2s; }
-         .crm-search-input-wrap { position: relative; width: 100%; flex: 1; max-width: none; }
-         .crm-search-input-wrap .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 1; color: var(--text-dimmed); font-size: 14px; }
-         .crm-search-input-wrap .crm-input { padding-left: 36px !important; }
+
          
          .add-user-btn { background: var(--primary) !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 0 20px !important; font-weight: 700 !important; height: 38px; display: flex; align-items: center; gap: 6px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2); font-size: 0.85rem; flex-shrink: 0; }
          .add-user-btn:hover { background: var(--primary-hover) !important; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4); }

@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { invoicesApi } from '../../../services/invoices'
-import { api } from '../../../services/api'
+import { attachmentsApi } from '../../../services/attachments'
+import { api, API_BASE_URL } from '../../../services/api'
 import { toast } from 'react-toastify'
 import { Icon } from '../../../layouts/icons'
+import { validateRequired } from '../../../utils/formValidation.js'
 
 export default function InvoiceForm({ mode = 'create', onCancel, onSuccess }) {
   const { id } = useParams()
@@ -18,19 +20,42 @@ export default function InvoiceForm({ mode = 'create', onCancel, onSuccess }) {
     tax_rate: 0,
     discount: 0,
     gst_number: '',
+    company_info: {
+      name: 'DIVINE TECHNOLOGIES',
+      address: 'Office No. 101, Pune, India - 411001',
+      phone: '020-1234567',
+      logo: '/CRM_Logo.png',
+      bank_name: 'HDFC Bank',
+      account_number: '123456789',
+      ifsc_code: 'HDFC0001234',
+      upi_id: 'madhe@hdfcbank'
+    },
     notes: '',
     terms_and_conditions: '',
     status: 'Unpaid'
   })
+  const [initialModel, setInitialModel] = useState(null)
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(mode === 'edit')
   const [saving, setSaving] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
 
   useEffect(() => {
     api.get('/api/customers?limit=100').then(res => setCustomers(res.items || [])).catch(console.error)
     if (mode === 'edit' && id) {
       invoicesApi.get(id).then(res => {
-        if (res) setModel({ ...res, customer_id: res.customer_id?._id || res.customer_id || '', due_date: res.due_date ? res.due_date.split('T')[0] : '' })
+        if (res) {
+          const normalized = { 
+            ...res, 
+            customer_id: res.customer_id?._id || res.customer_id || '', 
+            deal_id: res.deal_id?._id || res.deal_id || '',
+            company_id: res.company_id?._id || res.company_id || '',
+            invoice_date: res.invoice_date ? res.invoice_date.split('T')[0] : '',
+            due_date: res.due_date ? res.due_date.split('T')[0] : '' 
+          }
+          setModel(normalized)
+          setInitialModel(normalized)
+        }
       }).catch(() => toast.error('Failed to load invoice')).finally(() => setLoading(false))
     }
   }, [id, mode])
@@ -46,19 +71,102 @@ export default function InvoiceForm({ mode = 'create', onCancel, onSuccess }) {
   const removeItem = (index) => { if (model.items.length <= 1) return; const newItems = [...model.items]; newItems.splice(index, 1); setModel({ ...model, items: newItems }) }
 
   const subtotal = model.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
-  const taxAmount = (subtotal * (Number(model.tax_rate) || 0)) / 100
+  const taxRate = Math.min(Number(model.tax_rate) || 0, 18)
+  const taxAmount = (subtotal * taxRate) / 100
   const total = subtotal + taxAmount - (Number(model.discount) || 0)
+
+  const validate = () => {
+    const errors = {}
+    
+    const custErr = validateRequired('Customer', model.customer_id)
+    if (custErr) errors.customer_id = custErr
+
+    const dateErr = validateRequired('Invoice Date', model.invoice_date)
+    if (dateErr) errors.invoice_date = dateErr
+
+    const dueErr = validateRequired('Due Date', model.due_date)
+    if (dueErr) errors.due_date = dueErr
+
+    // Validate items
+    const itemErrors = []
+    model.items.forEach((item, idx) => {
+      if (!item.description.trim()) {
+        itemErrors[idx] = { description: 'Required' }
+        errors.items = 'Please check line items'
+      }
+    })
+    
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault()
-    if (!model.customer_id) return toast.warn('Please select a customer')
+    if (!validate()) {
+      const firstError = Object.values(fieldErrors)[0] || 'Please fix validation errors'
+      return toast.warn(firstError)
+    }
+
     setSaving(true)
     try {
-      const payload = { ...model, subtotal, tax_amount: taxAmount, total_amount: total }
-      if (mode === 'create') await invoicesApi.create(payload); else await invoicesApi.update(id, payload)
+      // Ensure we send clean data
+      // Deep normalize IDs to ensure no objects are sent
+      const payload = { 
+        ...model, 
+        customer_id: typeof model.customer_id === 'object' ? model.customer_id?._id : model.customer_id,
+        deal_id: typeof model.deal_id === 'object' ? model.deal_id?._id : model.deal_id,
+        company_id: typeof model.company_id === 'object' ? model.company_id?._id : model.company_id,
+        subtotal, 
+        tax_amount: taxAmount, 
+        tax_rate: taxRate,
+        total_amount: total 
+      }
+      
+      if (mode === 'create') {
+        await invoicesApi.create(payload)
+      } else {
+        await invoicesApi.update(id, payload)
+      }
+      
       toast.success(`Invoice ${mode === 'create' ? 'created' : 'updated'}`)
-      if (onSuccess) onSuccess(); else navigate('/invoices')
-    } catch (err) { toast.error('Failed to save invoice') } finally { setSaving(false) }
+      if (onSuccess) onSuccess()
+      else navigate('/invoices')
+    } catch (err) { 
+      console.error('Invoice Save Error:', err)
+      toast.error(err.message || 'Failed to save invoice') 
+    } finally { 
+      setSaving(false) 
+    }
+  }
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('related_type', 'System')
+    // No related_to for global logo upload
+
+    setSaving(true)
+    try {
+      const res = await attachmentsApi.upload(formData)
+      if (res && res.path) {
+        // Handle cross-platform paths and absolute URL conversion
+        const cleanPath = res.path.replace(/\\/g, '/')
+        const fullPath = API_BASE_URL ? `${API_BASE_URL}/${cleanPath}` : `/${cleanPath}`
+        
+        setModel(prev => ({
+          ...prev,
+          company_info: { ...prev.company_info, logo: fullPath }
+        }))
+        toast.success('Logo uploaded successfully')
+      }
+    } catch (err) {
+      toast.error('Failed to upload logo')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function handleKeyDown(e) {
@@ -95,22 +203,116 @@ export default function InvoiceForm({ mode = 'create', onCancel, onSuccess }) {
               <div className="form-sheet-grid">
                 <div className="sheet-field">
                   <label>Customer Account</label>
-                  <select className="crm-input" value={model.customer_id} onChange={e => setModel({ ...model, customer_id: e.target.value })} required>
+                  <select 
+                    className={`crm-input ${fieldErrors.customer_id ? 'error' : ''}`} 
+                    value={model.customer_id} 
+                    onChange={e => {
+                      setModel({ ...model, customer_id: e.target.value })
+                      if (fieldErrors.customer_id) setFieldErrors(prev => ({ ...prev, customer_id: '' }))
+                    }} 
+                    required
+                  >
                     <option value="">Select Customer Account...</option>
                     {customers.map(c => <option key={c._id || c.id} value={c._id || c.id}>{c.name}</option>)}
                   </select>
+                  {fieldErrors.customer_id && <span className="error-text">{fieldErrors.customer_id}</span>}
                 </div>
                 <div className="sheet-field">
                   <label>Billing Date</label>
-                  <input type="date" className="crm-input" value={model.invoice_date} onChange={e => setModel({ ...model, invoice_date: e.target.value })} required />
+                  <input 
+                    type="date" 
+                    className={`crm-input ${fieldErrors.invoice_date ? 'error' : ''}`} 
+                    value={model.invoice_date} 
+                    onChange={e => {
+                      setModel({ ...model, invoice_date: e.target.value })
+                      if (fieldErrors.invoice_date) setFieldErrors(prev => ({ ...prev, invoice_date: '' }))
+                    }} 
+                    required 
+                  />
+                  {fieldErrors.invoice_date && <span className="error-text">{fieldErrors.invoice_date}</span>}
                 </div>
                 <div className="sheet-field">
                   <label>Due Date</label>
-                  <input type="date" className="crm-input" value={model.due_date} onChange={e => setModel({ ...model, due_date: e.target.value })} required />
+                  <input 
+                    type="date" 
+                    className={`crm-input ${fieldErrors.due_date ? 'error' : ''}`} 
+                    value={model.due_date} 
+                    onChange={e => {
+                      setModel({ ...model, due_date: e.target.value })
+                      if (fieldErrors.due_date) setFieldErrors(prev => ({ ...prev, due_date: '' }))
+                    }} 
+                    required 
+                  />
+                  {fieldErrors.due_date && <span className="error-text">{fieldErrors.due_date}</span>}
                 </div>
                 <div className="sheet-field">
                   <label>GST / Tax Number</label>
                   <input className="crm-input" value={model.gst_number} onChange={e => setModel({ ...model, gst_number: e.target.value })} placeholder="e.g. 27AAAAA0000A1Z5" />
+                </div>
+              </div>
+            </section>
+
+            {/* Branding & Company Info */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="user" />
+                <span>Company & Branding</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field">
+                  <label>Company Name</label>
+                  <input className="crm-input" value={model.company_info?.name || ''} onChange={e => setModel({ ...model, company_info: { ...model.company_info, name: e.target.value } })} />
+                </div>
+                <div className="sheet-field">
+                  <label>Company Logo</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '100px', height: '40px', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-surface)' }}>
+                      {model.company_info?.logo ? (
+                        <img src={model.company_info.logo} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <span style={{ fontSize: '10px', color: 'var(--text-dimmed)' }}>No Logo</span>
+                      )}
+                    </div>
+                    <label className="crm-btn-premium glass" style={{ margin: 0, padding: '8px 12px', fontSize: '12px', cursor: 'pointer' }}>
+                       <Icon name="plus" size={12} />
+                       <span>Upload Logo</span>
+                       <input type="file" style={{ display: 'none' }} accept="image/*" onChange={handleLogoUpload} />
+                    </label>
+                  </div>
+                </div>
+                <div className="sheet-field">
+                  <label>Company Phone</label>
+                  <input className="crm-input" value={model.company_info?.phone || ''} onChange={e => setModel({ ...model, company_info: { ...model.company_info, phone: e.target.value } })} />
+                </div>
+                <div className="sheet-field">
+                  <label>Company Address</label>
+                  <input className="crm-input" value={model.company_info?.address || ''} onChange={e => setModel({ ...model, company_info: { ...model.company_info, address: e.target.value } })} />
+                </div>
+              </div>
+            </section>
+
+            {/* Bank Details */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="billing" />
+                <span>Bank & Payment Details</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field">
+                  <label>Bank Name</label>
+                  <input className="crm-input" value={model.company_info?.bank_name || ''} onChange={e => setModel({ ...model, company_info: { ...model.company_info, bank_name: e.target.value } })} />
+                </div>
+                <div className="sheet-field">
+                  <label>Account Number</label>
+                  <input className="crm-input" value={model.company_info?.account_number || ''} onChange={e => setModel({ ...model, company_info: { ...model.company_info, account_number: e.target.value } })} />
+                </div>
+                <div className="sheet-field">
+                  <label>IFSC Code</label>
+                  <input className="crm-input" value={model.company_info?.ifsc_code || ''} onChange={e => setModel({ ...model, company_info: { ...model.company_info, ifsc_code: e.target.value } })} />
+                </div>
+                <div className="sheet-field">
+                  <label>UPI ID</label>
+                  <input className="crm-input" value={model.company_info?.upi_id || ''} onChange={e => setModel({ ...model, company_info: { ...model.company_info, upi_id: e.target.value } })} />
                 </div>
               </div>
             </section>
@@ -178,11 +380,23 @@ export default function InvoiceForm({ mode = 'create', onCancel, onSuccess }) {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ color: 'var(--text-dimmed)' }}>Discount (₹)</span>
-                      <input type="number" className="crm-input" style={{ width: '120px', textAlign: 'right' }} value={model.discount} onChange={e => setModel({ ...model, discount: e.target.value })} />
+                      <div style={{ position: 'relative', width: '120px' }}>
+                        <input type="number" className="crm-input" style={{ width: '100%', textAlign: 'right' }} value={model.discount} onChange={e => setModel({ ...model, discount: e.target.value })} />
+                      </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: 'var(--text-dimmed)' }}>Tax (%)</span>
-                      <input type="number" className="crm-input" style={{ width: '80px', textAlign: 'right' }} value={model.tax_rate} onChange={e => setModel({ ...model, tax_rate: e.target.value })} />
+                      <span style={{ color: 'var(--text-dimmed)' }}>Tax (%) <small>(Max 18%)</small></span>
+                      <div style={{ position: 'relative', width: '80px' }}>
+                        <input 
+                          type="number" 
+                          className="crm-input" 
+                          style={{ width: '100%', textAlign: 'right', paddingRight: '25px' }} 
+                          value={model.tax_rate} 
+                          onChange={e => setModel({ ...model, tax_rate: Math.min(e.target.value, 18) })} 
+                          max="18"
+                        />
+                        <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', fontWeight: 700, color: 'var(--text-dimmed)' }}>%</span>
+                      </div>
                     </div>
                     <div style={{ height: '2px', background: 'rgba(0,0,0,0.1)', margin: '8px 0' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.4rem', fontWeight: '900', color: 'var(--text)' }}>

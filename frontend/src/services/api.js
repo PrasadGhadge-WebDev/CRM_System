@@ -51,7 +51,8 @@ api.interceptors.request.use(
 
     // Sanitize any URLs that might have accidentally appended suffixes like :1
     if (config.url) {
-      config.url = config.url.replace(/:\d+$/, '');
+      // Remove :digit if it's at the end of a path segment or the end of the string
+      config.url = config.url.replace(/:[0-9]+(\/|\?|#|$)/, '$1');
     }
 
     const token = localStorage.getItem('token')

@@ -10,6 +10,7 @@ export default function LeadSourcesTab() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({ name: '', status: 'Active', order: 1 })
+  const [initialForm, setInitialForm] = useState(null)
 
   useEffect(() => {
     loadSources()
@@ -29,6 +30,11 @@ export default function LeadSourcesTab() {
 
   const handleSave = async (e) => {
     e.preventDefault()
+    
+    if (editingId && initialForm && JSON.stringify(form) === JSON.stringify(initialForm)) {
+      return toast.info('No changes detected')
+    }
+
     try {
       let newList
       if (editingId) {
@@ -110,7 +116,12 @@ export default function LeadSourcesTab() {
                   </td>
                   <td className="text-right">
                     <div className="crm-action-group">
-                      <button className="modern-action-btn" onClick={() => { setEditingId(source.id); setForm(source); setIsModalOpen(true); }}>
+                      <button className="modern-action-btn" onClick={() => { 
+                        setEditingId(source.id); 
+                        setForm(source); 
+                        setInitialForm(source);
+                        setIsModalOpen(true); 
+                      }}>
                         <Icon name="edit" size={14} />
                       </button>
                       <button className="modern-action-btn danger" onClick={() => handleDelete(source.id)}>

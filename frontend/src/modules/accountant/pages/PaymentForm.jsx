@@ -7,6 +7,11 @@ import { api } from '../../../services/api'
 import { toast } from 'react-toastify'
 import { Icon } from '../../../layouts/icons'
 
+import { 
+  validateRequired, 
+  validateNonNegativeNumber 
+} from '../../../utils/formValidation.js'
+
 export default function PaymentForm({ onCancel, onSuccess }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -16,16 +21,21 @@ export default function PaymentForm({ onCancel, onSuccess }) {
   const [model, setModel] = useState({
     customer_id: '',
     invoice_id: '',
+    deal_id: searchParams.get('dealId') || '',
     amount: '',
     payment_method: 'Bank Transfer',
     payment_date: new Date().toISOString().split('T')[0],
     transaction_id: '',
+    cheque_number: '',
+    bank_name: '',
+    received_by: '',
     notes: ''
   })
   
   const [customers, setCustomers] = useState([])
   const [invoices, setInvoices] = useState([])
   const [saving, setSaving] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
 
   useEffect(() => {
     api.get('/api/customers?limit=200').then(res => {
@@ -62,9 +72,29 @@ export default function PaymentForm({ onCancel, onSuccess }) {
     }
   }
 
+  const validate = () => {
+    const errors = {}
+    
+    const custErr = validateRequired('Customer', model.customer_id)
+    if (custErr) errors.customer_id = custErr
+
+    const amtErr = validateNonNegativeNumber('Amount', model.amount) || validateRequired('Amount', model.amount)
+    if (amtErr) errors.amount = amtErr
+    else if (Number(model.amount) <= 0) errors.amount = 'Amount must be greater than 0'
+
+    const dateErr = validateRequired('Payment Date', model.payment_date)
+    if (dateErr) errors.payment_date = dateErr
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault()
-    if (!model.customer_id || !model.amount) return toast.warn('Customer and Amount are required')
+    if (!validate()) {
+      const firstError = Object.values(fieldErrors)[0] || 'Please fix validation errors'
+      return toast.warn(firstError)
+    }
 
     setSaving(true)
     try {
@@ -110,15 +140,19 @@ export default function PaymentForm({ onCancel, onSuccess }) {
                 <div className="sheet-field full-width">
                   <label>Customer Account</label>
                   <select
-                    className="crm-input"
+                    className={`crm-input ${fieldErrors.customer_id ? 'error' : ''}`}
                     autoFocus
                     value={model.customer_id}
-                    onChange={e => setModel({ ...model, customer_id: e.target.value, invoice_id: '' })}
+                    onChange={e => {
+                      setModel({ ...model, customer_id: e.target.value, invoice_id: '' })
+                      if (fieldErrors.customer_id) setFieldErrors(prev => ({ ...prev, customer_id: '' }))
+                    }}
                     required
                   >
                     <option value="">Select Customer...</option>
                     {customers.map(c => <option key={c._id || c.id} value={c._id || c.id}>{c.name}</option>)}
                   </select>
+                  {fieldErrors.customer_id && <span className="error-text">{fieldErrors.customer_id}</span>}
                 </div>
                 <div className="sheet-field full-width">
                   <label>Link to Outstanding Bill</label>
@@ -150,44 +184,75 @@ export default function PaymentForm({ onCancel, onSuccess }) {
                   <label>Payment Amount (₹)</label>
                   <input
                     type="number"
-                    className="crm-input"
+                    className={`crm-input ${fieldErrors.amount ? 'error' : ''}`}
                     value={model.amount}
-                    onChange={e => setModel({ ...model, amount: e.target.value })}
+                    onChange={e => {
+                      setModel({ ...model, amount: e.target.value })
+                      if (fieldErrors.amount) setFieldErrors(prev => ({ ...prev, amount: '' }))
+                    }}
                     placeholder="0.00"
                     step="0.01"
                     required
                   />
+                  {fieldErrors.amount && <span className="error-text">{fieldErrors.amount}</span>}
                 </div>
                 <div className="sheet-field">
                   <label>Payment Date</label>
                   <input
                     type="date"
-                    className="crm-input"
+                    className={`crm-input ${fieldErrors.payment_date ? 'error' : ''}`}
                     value={model.payment_date}
-                    onChange={e => setModel({ ...model, payment_date: e.target.value })}
+                    onChange={e => {
+                      setModel({ ...model, payment_date: e.target.value })
+                      if (fieldErrors.payment_date) setFieldErrors(prev => ({ ...prev, payment_date: '' }))
+                    }}
                     required
                   />
+                  {fieldErrors.payment_date && <span className="error-text">{fieldErrors.payment_date}</span>}
                 </div>
                 <div className="sheet-field">
                   <label>Payment Method</label>
                   <select className="crm-input" value={model.payment_method} onChange={e => setModel({ ...model, payment_method: e.target.value })} required>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="UPI">UPI / Net Banking</option>
-                    <option value="Card">Card Payment</option>
                     <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
                     <option value="Cheque">Cheque</option>
+                    <option value="Online">Online Payment Gateway</option>
                   </select>
                 </div>
                 <div className="sheet-field">
-                  <label>Transaction ID / Ref</label>
+                  <label>
+                    {model.payment_method === 'Cheque' ? 'Cheque Number' : 
+                     model.payment_method === 'Card' ? 'Card Last 4 Digits' : 
+                     'Transaction ID / Ref'}
+                  </label>
                   <input
                     type="text"
                     className="crm-input"
-                    value={model.transaction_id}
-                    onChange={e => setModel({ ...model, transaction_id: e.target.value })}
-                    placeholder="TXN-XXXXXX"
+                    value={model.payment_method === 'Cheque' ? model.cheque_number : model.transaction_id}
+                    onChange={e => {
+                      if (model.payment_method === 'Cheque') {
+                        setModel({ ...model, cheque_number: e.target.value })
+                      } else {
+                        setModel({ ...model, transaction_id: e.target.value })
+                      }
+                    }}
+                    placeholder={model.payment_method === 'Cheque' ? 'XXXXXX' : 'TXN-XXXXXX'}
                   />
                 </div>
+                {(model.payment_method === 'Bank Transfer' || model.payment_method === 'Cheque' || model.payment_method === 'Card') && (
+                  <div className="sheet-field">
+                    <label>Bank Name</label>
+                    <input
+                      type="text"
+                      className="crm-input"
+                      value={model.bank_name}
+                      onChange={e => setModel({ ...model, bank_name: e.target.value })}
+                      placeholder="e.g. HDFC Bank"
+                    />
+                  </div>
+                )}
               </div>
             </section>
 

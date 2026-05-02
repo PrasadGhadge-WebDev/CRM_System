@@ -37,8 +37,8 @@ export const leadsApi = {
     const data = await api.patch(`/api/leads/${cleanId(id)}/status`, { status })
     return data
   },
-  async remove(id) {
-    const data = await api.delete(`/api/leads/${cleanId(id)}`)
+  async delete(id, hard = false) {
+    const data = await api.delete(`/api/leads/${cleanId(id)}${hard ? '?hard=true' : ''}`)
     return data
   },
   async listNotes(leadId) {
@@ -57,8 +57,12 @@ export const leadsApi = {
     const data = await api.patch('/api/leads/bulk-update', { ids, update })
     return data
   },
-  async bulkRemove(ids) {
-    const data = await api.post('/api/leads/bulk-delete', { ids })
+  async bulkDelete(ids, hard = false) {
+    const data = await api.post('/api/leads/bulk-delete', { ids, hard })
+    return data
+  },
+  async convertToDeal(id, payload) {
+    const data = await api.post(`/api/leads/${cleanId(id)}/convert-to-deal`, payload)
     return data
   },
 }

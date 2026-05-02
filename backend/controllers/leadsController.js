@@ -32,9 +32,24 @@ function buildSearchQuery(q) {
 
 function normalizeObjectId(value) {
   if (value == null) return null;
-  if (typeof value === 'object') value = value.id || value._id || value.value;
+  
+  // If it's already a valid ObjectId object, return it as a string
+  if (mongoose.Types.ObjectId.isValid(value)) {
+    return String(value).trim();
+  }
+
+  // If it's an object (like a populated document or a select option), try to extract the ID
+  if (typeof value === 'object') {
+    const id = value._id || value.id || value.value;
+    if (id && mongoose.Types.ObjectId.isValid(id)) {
+      return String(id).trim();
+    }
+  }
+
   const asString = String(value).trim();
   if (!asString || asString === 'undefined' || asString === 'null') return null;
+  
+  // Final cleanup of any dev-mode suffixes
   return asString.replace(/:\d+$/, '');
 }
 
@@ -51,18 +66,42 @@ function validateLead(payload) {
   const errors = [];
   if (!payload.firstName && !payload.first_name) errors.push('First name is required');
   if (!payload.lastName && !payload.last_name) errors.push('Last name is required');
+  
   if (!payload.email) {
     errors.push('Email is required');
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
     errors.push('Invalid email format');
   }
-  if (payload.phone && !/^\d{10,15}$/.test(payload.phone.replace(/\D/g, ''))) {
-    errors.push('Phone must be between 10-15 digits');
+
+  if (!payload.phone) {
+    errors.push('Phone number is required');
+  } else {
+    const cleanPhone = String(payload.phone).replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      errors.push('Phone must be exactly 10 digits');
+    }
   }
+
+  if (payload.alternate_phone) {
+    const cleanAlt = String(payload.alternate_phone).replace(/\D/g, '');
+    if (cleanAlt.length !== 10) {
+      errors.push('Alternate phone must be 10 digits');
+    }
+  }
+
   if (!payload.status) errors.push('Status is required');
   if (!payload.source) errors.push('Source is required');
-  if (!payload.assignedTo && !payload.assigned_to && !payload.autoAssign) errors.push('Assignee is required');
-  // Removed strict requirement for dealAmount and notes
+  if (!payload.assignedTo && !payload.assigned_to) errors.push('Assignee is required');
+  
+  if (!payload.followUpDate && !payload.follow_up_date) {
+    errors.push('Follow-up date is required');
+  } else {
+    const date = new Date(payload.followUpDate || payload.follow_up_date);
+    if (date < new Date().setHours(0,0,0,0)) {
+      errors.push('Follow-up date cannot be in the past');
+    }
+  }
+
   return errors;
 }
 
@@ -142,7 +181,25 @@ exports.listLeads = asyncHandler(async (req, res, next) => {
     }
   }
 
-  if (search) filter.$or = [{ name: search }, { email: search }, { phone: search }, { source: search }, { company: search }];
+  if (search) {
+    filter.$or = [
+      { name: search },
+      { firstName: search },
+      { lastName: search },
+      { email: search },
+      { phone: search },
+      { alternate_phone: search },
+      { source: search },
+      { company: search },
+      { leadId: search },
+      { city: search },
+      { state: search },
+      { pincode: search },
+      { status: search },
+      { priority: search },
+      { interested_product: search }
+    ];
+  }
 
   const now = new Date();
   const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
@@ -218,34 +275,18 @@ exports.listLeads = asyncHandler(async (req, res, next) => {
     }
   ];
 
-  // Summary Aggregation
+  // Summary Aggregation: Group by status to get counts for all statuses
   const summaryPipeline = [
     { $match: filter },
     {
       $group: {
-        _id: null,
-        total: { $sum: 1 },
-        converted: { $sum: { $cond: [{ $eq: ['$status', 'Converted'] }, 1, 0] } },
-        pending: { $sum: { $cond: [{ $and: [{ $ne: ['$status', 'Converted'] }, { $ne: ['$status', 'Lost'] }] }, 1, 0] } },
-        overdue: {
-          $sum: {
-            $cond: [
-              {
-                $and: [
-                  { $lt: ['$nextFollowupDate', startOfToday] },
-                  { $ne: ['$status', 'Converted'] },
-                  { $ne: ['$status', 'Lost'] }
-                ]
-              },
-              1, 0
-            ]
-          }
-        }
+        _id: '$status',
+        count: { $sum: 1 }
       }
     }
   ];
 
-  const [items, totalFiltered, summary] = await Promise.all([
+  const [items, totalFiltered, statusCounts] = await Promise.all([
     Lead.aggregate(itemsPipeline),
     Lead.countDocuments(filter),
     Lead.aggregate(summaryPipeline)
@@ -253,8 +294,14 @@ exports.listLeads = asyncHandler(async (req, res, next) => {
 
   await Lead.populate(items, { path: 'assignedTo', select: 'name email role' });
 
-  const stats = summary[0] || { total: 0, converted: 0, pending: 0, overdue: 0 };
-  if (summary[0]) delete stats._id;
+  // Transform statusCounts array into a readable object
+  const stats = {
+    total: totalFiltered,
+    byStatus: {}
+  };
+  statusCounts.forEach(s => {
+    if (s._id) stats.byStatus[s._id] = s.count;
+  });
 
   res.ok({ items, page: pageNum, limit: limitNum, total: totalFiltered, summary: stats });
 });
@@ -378,6 +425,10 @@ exports.createLead = asyncHandler(async (req, res, next) => {
     payload.lastName = String(payload.lastName || payload.last_name || '').trim();
     payload.name = `${payload.firstName} ${payload.lastName}`.trim() || payload.name;
     payload.company = payload.company || payload.company_name || '';
+    payload.alternate_phone = String(payload.alternate_phone || '').replace(/\D/g, '');
+    payload.interested_product = payload.interested_product || '';
+    payload.budget_range = payload.budget_range || '';
+    payload.remarks_internal = payload.remarks_internal || '';
 
     if (payload.dealAmount == null) {
       payload.dealAmount = Number(payload.estimated_value || payload.budget || 0);
@@ -502,12 +553,14 @@ exports.createLead = asyncHandler(async (req, res, next) => {
 
 exports.getLead = asyncHandler(async (req, res, next) => {
 
-  const { id } = req.params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  const cleanId = normalizeObjectId(req.params.id);
+  const cleanCompanyId = normalizeObjectId(req.user.company_id);
+  
+  if (!cleanId || !mongoose.Types.ObjectId.isValid(cleanId)) {
     return res.fail('Invalid lead ID format', 400);
   }
 
-  const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id })
+  const lead = await Lead.findOne({ _id: cleanId, company_id: cleanCompanyId })
     .populate('assignedTo', 'name email')
     .populate('convertedCustomerId', 'customer_id name phone status created_at total_purchase_amount');
   if (!lead) {
@@ -517,7 +570,8 @@ exports.getLead = asyncHandler(async (req, res, next) => {
 });
 
 exports.updateLead = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
+  const cleanId = normalizeObjectId(req.params.id);
+  const cleanCompanyId = normalizeObjectId(req.user.company_id);
   const payload = req.body || {};
 
   if (req.user?.role === 'Accountant') {
@@ -525,8 +579,8 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: `Invalid lead ID format: ${id}` });
+    if (!cleanId || !mongoose.Types.ObjectId.isValid(cleanId)) {
+      return res.status(400).json({ success: false, message: `Invalid lead ID format: ${cleanId}` });
     }
 
     // Bridge old snake_case fields if provided
@@ -540,14 +594,14 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
 
     // 1. Role-based security for Employees
     if (req.user?.role === 'Employee') {
-      const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id }).select('assignedTo');
+      const lead = await Lead.findOne({ _id: cleanId, company_id: cleanCompanyId }).select('assignedTo');
       if (!lead) return res.fail('Lead not found', 404);
       if (!lead.assignedTo || String(lead.assignedTo) !== String(req.user.id)) {
         return res.fail('You can only update leads assigned to you', 403);
       }
 
       // Employees can only update specific fields
-      const allowed = ['status', 'followUpDate', 'notes', 'city', 'state', 'pincode', 'priority'];
+      const allowed = ['status', 'followUpDate', 'notes', 'city', 'state', 'pincode', 'priority', 'alternate_phone', 'company', 'interested_product', 'budget_range', 'remarks_internal'];
       for (const key of Object.keys(payload)) {
         if (!allowed.includes(key)) delete payload[key];
       }
@@ -574,19 +628,30 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       }
     }
 
-    // 2. Conversion Logic
+    // 2. Status specific logic
     if (payload.status === 'Converted') {
       const { performLeadConversion } = require('../utils/leadConversion');
-      await performLeadConversion(id, req.user.company_id, req.user.id, getAuthUserModelName(req));
-
-      const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id })
+      await performLeadConversion(cleanId, req.user.company_id, req.user.id, getAuthUserModelName(req));
+      const lead = await Lead.findOne({ _id: cleanId, company_id: req.user.company_id })
         .populate('assignedTo', 'name email')
         .populate('convertedCustomerId', 'customer_id name phone status created_at total_purchase_amount');
-
       await notifyAccountantsOfConversion(req.user.company_id, lead);
       return res.ok(lead, 'Lead converted to Customer profile successfully');
     }
-    const oldLead = await Lead.findOne({ _id: id, company_id: req.user.company_id });
+
+    if (payload.status === 'Lost') {
+      const oldLead = await Lead.findOne({ _id: cleanId, company_id: req.user.company_id });
+      if (!oldLead) return res.fail('Lead not found', 404);
+      await moveDocumentToTrash({ entityType: 'lead', document: oldLead, deletedBy: req.user.id });
+      return res.ok(null, 'Lead marked as Lost and moved to trash');
+    }
+
+    if (payload.status === 'Junk') {
+      if (req.user.role !== 'Admin') return res.fail('Only Admins can mark leads as Junk (Permanent Delete)', 403);
+      await Lead.deleteOne({ _id: cleanId, company_id: req.user.company_id });
+      return res.ok(null, 'Lead marked as Junk and permanently deleted');
+    }
+    const oldLead = await Lead.findOne({ _id: cleanId, company_id: req.user.company_id });
     if (!oldLead) return res.fail('Lead not found', 404);
 
     // Normalize name if first/last name changed
@@ -605,7 +670,7 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
     delete payload.id;
 
     const updated = await Lead.findOneAndUpdate(
-      { _id: id, company_id: req.user.company_id },
+      { _id: cleanId, company_id: req.user.company_id },
       payload,
       { new: true, runValidators: true }
     );
@@ -647,6 +712,19 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       });
     }
 
+    // Log general edit activity
+    const { logActivity } = require('../utils/activityLogger');
+    await logActivity({
+      company_id: req.user.company_id,
+      user_id: req.user.id,
+      user_model: getAuthUserModelName(req),
+      type: 'Lead Edited',
+      description: `Lead edited by ${req.user.role || 'User'} (${req.user.name})`,
+      related_to: cleanId,
+      related_type: 'Lead',
+      color_code: 'orange'
+    });
+
     return res.ok(updated);
   } catch (err) {
     console.error('Update Lead Error:', err);
@@ -680,13 +758,26 @@ exports.updateLeadStatus = asyncHandler(async (req, res, next) => {
   if (status === 'Converted' && oldLead.status !== 'Converted') {
     const { performLeadConversion } = require('../utils/leadConversion');
     await performLeadConversion(id, req.user.company_id, req.user.id, getAuthUserModelName(req));
-    
     const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id })
       .populate('assignedTo', 'name email')
       .populate('convertedCustomerId', 'customer_id name phone status created_at total_purchase_amount');
-
     await notifyAccountantsOfConversion(req.user.company_id, lead);
     return res.ok(lead, 'Lead converted to Customer profile successfully');
+  }
+
+  if (status === 'Lost') {
+    const { lostReason } = req.body;
+    oldLead.status = 'Lost';
+    oldLead.lostReason = lostReason;
+    await oldLead.save();
+    await moveDocumentToTrash({ entityType: 'lead', document: oldLead, deletedBy: req.user.id });
+    return res.ok(null, 'Lead marked as Lost and moved to trash');
+  }
+
+  if (status === 'Junk') {
+    if (req.user.role !== 'Admin') return res.fail('Only Admins can mark leads as Junk (Permanent Delete)', 403);
+    await Lead.deleteOne({ _id: id, company_id: req.user.company_id });
+    return res.ok(null, 'Lead marked as Junk and permanently deleted');
   }
 
   const updated = await Lead.findOneAndUpdate(
@@ -707,61 +798,80 @@ exports.updateLeadStatus = asyncHandler(async (req, res, next) => {
     color_code: 'purple'
   });
 
+  // Notify assigned employee
+  if (updated && updated.assignedTo) {
+    const Notification = require('../models/Notification');
+    await Notification.create({
+      user_id: updated.assignedTo,
+      title: 'Lead Status Updated',
+      message: `Status for "${updated.name}" changed to ${status}`,
+      type: 'lead',
+      linked_entity_id: updated._id,
+      linked_entity_type: 'Lead',
+      company_id: req.user.company_id
+    }).catch(err => console.error('Notification creation failed:', err));
+  }
+
   res.ok(updated);
 });
 
 exports.deleteLead = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const isHardDelete = req.query.hard === 'true';
 
-  if (req.user?.role !== 'Admin') {
-    return res.fail('Only Administrators can delete lead records', 403);
+  if (isHardDelete && req.user?.role !== 'Admin') {
+    return res.fail('Only Administrators can permanently delete records', 403);
   }
 
-  const { id } = req.params;
-
   try {
-    // 1. Validate ID format
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: `Invalid lead ID format: ${id}` });
+      return res.status(400).json({ success: false, message: 'Invalid lead ID format' });
     }
 
-    // 2. Locate lead with company context
     const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id });
     if (!lead) {
-      return res.status(404).json({ success: false, message: 'Lead not found or already moved to trash' });
+      return res.status(404).json({ success: false, message: 'Lead not found or already deleted' });
     }
 
     const leadName = lead.name;
-    const companyId = req.user.company_id;
-    const userId = req.user.id;
-
-    // 3. Perform atomic move to trash
-    await moveDocumentToTrash({
-      entityType: 'lead',
-      document: lead,
-      deletedBy: userId
-    });
-
-    // 4. Log activity
     const { logActivity } = require('../utils/activityLogger');
-    await logActivity({
-      company_id: companyId,
-      user_id: userId,
-      user_model: getAuthUserModelName(req),
-      description: `Lead moved to trash: ${leadName}`,
-      related_to: id,
-      related_type: 'Lead'
-    });
 
-    return res.ok(null, 'Lead successfully moved to trash');
+    if (isHardDelete) {
+      await Lead.deleteOne({ _id: id, company_id: req.user.company_id });
+      
+      await logActivity({
+        company_id: req.user.company_id,
+        user_id: req.user.id,
+        user_model: getAuthUserModelName(req),
+        description: `Lead PERMANENTLY DELETED: ${leadName}`,
+        related_to: id,
+        related_type: 'Lead',
+        color_code: 'red'
+      });
+
+      return res.ok(null, 'Lead permanently deleted');
+    } else {
+      // Soft Delete
+      await moveDocumentToTrash({
+        entityType: 'lead',
+        document: lead,
+        deletedBy: req.user.id
+      });
+
+      await logActivity({
+        company_id: req.user.company_id,
+        user_id: req.user.id,
+        user_model: getAuthUserModelName(req),
+        description: `Lead moved to trash: ${leadName}`,
+        related_to: id,
+        related_type: 'Lead'
+      });
+
+      return res.ok(null, 'Lead moved to trash');
+    }
   } catch (err) {
-    console.error('[FATAL] Delete Lead Error:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Critical error during lead deletion',
-      error: err.message,
-      code: err.code || 'UNKNOWN_ERROR',
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-    });
+    console.error('Delete Lead Error:', err);
+    return res.status(500).json({ success: false, message: 'Error during deletion', error: err.message });
   }
 });
 
@@ -808,7 +918,6 @@ exports.addLeadNote = asyncHandler(async (req, res, next) => {
   });
   res.created(created);
 });
-
 exports.deleteLeadNote = asyncHandler(async (req, res, next) => {
 
   const { id, noteId } = req.params;
@@ -821,14 +930,25 @@ exports.deleteLeadNote = asyncHandler(async (req, res, next) => {
 });
 
 exports.bulkUpdateLeads = asyncHandler(async (req, res, next) => {
-
-  const { ids, update } = req.body || {};
+  const { ids, update, reason } = req.body || {};
   if (!ids || !Array.isArray(ids) || ids.length === 0) {
     return res.fail('No lead IDs provided', 400);
   }
 
   const { logActivity } = require('../utils/activityLogger');
+  const { sendLeadAssignmentNotification } = require('../utils/notifier');
   const results = [];
+
+  let resolvedAssignee = null;
+  if (update.assignedTo || update.assigned_to) {
+    const assigneeId = normalizeObjectId(update.assignedTo || update.assigned_to);
+    resolvedAssignee = await findActiveCompanyUserById(req.user.company_id, assigneeId);
+    if (!resolvedAssignee) {
+      return res.fail('Assigned user not found or inactive', 404);
+    }
+    update.assignedTo = resolvedAssignee.user._id;
+    update.assignedToModel = resolvedAssignee.model;
+  }
 
   for (const id of ids) {
     const oldLead = await Lead.findOne({ _id: id, company_id: req.user.company_id });
@@ -836,14 +956,24 @@ exports.bulkUpdateLeads = asyncHandler(async (req, res, next) => {
 
     const updated = await Lead.findOneAndUpdate(
       { _id: id, company_id: req.user.company_id },
-      update,
+      { ...update, lastActivityAt: new Date() },
       { new: true }
-    );
+    ).populate('assignedTo', 'name email');
 
     if (updated) {
       let desc = 'Bulk update performed';
       if (update.status) desc = `Status updated to ${update.status} (Bulk)`;
-      if (update.assignedTo || update.assigned_to) desc = `Lead reassigned (Bulk)`;
+      if (resolvedAssignee) {
+        desc = `Lead assigned to ${updated.assignedTo?.name || 'User'} (Bulk). Reason: ${reason || 'N/A'}`;
+        
+        // Notify new assignee
+        await sendLeadAssignmentNotification({
+          lead: updated,
+          assignee_id: updated.assignedTo?._id || updated.assignedTo,
+          assignee_model: updated.assignedToModel,
+          assigner_name: req.user.name
+        }).catch(err => console.error('Failed to notify assignee in bulk update:', err));
+      }
 
       await logActivity({
         company_id: req.user.company_id,
@@ -861,8 +991,9 @@ exports.bulkUpdateLeads = asyncHandler(async (req, res, next) => {
 });
 
 exports.bulkDeleteLeads = asyncHandler(async (req, res, next) => {
+  const { ids, hard } = req.body || {};
+  const isHardDelete = hard === true;
 
-  const { ids } = req.body || {};
   if (req.user?.role !== 'Admin') {
     return res.fail('Only Administrators can bulk delete records', 403);
   }
@@ -886,20 +1017,32 @@ exports.bulkDeleteLeads = asyncHandler(async (req, res, next) => {
 
       const leadName = lead.name;
 
-      await moveDocumentToTrash({
-        entityType: 'lead',
-        document: lead,
-        deletedBy: req.user.id
-      });
-
-      await logActivity({
-        company_id: req.user.company_id,
-        user_id: req.user.id,
-        user_model: getAuthUserModelName(req),
-        description: `Lead moved to trash (Bulk): ${leadName}`,
-        related_to: id,
-        related_type: 'Lead'
-      });
+      if (isHardDelete) {
+        await Lead.deleteOne({ _id: id, company_id: req.user.company_id });
+        await logActivity({
+          company_id: req.user.company_id,
+          user_id: req.user.id,
+          user_model: getAuthUserModelName(req),
+          description: `Lead permanently deleted (Bulk): ${leadName}`,
+          related_to: id,
+          related_type: 'Lead',
+          color_code: 'red'
+        });
+      } else {
+        await moveDocumentToTrash({
+          entityType: 'lead',
+          document: lead,
+          deletedBy: req.user.id
+        });
+        await logActivity({
+          company_id: req.user.company_id,
+          user_id: req.user.id,
+          user_model: getAuthUserModelName(req),
+          description: `Lead moved to trash (Bulk): ${leadName}`,
+          related_to: id,
+          related_type: 'Lead'
+        });
+      }
 
       deletedCount++;
     } catch (err) {
@@ -908,7 +1051,7 @@ exports.bulkDeleteLeads = asyncHandler(async (req, res, next) => {
     }
   }
 
-  res.ok({ deletedCount, errorCount }, `${deletedCount} records moved to Trash successfully. ${errorCount ? `${errorCount} failed.` : ''}`);
+  res.ok({ deletedCount, errorCount }, `${deletedCount} leads ${isHardDelete ? 'permanently deleted' : 'moved to Trash'} successfully. ${errorCount ? `${errorCount} failed.` : ''}`);
 });
 
 exports.updateFollowup = asyncHandler(async (req, res, next) => {
@@ -953,9 +1096,29 @@ exports.updateFollowup = asyncHandler(async (req, res, next) => {
 
   try {
     // 2. Fetch Lead with Idempotency & Concurrency Lock
-    const lead = await Lead.findOne({ _id: id, company_id: req.user.company_id });
+    const cleanLeadId = normalizeObjectId(id);
+    const cleanCompanyId = normalizeObjectId(req.user.company_id);
+
+    if (!cleanLeadId || !cleanCompanyId) {
+      return res.fail('Invalid ID format', 400);
+    }
+
+    // Use findOne with includeDeleted to see if it was recently moved to trash
+    const lead = await Lead.findOne({
+      $or: [
+        { _id: cleanLeadId },
+        { leadId: id }
+      ],
+      company_id: cleanCompanyId
+    }).setOptions({ includeDeleted: true });
+
     if (!lead) {
-      return res.fail('Lead not found', 404);
+      console.log(`[DEBUG] Lead not found. ID: ${id}, CleanID: ${cleanLeadId}, Company: ${cleanCompanyId}`);
+      return res.fail('Lead not found. Please refresh the page.', 404);
+    }
+
+    if (lead.isDeleted) {
+      return res.fail('This lead has been moved to the Recycle Bin.', 404);
     }
 
     // Idempotency Check
@@ -1104,9 +1267,9 @@ exports.updateFollowup = asyncHandler(async (req, res, next) => {
     // This matches the expected flow: follow-up -> outcome -> lead status changes.
     if (resolvedStatusAfterCall === 'Converted' && lead.status !== 'Converted') {
       const { performLeadConversion } = require('../utils/leadConversion');
-      await performLeadConversion(id, req.user.company_id, req.user.id, getAuthUserModelName(req));
+      await performLeadConversion(cleanLeadId, cleanCompanyId, req.user.id, getAuthUserModelName(req));
 
-      const updatedLead = await Lead.findOne({ _id: id, company_id: req.user.company_id })
+      const updatedLead = await Lead.findOne({ _id: cleanLeadId, company_id: cleanCompanyId })
         .populate('assignedTo', 'name email')
         .populate('convertedCustomerId', 'customer_id name phone status created_at total_purchase_amount');
 
@@ -1124,5 +1287,25 @@ exports.updateFollowup = asyncHandler(async (req, res, next) => {
   } catch (error) {
     console.error('Follow-up Update Error:', error);
     res.fail(error.message || 'Error processing follow-up update', 500);
+  }
+});
+
+exports.convertToDeal = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { deal_name, deal_value } = req.body;
+  
+  const { performLeadToDealConversion } = require('../utils/leadConversion');
+  
+  try {
+    const result = await performLeadToDealConversion(
+      id,
+      req.user.company_id,
+      req.user.id,
+      { name: deal_name, value: deal_value }
+    );
+    
+    res.created(result.deal);
+  } catch (err) {
+    res.fail(err.message, 400);
   }
 });

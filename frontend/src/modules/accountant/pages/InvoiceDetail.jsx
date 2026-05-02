@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { invoicesApi } from '../../../services/invoices'
 import { paymentsApi } from '../../../services/payments'
-import { formatCurrency } from '../../../utils/formatters'
+import { formatCurrency, numberToWords } from '../../../utils/formatters'
 import { Icon } from '../../../layouts/icons'
 import PageHeader from '../../../components/PageHeader.jsx'
 import { toast } from 'react-toastify'
+import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js'
 
 import { useAuth } from '../../../context/AuthContext'
 
@@ -54,11 +55,29 @@ export default function InvoiceDetail() {
   }
 
   const handlePrint = async () => {
-    window.print()
+    const element = document.getElementById('printable-invoice')
+    if (!element) {
+      window.print()
+      return
+    }
+
+    const opt = {
+      margin: 0,
+      filename: `Invoice_${invoice.invoice_number}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+
+    toast.info('Generating PDF...')
     try {
-      await invoicesApi.logAction(id, 'Printed / Saved as PDF')
+      await html2pdf().set(opt).from(element).save()
+      toast.success('PDF Downloaded!')
+      await invoicesApi.logAction(id, 'Downloaded as PDF')
     } catch (err) {
-      console.error('Failed to log print action', err)
+      console.error('Failed to generate PDF', err)
+      toast.error('PDF Generation failed, opening print dialog...')
+      window.print()
     }
   }
 
@@ -81,10 +100,6 @@ export default function InvoiceDetail() {
                <span>Add Payment</span>
              </button>
            )}
-           <button className="crm-btn-premium" onClick={handlePayOnline} style={{ background: '#7c3aed', color: '#ffffff', border: 'none', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
-             <Icon name="activity" />
-             <span>Pay Now</span>
-           </button>
            <button className="crm-btn-premium" onClick={handleShareWhatsApp} style={{ background: '#25d366', color: '#ffffff', border: 'none', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
              <Icon name="phone" />
              <span>WhatsApp</span>
@@ -227,121 +242,194 @@ export default function InvoiceDetail() {
       {/* Printable Invoice Wrapper */}
       <div className="crm-detail-grid">
         <div className="crm-detail-main">
-          <div className="invoice-container crm-detail-card no-padding overflow-hidden shadow-soft" id="printable-invoice" style={{ background: 'white', color: '#1a202c', border: 'none', borderRadius: '12px' }}>
-            {/* Rest of the invoice content (lines 162-277) */}
+          <div className="invoice-container crm-detail-card no-padding overflow-hidden shadow-soft" id="printable-invoice" style={{ background: 'white', color: '#1a202c', border: 'none', borderRadius: '4px', fontFamily: "'Inter', sans-serif" }}>
             <div style={{ padding: '40px' }}>
-              {/* Header Section */}
-              <div className="row justify-between align-start">
-                <div className="stack gap-12">
-                  <div className="text-3xl font-black italic tracking-tighter" style={{ color: '#2563eb' }}>
-                     {invoice.company_info?.name?.toUpperCase() || 'COMPANY NAME'}
+              {/* Company Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #1a202c', paddingBottom: '15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                  <div style={{ width: '180px', height: '60px', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
+                    <img 
+                      src={invoice.company_info?.logo || '/CRM_Logo.png'} 
+                      alt="Logo" 
+                      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                      onError={(e) => { e.target.style.display = 'none' }}
+                    />
                   </div>
-                  <div className="text-sm muted stack gap-2 max-w-200">
-                    <div>{invoice.company_info?.address}</div>
-                    <div>Ph: {invoice.company_info?.phone}</div>
-                    {invoice.gst_number && <div className="font-bold">GST: {invoice.gst_number}</div>}
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                      {invoice.company_info?.name || 'DIVINE TECHNOLOGIES'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#4a5568', marginTop: '2px' }}>
+                      {invoice.company_info?.address || 'Office No. 101, Pune, India - 411001'}
+                    </div>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#2d3748', marginTop: '2px' }}>
+                      GST: {invoice.gst_number || '27AAAAA1234A1Z'} &nbsp;|&nbsp; Tel: {invoice.company_info?.phone || '020-1234567'}
+                    </div>
                   </div>
                 </div>
-                <div className="text-right stack gap-4">
-                  <div className="text-2xl font-bold uppercase tracking-widest text-muted">Bill / Invoice</div>
-                  <div className="font-numeric font-bold text-lg">#{invoice.invoice_number}</div>
-                  <div className="mt-8 stack gap-2 text-sm">
-                    <div className="font-bold">Date: {new Date(invoice.invoice_date).toLocaleDateString()}</div>
-                    <div className="text-danger font-bold">Due Date: {new Date(invoice.due_date).toLocaleDateString()}</div>
+                <div style={{ textAlign: 'right' }}>
+                   <div style={{ fontSize: '18px', fontWeight: 900, textDecoration: 'underline', letterSpacing: '2px' }}>TAX INVOICE</div>
+                   <div style={{ fontSize: '12px', color: '#718096', marginTop: '4px' }}>Original Copy</div>
+                </div>
+              </div>
+
+              {/* Meta Data */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div><strong>Invoice No:</strong> {invoice.invoice_number}</div>
+                  <div><strong>Order No:</strong> {invoice.order_number || invoice.deal_id?.name || 'ORD-2025-001'}</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'right' }}>
+                  <div><strong>Date:</strong> {new Date(invoice.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                  <div><strong>Due Date:</strong> {new Date(invoice.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '40px', marginBottom: '32px' }}>
+                {/* Billed To */}
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', marginBottom: '8px' }}>Billed To:</div>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: '#1a202c' }}>{invoice.customer_info?.name || invoice.customer_id?.name}</div>
+                  <div style={{ fontSize: '13px', color: '#4a5568', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{invoice.customer_info?.address || invoice.customer_id?.address || 'N/A'}</div>
+                  {invoice.customer_info?.phone && <div style={{ fontSize: '13px', color: '#4a5568', marginTop: '2px' }}>Ph: {invoice.customer_info.phone}</div>}
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#2d3748', marginTop: '8px' }}>GST: {invoice.customer_info?.gst_number || invoice.customer_id?.gst_number || 'URP (Unregistered)'}</div>
+                </div>
+                
+                {/* Supply Details */}
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', marginBottom: '8px' }}>Place of Supply:</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600 }}>{invoice.customer_info?.state || invoice.customer_id?.state || 'Maharashtra'} (State Code: 27)</div>
+                  <div style={{ marginTop: '12px' }}>
+                     <div style={{ fontSize: '11px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', marginBottom: '4px' }}>Payment Status:</div>
+                     <span style={{ 
+                        background: invoice.status === 'Paid' ? '#f0fff4' : '#fff5f5', 
+                        color: invoice.status === 'Paid' ? '#22543d' : '#822727', 
+                        padding: '4px 12px', 
+                        borderRadius: '4px', 
+                        fontSize: '12px', 
+                        fontWeight: 800,
+                        border: `1px solid ${invoice.status === 'Paid' ? '#c6f6d5' : '#fed7d7'}`
+                     }}>
+                        {invoice.status?.toUpperCase()}
+                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="divider" style={{ height: '2px', background: '#edf2f7', margin: '32px 0' }} />
-
-              {/* Customer Section */}
-              <div className="grid2 gap-40 py-8">
-                <div className="stack gap-12">
-                  <div className="muted text-xs uppercase font-black tracking-widest">Bill To:</div>
-                  <div className="stack gap-2">
-                    <div className="text-xl font-bold">{invoice.customer_info?.name || invoice.customer_id?.name}</div>
-                    <div className="text-sm">{invoice.customer_info?.phone || invoice.customer_id?.phone}</div>
-                    <div className="text-sm">{invoice.customer_info?.email || invoice.customer_id?.email}</div>
-                    <div className="text-sm max-w-300 mt-4 italic">{invoice.customer_info?.address || invoice.customer_id?.address}</div>
-                  </div>
-                </div>
-                <div className="stack gap-12 text-right">
-                  <div className="muted text-xs uppercase font-black tracking-widest">Payment Status:</div>
-                  <div className={`text-2xl font-black ${invoice.status === 'Paid' ? 'text-success' : 'text-danger'}`}>
-                    {invoice.status?.toUpperCase()}
-                  </div>
-                  {invoice.paid_date && (
-                    <div className="text-sm muted">Settled on: {new Date(invoice.paid_date).toLocaleDateString()}</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Table Section */}
-              <table className="invoice-table" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '32px' }}>
+              {/* Items Table */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #1a202c' }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                    <th className="py-16 px-12 uppercase text-xs font-black">Description</th>
-                    <th className="py-16 px-12 text-center uppercase text-xs font-black">Qty</th>
-                    <th className="py-16 px-12 text-right uppercase text-xs font-black">Unit Price</th>
-                    <th className="py-16 px-12 text-right uppercase text-xs font-black">Total</th>
+                  <tr style={{ background: '#f7fafc', borderBottom: '2px solid #1a202c' }}>
+                    <th style={{ padding: '10px', fontSize: '11px', border: '1px solid #1a202c', textAlign: 'center' }}>Sl. No.</th>
+                    <th style={{ padding: '10px', fontSize: '11px', border: '1px solid #1a202c', textAlign: 'left' }}>Product / Description</th>
+                    <th style={{ padding: '10px', fontSize: '11px', border: '1px solid #1a202c', textAlign: 'center' }}>HSN</th>
+                    <th style={{ padding: '10px', fontSize: '11px', border: '1px solid #1a202c', textAlign: 'center' }}>Qty</th>
+                    <th style={{ padding: '10px', fontSize: '11px', border: '1px solid #1a202c', textAlign: 'right' }}>Unit Price (₹)</th>
+                    <th style={{ padding: '10px', fontSize: '11px', border: '1px solid #1a202c', textAlign: 'center' }}>Disc (%)</th>
+                    <th style={{ padding: '10px', fontSize: '11px', border: '1px solid #1a202c', textAlign: 'right' }}>Taxable Value</th>
                   </tr>
                 </thead>
                 <tbody>
                   {invoice.items.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #edf2f7' }}>
-                      <td className="py-16 px-12 font-medium">{item.description}</td>
-                      <td className="py-16 px-12 text-center font-numeric">{item.quantity}</td>
-                      <td className="py-16 px-12 text-right font-numeric">{formatCurrency(item.price)}</td>
-                      <td className="py-16 px-12 text-right font-bold font-numeric">{formatCurrency(item.amount)}</td>
+                    <tr key={idx}>
+                      <td style={{ padding: '10px', fontSize: '12px', border: '1px solid #1a202c', textAlign: 'center' }}>{idx + 1}</td>
+                      <td style={{ padding: '10px', fontSize: '12px', border: '1px solid #1a202c' }}>
+                        <div style={{ fontWeight: 600 }}>{item.description}</div>
+                      </td>
+                      <td style={{ padding: '10px', fontSize: '12px', border: '1px solid #1a202c', textAlign: 'center' }}>{item.hsn || '9983'}</td>
+                      <td style={{ padding: '10px', fontSize: '12px', border: '1px solid #1a202c', textAlign: 'center' }}>{item.quantity}</td>
+                      <td style={{ padding: '10px', fontSize: '12px', border: '1px solid #1a202c', textAlign: 'right' }}>{formatCurrency(item.price).replace('₹', '')}</td>
+                      <td style={{ padding: '10px', fontSize: '12px', border: '1px solid #1a202c', textAlign: 'center' }}>{item.discount || 0}%</td>
+                      <td style={{ padding: '10px', fontSize: '12px', border: '1px solid #1a202c', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(item.amount).replace('₹', '')}</td>
+                    </tr>
+                  ))}
+                  {/* Fill empty rows for height if needed */}
+                  {invoice.items.length < 5 && Array.from({ length: 5 - invoice.items.length }).map((_, i) => (
+                    <tr key={`empty-${i}`}>
+                      <td style={{ padding: '15px', border: '1px solid #1a202c' }}></td>
+                      <td style={{ border: '1px solid #1a202c' }}></td>
+                      <td style={{ border: '1px solid #1a202c' }}></td>
+                      <td style={{ border: '1px solid #1a202c' }}></td>
+                      <td style={{ border: '1px solid #1a202c' }}></td>
+                      <td style={{ border: '1px solid #1a202c' }}></td>
+                      <td style={{ border: '1px solid #1a202c' }}></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              {/* Footer Calculation */}
-              <div className="row justify-between align-end mt-16 pt-24 border-top">
-                <div className="stack gap-12 max-w-400">
-                  <div className="stack gap-4">
-                    <div className="muted text-xs uppercase font-black tracking-widest">Notes & Terms:</div>
-                    <div className="text-sm italic" style={{ whiteSpace: 'pre-wrap' }}>
-                      {invoice.terms_and_conditions || invoice.notes || 'Payment is due within the stipulated time. Thank you for your business!'}
-                    </div>
-                  </div>
+              {/* Calculations */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', marginTop: '1px' }}>
+                <div style={{ border: '1px solid #1a202c', padding: '15px' }}>
+                   <div style={{ fontSize: '11px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', marginBottom: '8px' }}>Total in Words:</div>
+                   <div style={{ fontSize: '13px', fontWeight: 700, fontStyle: 'italic' }}>
+                      {numberToWords(invoice.total_amount)}
+                   </div>
+                   
+                   <div style={{ marginTop: '24px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', marginBottom: '8px' }}>Bank Details:</div>
+                      {invoice.company_info?.bank_name ? (
+                        <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div><strong>Bank:</strong> {invoice.company_info.bank_name}</div>
+                          <div><strong>A/c No:</strong> {invoice.company_info.account_number}</div>
+                          <div><strong>IFSC:</strong> {invoice.company_info.ifsc_code}</div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '12px', fontStyle: 'italic', color: '#718096' }}>
+                          Please contact accounts for banking details.
+                        </div>
+                      )}
+                   </div>
+
+                   {invoice.company_info?.upi_id && (
+                     <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div>
+                          <div style={{ fontSize: '11px', fontWeight: 800, color: '#718096', textTransform: 'uppercase' }}>UPI ID:</div>
+                          <div style={{ fontSize: '12px', fontWeight: 700 }}>{invoice.company_info.upi_id}</div>
+                        </div>
+                     </div>
+                   )}
                 </div>
 
-                <div className="stack gap-12" style={{ width: '320px' }}>
-                  <div className="row justify-between text-sm">
-                    <span className="muted font-bold">Subtotal:</span>
-                    <span className="font-numeric font-bold">{formatCurrency(invoice.subtotal)}</span>
+                <div style={{ border: '1px solid #1a202c', borderLeft: 'none' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderBottom: '1px solid #edf2f7' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600 }}>Subtotal:</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700 }}>{formatCurrency(invoice.subtotal).replace('₹', '')}</span>
                   </div>
-                  {invoice.discount > 0 && (
-                    <div className="row justify-between text-sm text-danger">
-                      <span className="font-bold">Discount:</span>
-                      <span className="font-numeric font-bold">- {formatCurrency(invoice.discount)}</span>
-                    </div>
-                  )}
-                  <div className="row justify-between text-sm">
-                    <span className="muted font-bold">Tax / GST (0%):</span>
-                    <span className="font-numeric font-bold">{formatCurrency(invoice.tax_amount || 0)}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderBottom: '1px solid #edf2f7', color: '#e53e3e' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600 }}>Discount:</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700 }}>- {formatCurrency(invoice.discount).replace('₹', '')}</span>
                   </div>
-                  <div className="row justify-between border-top pt-12 mt-4">
-                    <span className="font-black text-xl uppercase">Total Amount:</span>
-                    <span className="font-black text-xl text-primary font-numeric" style={{ color: '#2563eb' }}>{formatCurrency(invoice.total_amount)}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderBottom: '2px solid #1a202c', background: '#f7fafc' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 800 }}>Taxable Value:</span>
+                    <span style={{ fontSize: '12px', fontWeight: 800 }}>{formatCurrency(invoice.subtotal - invoice.discount).replace('₹', '')}</span>
                   </div>
-                  <div className="row justify-between mt-8 p-12 rounded-12" style={{ background: remaining > 0 ? '#fff5f5' : '#f0fff4' }}>
-                    <span className={`font-bold ${remaining > 0 ? 'text-danger' : 'text-success'}`}>
-                      {remaining > 0 ? 'Balance Remaining:' : 'Payment Received:'}
-                    </span>
-                    <span className={`font-black font-numeric ${remaining > 0 ? 'text-danger' : 'text-success'}`}>
-                      {formatCurrency(remaining > 0 ? remaining : invoice.paid_amount)}
-                    </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderBottom: '1px solid #edf2f7' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600 }}>CGST ({Math.min(invoice.tax_rate, 18) / 2 || 9}%):</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700 }}>{formatCurrency((invoice.tax_amount || 0) / 2).replace('₹', '')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderBottom: '1px solid #edf2f7' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600 }}>SGST ({Math.min(invoice.tax_rate, 18) / 2 || 9}%):</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700 }}>{formatCurrency((invoice.tax_amount || 0) / 2).replace('₹', '')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#1a202c', color: 'white' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 900, textTransform: 'uppercase' }}>Grand Total:</span>
+                    <span style={{ fontSize: '16px', fontWeight: 900 }}>{formatCurrency(invoice.total_amount)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="divider mt-24" style={{ height: '4px', background: '#2563eb', opacity: 0.1, borderRadius: '99px' }} />
-              <div className="text-center text-xs muted font-bold uppercase tracking-tighter">
-                This is a computer generated document. No signature required.
+              {/* Footer */}
+              <div style={{ marginTop: '32px', fontSize: '11px', color: '#4a5568' }}>
+                <div style={{ fontWeight: 800, color: '#1a202c', textTransform: 'uppercase', marginBottom: '4px' }}>Terms & Conditions:</div>
+                <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
+                  {invoice.terms_and_conditions || invoice.notes || '1. Payment due within credit period. \n2. Late fee may be applicable after due date. \n3. Goods once sold will not be taken back.'}
+                </div>
+              </div>
+
+              <div style={{ marginTop: '40px', borderTop: '1px dashed #cbd5e1', paddingTop: '15px', textAlign: 'center' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#2d3748' }}>Thank you for your business!</div>
+                <div style={{ fontSize: '10px', color: '#a0aec0', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>This is a computer generated invoice. No signature required.</div>
               </div>
             </div>
           </div>

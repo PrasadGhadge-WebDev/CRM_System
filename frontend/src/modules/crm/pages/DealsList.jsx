@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { Icon } from '../../../layouts/icons.jsx'
 import { useAuth } from '../../../context/AuthContext'
+import SearchableSelect from '../components/SearchableSelect.jsx'
+import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
 import Pagination from '../../../components/Pagination.jsx'
 import LottieLoader from '../../../components/LottieLoader.jsx'
 import LottieEmpty from '../../../components/LottieEmpty.jsx'
@@ -12,11 +14,14 @@ import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
 import { useToastFeedback } from '../../../utils/useToastFeedback.js'
 import DealsKanban from './DealsKanban.jsx'
 import DealModal from '../components/DealModal.jsx'
+import StatusDropdown from '../components/StatusDropdown.jsx'
 
 const STAGE_OPTIONS = [
-  { name: 'New', color: '#3b82f6' },
-  { name: 'Qualified', color: '#f59e0b' },
-  { name: 'Proposal', color: '#8b5cf6' },
+  { name: 'Prospecting', color: '#6366f1' },
+  { name: 'Qualification', color: '#3b82f6' },
+  { name: 'Needs Analysis', color: '#8b5cf6' },
+  { name: 'Proposal', color: '#f59e0b' },
+  { name: 'Negotiation', color: '#f97316' },
   { name: 'Won', color: '#10b981' },
   { name: 'Lost', color: '#ef4444' }
 ]
@@ -54,6 +59,7 @@ export default function DealsList() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [summary, setSummary] = useState({ total: 0, byStage: {}, totalValue: 0 })
   const [employees, setEmployees] = useState([])
   const [viewMode, setViewMode] = useState(viewParam)
   
@@ -120,6 +126,7 @@ export default function DealsList() {
       })
       setItems(res.items || res || [])
       setTotal(res.total || (Array.isArray(res) ? res.length : 0))
+      setSummary(res.summary || { total: 0, byStage: {}, totalValue: 0 })
     } catch (e) {
       setError(e.message || 'Failed to load deals')
     } finally {
@@ -213,70 +220,56 @@ export default function DealsList() {
           <p className="users-subtitle">Monitor your sales opportunities and team performance</p>
         </div>
 
-        <div className="crm-stats-bar-compact">
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">Total Deals</span>
-            <span className="stat-pill-value total">{total}</span>
+        <div className="crm-stats-bar-compact overflow-x-auto pb-8">
+          <div className="stat-pill-mini clickable" onClick={() => setStage('')} style={{ borderBottom: stage === '' ? '2px solid var(--primary)' : '' }}>
+            <span className="stat-pill-label">ALL DEALS</span>
+            <span className="stat-pill-value total">{summary.total}</span>
           </div>
           <div className="stat-pill-mini">
-            <span className="stat-pill-label">Won Deals</span>
-            <span className="stat-pill-value active">{items.filter(d => d.stage === 'Won').length}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">Sales Value</span>
+            <span className="stat-pill-label">PIPELINE VALUE</span>
             <span className="stat-pill-value" style={{ color: 'var(--primary)' }}>
-              {formatCurrency(items.reduce((sum, d) => sum + (Number(d.value) || 0), 0))}
+              {formatCurrency(summary.totalValue)}
             </span>
           </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">In Progress</span>
-            <span className="stat-pill-value pending">{items.filter(d => d.stage !== 'Won' && d.stage !== 'Lost').length}</span>
-          </div>
+          {Object.entries(summary.byStage).map(([name, count]) => (
+            <div 
+              key={name} 
+              className="stat-pill-mini clickable" 
+              onClick={() => { setStage(name); setPage(1); }}
+              style={{ borderBottom: stage === name ? '2px solid var(--primary)' : '' }}
+            >
+              <span className="stat-pill-label">{name.toUpperCase()}</span>
+              <span className="stat-pill-value">{count}</span>
+            </div>
+          ))}
         </div>
 
         <div className="unified-action-bar">
           <div className="search-filter-group">
-            <div className="crm-search-input-wrap">
-              <Icon name="search" className="search-icon" />
-              <input
-                type="text"
-                placeholder="Search deals..."
-                className="crm-input"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value)
-                  setPage(1)
-                }}
-              />
-            </div>
+            <ModernSearchBar
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value)
+                setPage(1)
+              }}
+              placeholder="Search by name, ID, description, stage, priority, lifecycle, payment status..."
+            />
 
-            <select
-              className="crm-input filter-select"
+            <SearchableSelect
               value={stage}
-              onChange={(e) => {
-                setStage(e.target.value)
-                setPage(1)
-              }}
-            >
-              <option value="">All Stages</option>
-              {STAGE_OPTIONS.map((s) => (
-                <option key={s.name} value={s.name}>{s.name}</option>
-              ))}
-            </select>
+              onChange={(val) => { setStage(val); setPage(1); }}
+              options={[{ value: '', label: 'All Stages' }, ...STAGE_OPTIONS.map(s => ({ value: s.name, label: s.name }))]}
+              placeholder="All Stages"
+              icon="activity"
+            />
 
-            <select
-              className="crm-input filter-select"
+            <SearchableSelect
               value={assignedTo}
-              onChange={(e) => {
-                setAssignedTo(e.target.value)
-                setPage(1)
-              }}
-            >
-              <option value="">All Owners</option>
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>{emp.name}</option>
-              ))}
-            </select>
+              onChange={(val) => { setAssignedTo(val); setPage(1); }}
+              options={[{ value: '', label: 'All Owners' }, ...employees.map(emp => ({ value: emp.id, label: emp.name }))]}
+              placeholder="All Owners"
+              icon="user"
+            />
 
             <div className="crm-toggle-group">
               <button 
@@ -340,12 +333,13 @@ export default function DealsList() {
                         <table className="crm-table">
                           <thead>
                             <tr>
-                              <th style={{ minWidth: '280px' }}>Deal & Customer</th>
-                              <th style={{ minWidth: '150px' }} className="text-right">Value</th>
-                              <th style={{ minWidth: '160px' }} className="text-center">Current Stage</th>
-                              <th style={{ minWidth: '180px' }}>Owner</th>
-                              <th style={{ minWidth: '160px' }}>Last Updated</th>
-                              <th className="text-right" style={{ width: '130px' }}>Actions</th>
+                              <th style={{ minWidth: '180px' }}>Deal Name</th>
+                              <th style={{ minWidth: '160px' }}>Customer</th>
+                              <th style={{ minWidth: '120px' }} className="text-right">Value</th>
+                              <th style={{ minWidth: '130px' }} className="text-center">Stage</th>
+                              <th style={{ minWidth: '120px' }}>Owner</th>
+                              <th style={{ minWidth: '130px' }}>Last Updated</th>
+                              <th style={{ minWidth: '80px' }} className="text-right">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -354,38 +348,46 @@ export default function DealsList() {
                                 key={item.id}
                                 className="crm-table-row"
                                 onClick={() => navigate(`/deals/${item.id}`)}
+                                style={{ cursor: 'pointer' }}
                               >
-                                <td>
-                                  <div className="deal-identity-cell">
-                                    <div className="usersPrimaryText">{item.name}</div>
-                                    <div className="usersEmailText" style={{ color: 'var(--primary)', fontWeight: 600 }}>
-                                      {item.customer_id?.name || '—'}
+                                <td style={{ padding: '12px 16px' }}>
+                                  <div className="usersPrimaryText" style={{ fontWeight: 700 }}>{item.name}</div>
+                                </td>
+                                <td style={{ padding: '12px 16px' }}>
+                                  <div className="usersPrimaryText" style={{ fontWeight: 700, color: 'var(--text)' }}>
+                                    {item.customer_id?.name || '—'}
+                                  </div>
+                                  {item.customer_id?.phone && (
+                                    <div className="usersEmailText" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
+                                      {item.customer_id.phone}
                                     </div>
+                                  )}
+                                </td>
+                                <td className="text-right" style={{ padding: '12px 16px' }}>
+                                  <div className="usersPrimaryText" style={{ fontWeight: 800, color: 'var(--text-dark)' }}>
+                                    ₹{item.value?.toLocaleString('en-IN') || '0'}
                                   </div>
                                 </td>
-                                <td className="text-right">
-                                  <div className="usersPrimaryText" style={{ fontWeight: 800 }}>
-                                    {formatCurrency(item.value)}
+                                <td className="text-center" style={{ padding: '12px 16px' }} onClick={stopRowNavigation}>
+                                  <StatusDropdown 
+                                    status={item.stage} 
+                                    options={STAGE_OPTIONS} 
+                                    onChange={(newStage) => onUpdateStage(item.id, newStage)}
+                                    disabled={!isManagement}
+                                  />
+                                </td>
+                                <td style={{ padding: '12px 16px' }}>
+                                  <div className="usersPrimaryText" style={{ fontWeight: 700, color: 'var(--text)' }}>
+                                    {item.assigned_to?.name || 'Unassigned'}
                                   </div>
-                                </td>
-                                <td className="text-center" onClick={stopRowNavigation}>
-                                  <span className={`crm-status-pill-modern status-${(item.stage || 'new').toLowerCase().replace(' ', '')}`}>
-                                    <div className="status-dot" />
-                                    {item.stage || 'NEW'}
-                                  </span>
-                                </td>
-                                <td>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div className="tableAvatarFallback" style={{ width: '30px', height: '30px', fontSize: '0.75rem' }}>
-                                      {(item.assigned_to?.name || 'U').charAt(0).toUpperCase()}
+                                  {item.assigned_to?.phone && (
+                                    <div className="usersEmailText" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
+                                      {item.assigned_to.phone}
                                     </div>
-                                    <span style={{ fontSize: '0.85rem', color: 'var(--text)', fontWeight: 600 }}>
-                                      {item.assigned_to?.name || 'Unassigned'}
-                                    </span>
-                                  </div>
+                                  )}
                                 </td>
-                                <td>
-                                  <div className="usersEmailText">
+                                <td style={{ padding: '12px 16px' }}>
+                                  <div className="usersEmailText" style={{ fontSize: '0.85rem' }}>
                                     {new Date(item.updated_at || item.created_at).toLocaleDateString('en-GB', {
                                       day: '2-digit',
                                       month: 'short',
@@ -393,28 +395,21 @@ export default function DealsList() {
                                     })}
                                   </div>
                                 </td>
-                                <td className="text-right" onClick={stopRowNavigation}>
-                                  <div className="crm-action-group">
-                                    <button
-                                      className="modern-action-btn"
-                                      onClick={() => navigate(`/deals/${item.id}`)}
-                                      title="View"
-                                    >
-                                      <Icon name="reports" size={14} />
-                                    </button>
+                                <td className="text-right" style={{ padding: '12px 16px' }} onClick={stopRowNavigation}>
+                                  <div className="crm-action-group" style={{ justifyContent: 'flex-end' }}>
                                     <button
                                       className="modern-action-btn"
                                       onClick={() => handleOpenEditModal(item)}
                                       title="Edit"
                                     >
-                                      <Icon name="edit" size={14} />
+                                      <Icon name="edit" size={16} />
                                     </button>
                                     <button
                                       className="modern-action-btn danger"
                                       onClick={() => handleDeleteDeal(item)}
                                       title="Delete"
                                     >
-                                      <Icon name="trash" size={14} />
+                                      <Icon name="trash" size={16} />
                                     </button>
                                   </div>
                                 </td>
@@ -423,6 +418,48 @@ export default function DealsList() {
                           </tbody>
                         </table>
                       </div>
+                    </div>
+
+                    <div className="crm-mobile-cards">
+                      {items.map((item) => (
+                        <div key={item.id} className="crm-mobile-card shadow-soft" onClick={() => navigate(`/deals/${item.id}`)}>
+                          <div className="card-header">
+                            <div className="card-title-group">
+                              <div className="card-title">{item.name}</div>
+                              <div className="card-subtitle">
+                                {item.customer_id?.name || 'No Customer'}
+                                {item.customer_id?.phone && <span style={{ opacity: 0.8, fontSize: '0.75rem', marginLeft: '8px', fontWeight: 500 }}>• {item.customer_id.phone}</span>}
+                              </div>
+                            </div>
+                            <StatusDropdown 
+                              status={item.stage} 
+                              options={STAGE_OPTIONS} 
+                              onChange={(newStage) => onUpdateStage(item.id, newStage)}
+                              disabled={!isManagement}
+                            />
+                          </div>
+                          <div className="card-body">
+                            <div className="card-stat">
+                              <span className="stat-label">Value</span>
+                              <span className="stat-value">₹{item.value?.toLocaleString('en-IN') || '0'}</span>
+                            </div>
+                            <div className="card-stat">
+                              <span className="stat-label">Owner</span>
+                              <div className="stat-value" style={{ fontSize: '0.8rem', fontWeight: 700, textAlign: 'right' }}>
+                                {item.assigned_to?.name || 'Unassigned'}
+                                {item.assigned_to?.phone && <div style={{ fontSize: '0.7rem', opacity: 0.7, fontWeight: 500 }}>{item.assigned_to.phone}</div>}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="card-footer" onClick={stopRowNavigation}>
+                            <span className="update-date">Updated: {new Date(item.updated_at || item.created_at).toLocaleDateString('en-GB')}</span>
+                            <div className="card-actions">
+                              <button className="icon-btn" onClick={() => handleOpenEditModal(item)}><Icon name="edit" size={14} /></button>
+                              <button className="icon-btn danger" onClick={() => handleDeleteDeal(item)}><Icon name="trash" size={14} /></button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
                     <Pagination
@@ -450,29 +487,62 @@ export default function DealsList() {
       />
 
       <style>{`
-         .crm-table th {
-            padding: 12px 16px !important;
-            background: #f3f4f6 !important;
-            font-size: 0.75rem !important;
-            font-weight: 800 !important;
-            color: #4b5563 !important;
-            letter-spacing: 0.05em !important;
-            text-transform: uppercase !important;
-            border-bottom: 2px solid var(--border-strong) !important;
-         }
+          .crm-table th {
+             padding: 12px 16px !important;
+             background: #f3f4f6 !important;
+             font-size: 0.75rem !important;
+             font-weight: 800 !important;
+             color: #4b5563 !important;
+             letter-spacing: 0.05em !important;
+             text-transform: uppercase !important;
+             border-bottom: 2px solid var(--border-strong) !important;
+          }
 
-         .crm-table-row { transition: background 0.2s ease; cursor: pointer; border-bottom: 1px solid var(--border-subtle) !important; }
-         .crm-table-row:hover { background: #f9fafb !important; }
-         .crm-table-row td { padding: 14px 16px !important; vertical-align: middle; }
-         
-         .deal-identity-cell { display: flex; flex-direction: column; gap: 2px; }
-         .usersPrimaryText { color: var(--text); font-size: 0.95rem; font-weight: 700; }
-         .usersEmailText { font-size: 0.85rem; color: #64748b; }
-         
-         .crm-action-group { display: flex; gap: 8px; justify-content: flex-end; }
-         .modern-action-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-strong); background: white; color: #64748b; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; cursor: pointer; }
-         .modern-action-btn:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-         .modern-action-btn.danger:hover { color: #ef4444; border-color: #ef4444; background: #fee2e2; }
+          .crm-table-row { transition: background 0.2s ease; cursor: pointer; border-bottom: 1px solid var(--border-subtle) !important; }
+          .crm-table-row:hover { background: #f9fafb !important; }
+          .crm-table-row td { padding: 14px 16px !important; vertical-align: middle; }
+          
+          .usersPrimaryText { color: var(--text); font-size: 0.95rem; font-weight: 700; }
+          .usersEmailText { font-size: 0.85rem; color: #64748b; }
+          
+          .crm-action-group { display: flex; gap: 8px; justify-content: flex-end; }
+          .modern-action-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-strong); background: white; color: #64748b; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; cursor: pointer; }
+          .modern-action-btn:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+          .modern-action-btn.danger:hover { color: #ef4444; border-color: #ef4444; background: #fee2e2; }
+
+          /* Responsive Layout */
+          .crm-mobile-cards { display: none; }
+
+          @media (max-width: 768px) {
+            .crm-table-wrap { display: none; }
+            .crm-mobile-cards { display: grid; grid-template-columns: 1fr; gap: 16px; padding-bottom: 20px; }
+            
+            .crm-mobile-card {
+              background: var(--bg-card);
+              border: 1px solid var(--border);
+              border-radius: 16px;
+              padding: 16px;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+              cursor: pointer;
+            }
+
+            .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+            .card-title { font-weight: 800; font-size: 1.05rem; color: var(--text); }
+            .card-subtitle { font-size: 0.85rem; color: var(--primary); font-weight: 600; }
+            
+            .card-body { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); }
+            .card-stat { display: flex; justify-content: space-between; align-items: center; }
+            .stat-label { font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase; }
+            .stat-value { font-weight: 800; color: var(--text); }
+
+            .card-footer { display: flex; justify-content: space-between; align-items: center; }
+            .update-date { font-size: 0.75rem; color: #64748b; }
+            .card-actions { display: flex; gap: 8px; }
+            .icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: white; display: flex; align-items: center; justify-content: center; }
+            .icon-btn.danger { color: #ef4444; }
+          }
 
          .users-page-header { margin-bottom: 12px; }
          .users-title { font-size: 1.5rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }

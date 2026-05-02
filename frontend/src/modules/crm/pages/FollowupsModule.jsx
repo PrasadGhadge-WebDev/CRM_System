@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { activitiesApi } from '../../../services/activities'
 import { Icon } from '../../../layouts/icons'
 import PageHeader from '../../../components/PageHeader'
+import ModernSearchBar from '../../../components/ModernSearchBar'
 
 export default function FollowupsModule() {
   // Pagination & Filter State: Activity History
@@ -10,6 +11,7 @@ export default function FollowupsModule() {
   const [actTotal, setActTotal] = useState(0)
   const [actStatus, setActStatus] = useState('')
   const [actType, setActType] = useState('')
+  const [q, setQ] = useState('')
 
   // Pagination & Filter State: Follow-up History
   const [fuPage, setFuPage] = useState(1)
@@ -28,13 +30,14 @@ export default function FollowupsModule() {
         page: actPage,
         limit: 5,
         status: actStatus,
-        activity_type: actType
+        activity_type: actType,
+        q
       }
       const res = await activitiesApi.list(params)
       setGeneralActivities(res.data?.items || res.items || [])
       setActTotal(res.data?.total || res.total || 0)
     } catch (error) {
-      console.error('Error loading general activities:', error)
+      // Silenced error log
     }
   }
 
@@ -47,23 +50,24 @@ export default function FollowupsModule() {
         limit: 5,
         status: fuStatus,
         activity_type: 'follow-up',
-        follow_up_mode: fuMode
+        follow_up_mode: fuMode,
+        q
       }
       const res = await activitiesApi.list(params)
       setFollowUps(res.data?.items || res.items || [])
       setFuTotal(res.data?.total || res.total || 0)
     } catch (error) {
-      console.error('Error loading follow-ups:', error)
+      // Silenced error log
     }
   }
 
   useEffect(() => {
     loadGeneralActivities()
-  }, [actPage, actStatus, actType])
+  }, [actPage, actStatus, actType, q])
 
   useEffect(() => {
     loadFollowUps()
-  }, [fuPage, fuStatus, fuMode])
+  }, [fuPage, fuStatus, fuMode, q])
 
   return (
     <div className="followups-module-container stack">
@@ -71,6 +75,14 @@ export default function FollowupsModule() {
         title="Follow-ups & Activities"
         backTo="/dashboard"
       />
+
+      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}>
+        <ModernSearchBar 
+          value={q} 
+          onChange={e => { setQ(e.target.value); setActPage(1); setFuPage(1); }} 
+          placeholder="Search activities and follow-ups..." 
+        />
+      </div>
 
       <div className="lead-v2-card full-width history-v2 premium-glass-panel mb-24">
         <div className="card-v2-header flex-between flex-wrap gap-12">

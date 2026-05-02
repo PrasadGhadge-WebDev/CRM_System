@@ -4,9 +4,17 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { moveDocumentToTrash } = require('../utils/trash');
 
 exports.listExpenses = asyncHandler(async (req, res) => {
-  const { category, startDate, endDate, page = 1, limit = 20 } = req.query;
-
+  const { category, startDate, endDate, q, page = 1, limit = 20 } = req.query;
   const filter = { company_id: req.user.company_id };
+
+  if (q && q.trim()) {
+    const search = { $regex: q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+    filter.$or = [
+      { category: search },
+      { note: search }
+    ];
+  }
+
   if (category) filter.category = category;
 
   if (startDate || endDate) {

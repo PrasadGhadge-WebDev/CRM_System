@@ -95,6 +95,28 @@ const setupReminders = () => {
   cron.schedule('0 8 * * *', () => {
     sendDailySummary();
   });
+
+  // 3. Auto-Inactivation for Customers (No activity for 12 months)
+  cron.schedule('0 2 * * *', async () => {
+    console.log('Running Auto-Inactivation check...');
+    try {
+      const Customer = require('../models/Customer');
+      const twelveMonthsAgo = new Date();
+      twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
+      
+      const result = await Customer.updateMany(
+        { 
+          status: 'Active', 
+          last_interaction_date: { $lt: twelveMonthsAgo },
+          isDeleted: { $ne: true }
+        },
+        { status: 'Inactive' }
+      );
+      console.log(`Auto-Inactivated ${result.modifiedCount} customers.`);
+    } catch (err) {
+      console.error('Auto-Inactivation check failed:', err);
+    }
+  });
 };
 
 module.exports = setupReminders;

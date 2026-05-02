@@ -68,8 +68,8 @@
 
 /* Table Refinement */
 .crmContent .table-premium th {
-  background: var(--bg-surface) !important;
-  color: var(--text-dimmed) !important;
+  background: color-mix(in srgb, var(--bg-surface) 90%, black 10%) !important;
+  color: var(--text) !important;
   border-bottom: 2px solid var(--border) !important;
   font-weight: 800 !important;
 }
@@ -77,6 +77,11 @@
 .crmContent .table-premium td {
   color: var(--text-muted) !important;
   border-bottom: 1px solid var(--border) !important;
+  border-right: 1px solid color-mix(in srgb, var(--border) 50%, transparent) !important;
+}
+
+.crmContent .table-premium td:last-child {
+  border-right: none !important;
 }
 
 .crmContent .tableRowInteractive:hover td {

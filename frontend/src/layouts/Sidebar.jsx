@@ -8,7 +8,7 @@ import { rolesApi } from '../services/roles'
 
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const location = useLocation()
   const [openSubmenus, setOpenSubmenus] = useState({})
   const [dynamicMenu, setDynamicMenu] = useState({
@@ -16,6 +16,8 @@ export default function Sidebar({ isOpen, onClose }) {
     deals: [],
     invoices: [],
     payments: [],
+    customers: [],
+    support: [],
     users: []
   })
 
@@ -40,11 +42,20 @@ export default function Sidebar({ isOpen, onClose }) {
   useEffect(() => {
     const fetchDynamics = async () => {
       try {
-        const [leads, deals, invoices, payments, roles] = await Promise.all([
-          statusesApi.list('lead').catch(() => []),
-          statusesApi.list('deal').catch(() => []),
-          statusesApi.list('invoice').catch(() => []),
-          statusesApi.list('payment').catch(() => []),
+        const { leadsApi } = await import('../services/leads.js')
+        const { dealsApi } = await import('../services/deals.js')
+        const { customersApi } = await import('../services/customers.js')
+        const { supportApi } = await import('../services/workflow.js')
+        const { invoicesApi } = await import('../services/invoices.js')
+        const { paymentsApi } = await import('../services/payments.js')
+
+        const [leadsRes, dealsRes, customersRes, supportRes, invoicesRes, paymentsRes, rolesRes] = await Promise.all([
+          leadsApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })),
+          dealsApi.list({ limit: 1 }).catch(() => ({ summary: { byStage: {} } })),
+          customersApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })),
+          supportApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })),
+          invoicesApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })),
+          paymentsApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })),
           rolesApi.list().catch(() => [])
         ])
 
@@ -57,49 +68,69 @@ export default function Sidebar({ isOpen, onClose }) {
           'Sales': 'shoppingCart'
         }
 
+        const formatStatus = (s) => s.charAt(0).toUpperCase() + s.slice(1)
+
         setDynamicMenu({
           leads: [
             { type: 'header', title: 'PIPELINE STAGES' },
-            ...leads.map(s => ({ title: s.name, path: `/leads?status=${encodeURIComponent(s.name)}`, icon: 'filter' }))
+            ...Object.entries(leadsRes.summary?.byStatus || {}).map(([name, count]) => ({
+              title: formatStatus(name),
+              path: `/leads?status=${encodeURIComponent(name)}`,
+              icon: 'filter',
+              count
+            }))
           ],
           deals: [
             { type: 'header', title: 'DEAL STAGES' },
-            { title: 'New', path: '/deals?stage=New', icon: 'plus' },
-            { title: 'Qualified', path: '/deals?stage=Qualified', icon: 'check' },
-            { title: 'Proposal', path: '/deals?stage=Proposal', icon: 'edit' },
-            ...deals
-              .filter(s => s.name.toLowerCase() !== 'qecq')
-              .map(s => ({ title: s.name, path: `/deals?stage=${encodeURIComponent(s.name)}`, icon: 'activity' })),
-            { title: 'Won', path: '/deals?stage=Won', icon: 'check' },
-            { title: 'Lost', path: '/deals?stage=Lost', icon: 'close' }
-          ].filter((v, i, a) => a.findIndex(t => t.title === v.title) === i),
+            ...Object.entries(dealsRes.summary?.byStage || {}).map(([name, count]) => ({
+              title: formatStatus(name),
+              path: `/deals?stage=${encodeURIComponent(name)}`,
+              icon: 'activity',
+              count
+            }))
+          ],
+          customers: [
+            { type: 'header', title: 'CUSTOMER SEGMENTS' },
+            ...Object.entries(customersRes.summary?.byStatus || {}).map(([name, count]) => ({
+              title: formatStatus(name),
+              path: `/customers?status=${encodeURIComponent(name)}`,
+              icon: 'filter',
+              count
+            }))
+          ],
+          support: [
+            { type: 'header', title: 'TICKET STATUS' },
+            ...Object.entries(supportRes.summary?.byStatus || {}).map(([name, count]) => ({
+              title: formatStatus(name),
+              path: `/tickets?status=${encodeURIComponent(name)}`,
+              icon: 'help',
+              count
+            }))
+          ],
           invoices: [
             { type: 'header', title: 'BILLING STATUS' },
-            ...(invoices.length > 0 
-              ? invoices.map(s => ({ title: s.name, path: `/invoices?status=${encodeURIComponent(s.name)}`, icon: 'billing' }))
-              : [
-                  { title: 'Draft', path: '/invoices?status=Draft', icon: 'edit' },
-                  { title: 'Sent', path: '/invoices?status=Sent', icon: 'bell' },
-                  { title: 'Paid', path: '/invoices?status=Paid', icon: 'check' },
-                  { title: 'Overdue', path: '/invoices?status=Overdue', icon: 'alert' }
-                ])
+            ...Object.entries(invoicesRes.summary?.byStatus || {}).map(([name, count]) => ({
+              title: formatStatus(name),
+              path: `/invoices?status=${encodeURIComponent(name)}`,
+              icon: 'billing',
+              count
+            }))
           ],
           payments: [
             { type: 'header', title: 'PAYMENT STATUS' },
-            ...(payments.length > 0
-              ? payments.map(s => ({ title: s.name, path: `/payments?status=${encodeURIComponent(s.name)}`, icon: 'activity' }))
-              : [
-                  { title: 'Successful', path: '/payments?status=Successful', icon: 'check', statusColor: '#22c55e' },
-                  { title: 'Pending', path: '/payments?status=Pending', icon: 'clock', statusColor: '#f59e0b' },
-                  { title: 'Failed', path: '/payments?status=Failed', icon: 'close', statusColor: '#ef4444' }
-                ])
+            ...Object.entries(paymentsRes.summary?.byStatus || {}).map(([name, count]) => ({
+              title: formatStatus(name),
+              path: `/payments?status=${encodeURIComponent(name)}`,
+              icon: 'activity',
+              count
+            }))
           ],
           users: [
             { title: 'Active', path: '/users?status=active', icon: 'check', statusColor: '#22c55e' },
             { title: 'Inactive', path: '/users?status=inactive', icon: 'close', statusColor: '#ef4444' },
             { type: 'header', title: 'ROLE FILTERS' },
             { title: 'Select All Roles', path: '/users', icon: 'users' },
-            ...roles.map(r => ({ 
+            ...rolesRes.map(r => ({ 
               title: r.name, 
               path: `/users?role=${encodeURIComponent(r.name)}`, 
               icon: roleIcons[r.name] || 'user'
@@ -137,12 +168,7 @@ export default function Sidebar({ isOpen, onClose }) {
     }
   }
 
-  const quickActions = [
-    { id: 'add_user', title: 'Add User', path: '/users?add=true', icon: 'user', permission: 'users' },
-    { id: 'add_lead', title: 'Add Lead', path: '/leads/new', icon: 'shoppingCart', permission: 'leads' },
-    { id: 'new_deal', title: 'New Deal', path: '/deals?addDeal=true', icon: 'deals', permission: 'deals' },
-    { id: 'create_invoice', title: 'Create Invoice', path: '/invoices/new', icon: 'billing', permission: 'invoices' },
-  ]
+
 
   const menuConfig = [
     {
@@ -185,6 +211,17 @@ export default function Sidebar({ isOpen, onClose }) {
       ]
     },
     {
+      id: 'customers',
+      title: 'Customers',
+      icon: 'user',
+      path: '/customers',
+      permission: 'customers',
+      createPath: '/customers/new',
+      subItems: [
+        ...dynamicMenu.customers
+      ]
+    },
+    {
       id: 'payments',
       title: 'Payments',
       icon: 'activity',
@@ -207,6 +244,17 @@ export default function Sidebar({ isOpen, onClose }) {
       ]
     },
     {
+      id: 'support',
+      title: 'Tickets',
+      icon: 'help',
+      path: '/tickets',
+      permission: 'tickets',
+      createPath: '/tickets/new',
+      subItems: [
+        ...dynamicMenu.support
+      ]
+    },
+    {
       id: 'reports',
       title: 'Reports',
       icon: 'reports',
@@ -214,11 +262,12 @@ export default function Sidebar({ isOpen, onClose }) {
       path: '/reports'
     },
     {
-      id: 'attendance',
-      title: 'Attendance / Leave',
-      icon: 'calendar',
-      permission: 'attendance',
-      path: '/attendance'
+      id: 'expenses',
+      title: 'Expenses',
+      icon: 'billing',
+      path: '/expenses',
+      permission: 'expenses',
+      createPath: '/expenses/new'
     },
     {
       id: 'settings',
@@ -258,27 +307,9 @@ export default function Sidebar({ isOpen, onClose }) {
       </div>
 
       <div className="sidebarNav">
-        {/* QUICK ACTIONS SECTION */}
-        <div className="navSection">
-          <div className="navSectionLabel">QUICK ACTIONS</div>
-          <div className="quickActionsGrid">
-            {quickActions.map(action => (
-              hasPermission(user, action.permission) && (
-                <button 
-                  key={action.id} 
-                  className="quickActionBtn" 
-                  onClick={() => go(action.path)}
-                  title={action.title}
-                >
-                  <Icon name={action.icon} />
-                </button>
-              )
-            ))}
-          </div>
-        </div>
+
 
         <div className="navSection">
-          <div className="navSectionLabel">MAIN MENU</div>
           {menuConfig.map((item) => {
             if (item.permission && !hasPermission(user, item.permission)) return null
 
@@ -375,6 +406,11 @@ export default function Sidebar({ isOpen, onClose }) {
             <div className="userRole muted">{user?.role || 'Guest'}</div>
           </div>
         </div>
+
+        <button className="sidebarLogoutBtn" onClick={logout} title="Sign Out">
+          <Icon name="logout" size={18} />
+          <span className="navText">Logout</span>
+        </button>
       </div>
     </aside>
   )

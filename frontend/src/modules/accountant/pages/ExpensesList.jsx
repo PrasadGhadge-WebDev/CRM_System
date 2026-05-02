@@ -4,6 +4,8 @@ import { Icon } from '../../../layouts/icons'
 import { expensesApi } from '../../../services/expenses'
 import { formatCurrency } from '../../../utils/formatters'
 import { toast } from 'react-toastify'
+import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
+import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
 import '../../../styles/leadsList.css'
 
 export default function ExpensesList() {
@@ -11,17 +13,19 @@ export default function ExpensesList() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('')
+  const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [viewMode, setViewMode] = useState('list') 
   const limit = 20
+  const debouncedQ = useDebouncedValue(q, 500)
   const navigate = useNavigate()
 
   const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true)
       if (viewMode === 'list') {
-        const res = await expensesApi.list({ category, page, limit })
+        const res = await expensesApi.list({ category, q: debouncedQ, page, limit })
         setExpenses(res.items || [])
         setTotal(res.total || 0)
       } else {
@@ -33,7 +37,7 @@ export default function ExpensesList() {
     } finally {
       setLoading(false)
     }
-  }, [category, page, viewMode])
+  }, [category, debouncedQ, page, viewMode])
 
   useEffect(() => {
     fetchExpenses()
@@ -83,6 +87,14 @@ export default function ExpensesList() {
               <button className={`view-pill ${viewMode === 'list' ? 'active' : ''}`} onClick={() => { setViewMode('list'); setPage(1); }}>List</button>
               <button className={`view-pill ${viewMode === 'report' ? 'active' : ''}`} onClick={() => setViewMode('report')}>Analysis</button>
             </div>
+
+            {viewMode === 'list' && (
+              <ModernSearchBar
+                value={q}
+                onChange={e => { setQ(e.target.value); setPage(1); }}
+                placeholder="Search category, notes..."
+              />
+            )}
 
             {viewMode === 'list' && (
               <select className="crm-input filter-select" value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}>

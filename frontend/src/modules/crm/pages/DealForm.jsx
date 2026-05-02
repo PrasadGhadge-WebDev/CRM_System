@@ -2,6 +2,17 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { toast } from 'react-toastify'
+import { 
+  FiUser, 
+  FiCalendar, 
+  FiBriefcase, 
+  FiActivity, 
+  FiFlag, 
+  FiInfo,
+  FiTarget,
+  FiCreditCard,
+  FiTag
+} from 'react-icons/fi'
 import { dealsApi } from '../../../services/deals.js'
 import { customersApi } from '../../../services/customers.js'
 import { usersApi } from '../../../services/users.js'
@@ -35,6 +46,7 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
     ...INITIAL_DEAL,
     customer_id: preSelectedCustomerId || ''
   })
+  const [initialModel, setInitialModel] = useState(null)
   const [customers, setCustomers] = useState([])
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(isEdit && !!id)
@@ -61,14 +73,16 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
     setLoading(true)
     dealsApi.get(id)
       .then(data => {
-        setModel({
+        const normalized = {
           ...INITIAL_DEAL,
           ...data,
           expected_close_date: data.expected_close_date ? new Date(data.expected_close_date).toISOString().split('T')[0] : '',
           actual_close_date: data.actual_close_date ? new Date(data.actual_close_date).toISOString().split('T')[0] : '',
           customer_id: data.customer_id?._id || data.customer_id?.id || data.customer_id || '',
           assigned_to: data.assigned_to?._id || data.assigned_to?.id || data.assigned_to || '',
-        })
+        }
+        setModel(normalized)
+        setInitialModel(normalized)
       })
       .catch(() => {
         toast.error('Failed to load deal')
@@ -80,6 +94,13 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
   async function handleSubmit(e) {
     if (e) e.preventDefault()
     if (!model.name || !model.customer_id) return toast.warn('Opportunity Name and Customer are required')
+
+    if (isEdit && initialModel) {
+      const isChanged = Object.keys(INITIAL_DEAL).some(key => model[key] !== initialModel[key])
+      if (!isChanged) {
+        return toast.info('No changes detected')
+      }
+    }
 
     setSaving(true)
     try {
@@ -123,36 +144,43 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
             {/* Core Opportunity */}
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
-                <Icon name="deals" />
+                <FiTarget />
                 <span>Core Opportunity</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field full-width">
                   <label>Opportunity Name</label>
-                  <input
-                    className="crm-input"
-                    autoFocus
-                    value={model.name}
-                    onChange={e => setModel({ ...model, name: e.target.value })}
-                    placeholder="e.g. Q4 Server Expansion"
-                  />
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiTag /></div>
+                    <input
+                      autoFocus
+                      value={model.name}
+                      onChange={e => setModel({ ...model, name: e.target.value })}
+                      placeholder="e.g. Q4 Server Expansion"
+                    />
+                  </div>
                 </div>
                 <div className="sheet-field">
                   <label>Associated Customer</label>
-                  <select className="crm-input" value={model.customer_id} onChange={e => setModel({ ...model, customer_id: e.target.value })}>
-                    <option value="">Select Customer</option>
-                    {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiUser /></div>
+                    <select value={model.customer_id} onChange={e => setModel({ ...model, customer_id: e.target.value })}>
+                      <option value="">Select Customer</option>
+                      {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div className="sheet-field">
                   <label>Financial Value (₹)</label>
-                  <input
-                    className="crm-input"
-                    type="number"
-                    value={model.value}
-                    onChange={e => setModel({ ...model, value: Number(e.target.value) })}
-                    placeholder="0.00"
-                  />
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiCreditCard /></div>
+                    <input
+                      type="number"
+                      value={model.value}
+                      onChange={e => setModel({ ...model, value: Number(e.target.value) })}
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
               </div>
             </section>
@@ -160,34 +188,46 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
             {/* Pipeline Config */}
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
-                <Icon name="settings" />
+                <FiActivity />
                 <span>Pipeline Configuration</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
                   <label>Sales Stage</label>
-                  <select className="crm-input" value={model.stage} onChange={e => setModel({ ...model, stage: e.target.value })}>
-                    {['Pending', 'New', 'Contacted', 'Negotiation', 'Won', 'Lost'].map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiActivity /></div>
+                    <select value={model.stage} onChange={e => setModel({ ...model, stage: e.target.value })}>
+                      {['Pending', 'New', 'Contacted', 'Negotiation', 'Won', 'Lost'].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div className="sheet-field">
                   <label>Priority Level</label>
-                  <select className="crm-input" value={model.priority} onChange={e => setModel({ ...model, priority: e.target.value })}>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiFlag /></div>
+                    <select value={model.priority} onChange={e => setModel({ ...model, priority: e.target.value })}>
+                      <option value="High">High</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Low">Low</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="sheet-field">
                   <label>Expected Close Date</label>
-                  <input className="crm-input" type="date" value={model.expected_close_date} onChange={e => setModel({ ...model, expected_close_date: e.target.value })} />
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiCalendar /></div>
+                    <input type="date" value={model.expected_close_date} onChange={e => setModel({ ...model, expected_close_date: e.target.value })} />
+                  </div>
                 </div>
                 <div className="sheet-field">
                   <label>Portfolio Owner</label>
-                  <select className="crm-input" value={model.assigned_to} onChange={e => setModel({ ...model, assigned_to: e.target.value })}>
-                    <option value="">Unassigned</option>
-                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiBriefcase /></div>
+                    <select value={model.assigned_to} onChange={e => setModel({ ...model, assigned_to: e.target.value })}>
+                      <option value="">Unassigned</option>
+                      {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                  </div>
                 </div>
               </div>
             </section>
@@ -195,7 +235,7 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
             {/* Intelligence */}
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
-                <Icon name="info" />
+                <FiInfo />
                 <span>Opportunity Intelligence</span>
               </div>
               <div className="sheet-field full-width">
@@ -225,5 +265,5 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
     </div>
   )
 
-  return createPortal(modalContent, document.body)
+  return createPortal(modalContent, document.getElementById('modal-root-content') || document.body)
 }

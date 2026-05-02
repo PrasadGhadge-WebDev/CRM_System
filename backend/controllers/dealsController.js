@@ -86,26 +86,58 @@ exports.listDeals = asyncHandler(async (req, res) => {
   if (priority) filter.priority = priority;
   if (lifecycle_status) filter.lifecycle_status = lifecycle_status;
 
-  const search = buildSearchQuery(q);
-  if (search) {
-    filter.$or = [{ name: search }, { readable_id: search }, { description: search }];
+  const searchQuery = buildSearchQuery(q);
+  if (searchQuery) {
+    filter.$or = [
+      { name: searchQuery },
+      { readable_id: searchQuery },
+      { description: searchQuery },
+      { stage: searchQuery },
+      { priority: searchQuery },
+      { lifecycle_status: searchQuery },
+      { payment_status: searchQuery }
+    ];
   }
 
   const pageNum = Math.max(1, Number(page) || 1);
   const limitNum = limit === 'all' ? 1000 : Math.min(100, Math.max(1, Number(limit) || 20));
   const sort = { [sortField]: sortOrder === 'desc' ? -1 : 1 };
 
-  const [items, total] = await Promise.all([
+  const summaryPipeline = [
+    { $match: filter },
+    {
+      $group: {
+        _id: '$stage',
+        count: { $sum: 1 },
+        totalValue: { $sum: '$value' }
+      }
+    }
+  ];
+
+  const [items, totalFiltered, stageStats] = await Promise.all([
     Deal.find(filter)
       .populate('customer_id', 'name email phone')
-      .populate('assigned_to', 'name email')
+      .populate('assigned_to', 'name email phone')
       .sort(sort)
       .skip(limit === 'all' ? 0 : (pageNum - 1) * limitNum)
       .limit(limit === 'all' ? 1000 : limitNum),
     Deal.countDocuments(filter),
+    Deal.aggregate(summaryPipeline)
   ]);
 
-  res.ok({ items, page: pageNum, limit: limitNum, total });
+  const summary = {
+    total: totalFiltered,
+    totalValue: 0,
+    byStage: {}
+  };
+  stageStats.forEach(s => {
+    if (s._id) {
+      summary.byStage[s._id] = s.count;
+      summary.totalValue += (s.totalValue || 0);
+    }
+  });
+
+  res.ok({ items, page: pageNum, limit: limitNum, total: totalFiltered, summary });
 });
 
 exports.createDeal = asyncHandler(async (req, res) => {
@@ -227,6 +259,12 @@ exports.updateDeal = asyncHandler(async (req, res) => {
       if (updates.stage === 'Lost' && !updates.lost_reason && !oldDeal.lost_reason) {
         return res.fail('Lost reason required', 400);
       }
+      
+      // Auto-activate customer on Won
+      if (updates.stage === 'Won' && oldDeal.customer_id) {
+        const Customer = require('../models/Customer');
+        await Customer.findByIdAndUpdate(oldDeal.customer_id, { status: 'Active' });
+      }
     } else {
       updates.actual_close_date = null;
     }
@@ -243,7 +281,17 @@ exports.updateDeal = asyncHandler(async (req, res) => {
     const { logActivity } = require('../utils/activityLogger');
     let actType = 'Stage Changed';
     let color = 'purple';
-    if (updates.stage === 'Won') { color = 'green'; actType = 'Deal Won'; }
+    if (updates.stage === 'Won') { 
+      color = 'green'; 
+      actType = 'Deal Won'; 
+      
+      // Auto-generate invoice and pending payment when Deal is Won
+      const { autoGenerateInvoice, autoGeneratePendingPayment } = require('../utils/financeHelper');
+      const invoice = await autoGenerateInvoice(deal, req.user.id);
+      if (invoice) {
+        await autoGeneratePendingPayment(deal, invoice, req.user.id);
+      }
+    }
     if (updates.stage === 'Lost') { color = 'red'; actType = 'Deal Lost'; }
 
     await logActivity({
@@ -256,9 +304,6 @@ exports.updateDeal = asyncHandler(async (req, res) => {
       related_type: 'Deal',
       color_code: color
     });
-
-    // We no longer auto-generate invoice here. 
-    // Flow: Employee wins deal -> Accountant manually generates invoice.
   }
 
   // Financial Sync

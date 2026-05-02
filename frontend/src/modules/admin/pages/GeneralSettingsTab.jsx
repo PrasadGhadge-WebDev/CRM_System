@@ -14,6 +14,7 @@ export default function GeneralSettingsTab() {
     itemsPerPage: 25,
     sessionTimeout: 30
   })
+  const [initialModel, setInitialModel] = useState(null)
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -26,8 +27,7 @@ export default function GeneralSettingsTab() {
     try {
       setLoading(true)
       const data = await settingsApi.get()
-      if (data) {
-        setModel({
+        const normalized = {
           companyName: data.companyName || 'My CRM',
           dateFormat: data.dateFormat || 'DD/MM/YYYY',
           currency: data.currency || 'Indian Rupee (₹)',
@@ -35,8 +35,9 @@ export default function GeneralSettingsTab() {
           language: data.language || 'English',
           itemsPerPage: data.itemsPerPage || 25,
           sessionTimeout: data.sessionTimeout || 30
-        })
-      }
+        }
+        setModel(normalized)
+        setInitialModel(normalized)
     } catch (e) {
       toast.error('Failed to load institutional core')
     } finally {
@@ -46,6 +47,11 @@ export default function GeneralSettingsTab() {
 
   const handleSave = async (e) => {
     if (e) e.preventDefault()
+    
+    if (initialModel && JSON.stringify(model) === JSON.stringify(initialModel)) {
+      return toast.info('No changes detected')
+    }
+
     try {
       setSaving(true)
       await settingsApi.update(model)

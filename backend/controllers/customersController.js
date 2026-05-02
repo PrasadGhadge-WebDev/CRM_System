@@ -74,6 +74,7 @@ exports.listCustomers = asyncHandler(async (req, res) => {
 
   if (customer_type) filter.customer_type = customer_type;
   if (status) filter.status = status;
+  if (req.query.city) filter.city = req.query.city;
   if (is_vip === 'true' || is_vip === true) filter.is_vip = true;
 
   if (startDate || endDate) {
@@ -91,12 +92,30 @@ exports.listCustomers = asyncHandler(async (req, res) => {
       { name: search },
       { email: search },
       { phone: search },
+      { company_name: search },
+      { gst_number: search },
       { city: search },
-      { customer_id: search }
+      { state: search },
+      { pincode: search },
+      { status: search },
+      { customer_id: search },
+      { source: search },
+      { industry: search },
+      { website: search }
     ];
   }
 
-  const [customers, total] = await Promise.all([
+  const summaryPipeline = [
+    { $match: filter },
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 }
+      }
+    }
+  ];
+
+  const [customers, totalFiltered, statusStats] = await Promise.all([
     Customer.find(filter)
       .populate('assigned_to', 'name email role')
       .sort(sort)
@@ -104,7 +123,16 @@ exports.listCustomers = asyncHandler(async (req, res) => {
       .limit(limitNum)
       .lean(),
     Customer.countDocuments(filter),
+    Customer.aggregate(summaryPipeline)
   ]);
+
+  const summary = {
+    total: totalFiltered,
+    byStatus: {}
+  };
+  statusStats.forEach(s => {
+    if (s._id) summary.byStatus[s._id] = s.count;
+  });
 
   // Inject dynamic metrics
   const Deal = require('../models/Deal');
@@ -121,7 +149,7 @@ exports.listCustomers = asyncHandler(async (req, res) => {
     };
   }));
 
-  res.ok({ items, page: pageNum, limit: limitNum, total });
+  res.ok({ items, page: pageNum, limit: limitNum, total: totalFiltered, summary });
 });
 
 exports.createCustomer = asyncHandler(async (req, res) => {
@@ -446,74 +474,25 @@ exports.convertLead = asyncHandler(async (req, res) => {
   if (!['Admin', 'Manager', 'Employee'].includes(req.user?.role)) {
     return res.fail('Not allowed to convert leads', 403);
   }
-  const { lead_id, assigned_to, source, initial_note } = req.body;
-
+  const { lead_id, assigned_to, initial_note } = req.body;
   if (!lead_id) return res.fail('Lead ID is required', 400);
-  const lead = await Lead.findById(lead_id);
-  if (!lead) return res.fail('Lead not found', 404);
 
-  // Step 1: Duplicate Check
-  const duplicateConditions = [];
-  if (lead.email) duplicateConditions.push({ email: lead.email });
-  if (lead.phone) duplicateConditions.push({ phone: lead.phone });
-
-  if (duplicateConditions.length > 0) {
-    const existing = await Customer.findOne({
-      company_id: lead.company_id || req.user.company_id,
-      $or: duplicateConditions,
-      isDeleted: { $ne: true }
-    });
-    if (existing) {
-      return res.fail('A customer with this email or phone already exists in your database', 400);
-    }
-  }
-
-  // Step 2 & 3: Mapping & Assignment
-  const customerPayload = {
-    name: lead.name,
-    email: lead.email,
-    phone: lead.phone,
-    company_name: lead.company,
-    company_id: lead.company_id || req.user.company_id,
-    assigned_to: assigned_to || lead.assignedTo || req.user.id,
-    assigned_by: req.user.id,
-    source: source || lead.source || 'Lead Conversion',
-    converted_from_lead_id: lead._id,
-    status: 'Active',
-    notes: initial_note || lead.notes,
-    last_interaction_date: new Date()
-  };
-
-  const customer = await Customer.create(customerPayload);
+  const { performLeadConversion } = require('../utils/leadConversion');
   
-  // Step 1: Link & Update Lead
-  lead.convertedCustomerId = customer._id;
-  lead.status = 'Converted';
-  lead.convertedAt = new Date();
-  await lead.save();
-
-  // Step 7: Activity Tracking
-  const { logActivity } = require('../utils/activityLogger');
-  await logActivity({
-    activity_type: 'Customer Created',
-    category: 'system',
-    description: `Converted from Lead ${lead.leadId || lead.name}. ${initial_note ? `Note: ${initial_note}` : ''}`,
-    related_to: customer._id,
-    related_type: 'Customer',
-    company_id: req.user.company_id,
-    created_by: req.user.id,
-    color_code: 'green'
-  });
-
-  if (initial_note) {
-    await CustomerNote.create({
-      customer_id: customer._id,
-      author_id: req.user.id,
-      content: initial_note
-    });
+  try {
+    const result = await performLeadConversion(
+      lead_id, 
+      req.user.company_id, 
+      req.user.id, 
+      { assigned_to, notes: initial_note }
+    );
+    
+    const Customer = require('../models/Customer');
+    const customer = await Customer.findById(result.customerId).populate('assigned_to', 'name role');
+    res.created(customer);
+  } catch (err) {
+    res.fail(err.message, 400);
   }
-
-  res.created(customer);
 });
 
 exports.addNote = asyncHandler(async (req, res) => {

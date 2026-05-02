@@ -5,26 +5,24 @@ const LeadSource = require('../models/LeadSource');
 const CustomerType = require('../models/CustomerType');
 const IndustryType = require('../models/IndustryType');
 
-dotenv.config();
+const path = require('path');
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const data = {
   'lead-status': [
-    { label: 'New', value: 'new', color: '#fbbf24', order: 1 }, // Yellow
-    { label: 'Contacted', value: 'contacted', color: '#3b82f6', order: 2 }, // Blue
-    { label: 'Qualified', value: 'qualified', color: '#a855f7', order: 3 }, // Purple
-    { label: 'Negotiation', value: 'negotiation', color: '#fb923c', order: 4 }, // Orange
-    { label: 'Won', value: 'won', color: '#22c55e', order: 5 }, // Green
-    { label: 'Lost', value: 'lost', color: '#ef4444', order: 6 }, // Red
-    { label: 'Junk', value: 'junk', color: '#6b7280', order: 7 }, // Gray
+    { label: 'New', value: 'New', color: '#fbbf24', order: 1 },
+    { label: 'Contacted', value: 'Contacted', color: '#3b82f6', order: 2 },
+    { label: 'Qualified', value: 'Qualified', color: '#a855f7', order: 3 },
+    { label: 'Converted', value: 'Converted', color: '#22c55e', order: 4 },
+    { label: 'Lost', value: 'Lost', color: '#ef4444', order: 5 },
+    { label: 'Junk', value: 'Junk', color: '#6b7280', order: 6 },
   ],
   'lead-source': [
-    { label: 'Google Ads', value: 'google-ads', color: '#3b82f6', order: 1 },
-    { label: 'Facebook', value: 'facebook', color: '#6366f1', order: 2 },
-    { label: 'LinkedIn', value: 'linkedin', color: '#10b981', order: 3 },
-    { label: 'Referral', value: 'referral', color: '#f59e0b', order: 4 },
-    { label: 'Website', value: 'website', color: '#ec4899', order: 5 },
-    { label: 'Cold Call', value: 'cold-call', color: '#ef4444', order: 6 },
-    { label: 'Email Campaign', value: 'email-campaign', color: '#6b7280', order: 7 },
+    { label: 'Manual Entry', value: 'Manual Entry', color: '#3b82f6', order: 1 },
+    { label: 'Import (CSV/Excel)', value: 'Import', color: '#6366f1', order: 2 },
+    { label: 'Website', value: 'Website', color: '#ec4899', order: 3 },
+    { label: 'Ads (FB/Google)', value: 'Ads', color: '#10b981', order: 4 },
+    { label: 'Walk-in', value: 'Walk-in', color: '#f59e0b', order: 5 },
   ],
   'customer-type': [
     { label: 'Individual', value: 'individual', color: '#3b82f6', order: 1 },

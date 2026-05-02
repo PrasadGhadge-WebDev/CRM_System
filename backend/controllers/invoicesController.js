@@ -32,7 +32,15 @@ exports.listInvoices = asyncHandler(async (req, res) => {
   }
 
   if (q) {
-    filter.invoice_number = { $regex: q, $options: 'i' };
+    const search = { $regex: q, $options: 'i' };
+    filter.$or = [
+      { invoice_number: search },
+      { status: search },
+      { notes: search },
+      { billing_address: search },
+      { shipping_address: search },
+      { terms: search }
+    ];
   }
 
   // Role-based filtering
@@ -48,26 +56,40 @@ exports.listInvoices = asyncHandler(async (req, res) => {
   const pageNum = Math.max(1, Number(page) || 1);
   const limitNum = Math.max(1, Number(limit) || 20);
 
-  const [items, total] = await Promise.all([
+  const summaryPipeline = [
+    { $match: filter },
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 }
+      }
+    }
+  ];
+
+  const [items, totalFiltered, statusStats] = await Promise.all([
     Invoice.find(filter)
       .populate('customer_id', 'name email phone')
       .sort({ created_at: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum),
-    Invoice.countDocuments(filter)
+    Invoice.countDocuments(filter),
+    Invoice.aggregate(summaryPipeline)
   ]);
 
-  res.ok({ items, total, page: pageNum, limit: limitNum });
+  const summary = {
+    total: totalFiltered,
+    byStatus: {}
+  };
+  statusStats.forEach(s => {
+    if (s._id) summary.byStatus[s._id] = s.count;
+  });
+
+  res.ok({ items, total: totalFiltered, page: pageNum, limit: limitNum, summary });
 });
 
 exports.createInvoice = asyncHandler(async (req, res) => {
   const payload = req.body;
   
-  // Rule 1: No Invoice without Deal
-  if (!payload.deal_id) {
-    return res.fail('Business Rule Violation: Invoices cannot be created without an associated Deal.', 400);
-  }
-
   payload.company_id = req.user.company_id;
   payload.created_by = req.user.id;
 

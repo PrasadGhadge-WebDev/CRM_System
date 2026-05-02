@@ -1,190 +1,182 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { createPortal } from 'react-dom'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { 
+  FiUser, 
+  FiMail, 
+  FiPhone, 
+  FiMapPin, 
+  FiLink, 
+  FiTag, 
+  FiStar, 
+  FiMessageSquare, 
+  FiLayers,
+  FiBriefcase,
+  FiActivity
+} from 'react-icons/fi'
 import { leadsApi } from '../../../services/leads.js'
-import { usersApi } from '../../../services/users.js'
+import { leadSourcesApi as sourcesApi } from '../../../services/leadSources.js'
 import { statusesApi } from '../../../services/statuses.js'
-import { leadSourcesApi } from '../../../services/leadSources.js'
-import { Icon } from '../../../layouts/icons.jsx'
-import { useAuth } from '../../../context/AuthContext'
-import {
+import { usersApi } from '../../../services/users.js'
+import { useAuth } from '../../../context/AuthContext.jsx'
+
+import { 
+  validateRequired, 
+  validateEmail, 
+  validatePhone,
   normalizeDigits,
+  normalizeName
 } from '../../../utils/formValidation.js'
-import DuplicateLeadModal from '../components/DuplicateLeadModal.jsx'
 
-const INDIA_STATES = [
-  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh',
-  'Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka',
-  'Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram',
-  'Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana',
-  'Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
-  'Andaman & Nicobar Islands','Chandigarh','Dadra & Nagar Haveli','Daman & Diu',
-  'Delhi','Jammu & Kashmir','Ladakh','Lakshadweep','Puducherry',
-]
-
-const FALLBACK_STATUSES = ['New','Contacted','Follow-up','Proposal','Won','Lost']
-const FALLBACK_SOURCES  = ['Organic','Referral','Social Media','Cold Call','Website','Other']
-
-const emptyLead = {
-  firstName:       '',
-  lastName:        '',
-  email:           '',
-  phone:           '',
-  city:            '',
-  state:           '',
-  pincode:         '',
-  source:          '',
-  status:          '',
-  dealAmount:      '',
-  address:         '',
-  assignedTo:      '',
-  notes:           '',
-  followUpDate:    '',
-  lastContactDate: '',
-  followupNote:    '',
-  priority:        'Warm',
-  whatsapp_available: false,
-  email_verified: false,
+const INITIAL_LEAD = {
+  first_name: '',
+  last_name: '',
+  email: '',
+  phone: '',
+  source: 'Organic',
+  status: 'New',
+  assigned_to: '',
+  address: '',
+  city: '',
+  state: '',
+  postal_code: '',
+  country: 'India',
+  notes: '',
+  interest_level: 'Medium',
 }
 
 export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
   const { id: paramsId } = useParams()
-  const [searchParams] = useSearchParams()
   const id = leadId || paramsId
   const navigate = useNavigate()
   const { user } = useAuth()
+  
+  const isHR = user?.role === 'HR'
+  const isAccountant = user?.role === 'Accountant'
+  const isReadOnly = isHR || isAccountant
   const isEdit = mode === 'edit' || (!!id && id !== 'new')
 
-  const isAdmin   = user?.role === 'Admin'
-  const isManager = user?.role === 'Manager'
-  const canAssign = isAdmin || isManager
-
-  const [model, setModel]     = useState(emptyLead)
+  const [model, setModel] = useState(INITIAL_LEAD)
+  const [initialModel, setInitialModel] = useState(null)
   const [loading, setLoading] = useState(isEdit && !!id)
-  const [saving, setSaving]   = useState(false)
-  const [fieldErrors, setFieldErrors] = useState({})
-  const [duplicateModal, setDuplicateModal] = useState(null)
-
-  const [employees, setEmployees]             = useState([])
+  const [saving, setSaving] = useState(false)
+  const [availableSources, setAvailableSources] = useState([])
   const [availableStatuses, setAvailableStatuses] = useState([])
-  const [availableSources,  setAvailableSources]  = useState([])
+  const [allUsers, setAllUsers] = useState([])
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [checking, setChecking] = useState(false)
 
   useEffect(() => {
-    async function loadLookups() {
+    if (isReadOnly) {
+       toast.error('Access denied: Read-only profile')
+       navigate('/leads')
+       return
+    }
+    
+    async function loadData() {
       try {
-        const [empRes, statRes, sourceRes] = await Promise.all([
-          usersApi.list({ limit: 200 }),
+        const [srcRes, statRes, userRes] = await Promise.all([
+          sourcesApi.list(),
           statusesApi.list('lead'),
-          leadSourcesApi.list(),
+          usersApi.list({ limit: 'all' })
         ])
-        setEmployees(empRes.items || [])
-        setAvailableStatuses(statRes?.length ? statRes.map(s => s.name) : FALLBACK_STATUSES)
-        setAvailableSources(sourceRes?.length ? sourceRes.map(s => s.name) : FALLBACK_SOURCES)
+        setAvailableSources(srcRes || [])
+        setAvailableStatuses(statRes || [])
+        setAllUsers(userRes.items || [])
 
-        if (!isEdit) {
-          const urlStatus = searchParams.get('status')
-          const urlSource = searchParams.get('source')
-          const defStat = statRes?.find(s => s.is_default)?.name || FALLBACK_STATUSES[0]
-          const defSrc  = sourceRes?.find(s => s.is_default)?.name || ''
-          setModel(prev => ({
-            ...prev,
-            status: urlStatus || defStat,
-            source: urlSource || defSrc
-          }))
+        if (isEdit && id) {
+          setLoading(true)
+          const data = await leadsApi.get(id)
+          // Normalize status/source to match enum (Sentence Case)
+          const status = data.status ? (data.status.charAt(0).toUpperCase() + data.status.slice(1).toLowerCase()) : 'New'
+          const source = data.source ? (data.source.charAt(0).toUpperCase() + data.source.slice(1).toLowerCase()) : 'Organic'
+          
+          const normalized = {
+            ...INITIAL_LEAD,
+            ...data,
+            status,
+            source,
+            assigned_to: data.assigned_to?._id || data.assigned_to?.id || data.assigned_to || ''
+          }
+          setModel(normalized)
+          setInitialModel(normalized)
+        } else if (!leadId) {
+          const defaultSrc = srcRes?.find(s => s.is_default)
+          const defaultStat = statRes?.find(s => s.is_default)
+          if (defaultSrc) setModel(prev => ({ ...prev, source: defaultSrc.name }))
+          if (defaultStat) setModel(prev => ({ ...prev, status: defaultStat.name }))
         }
       } catch (err) {
-        console.error('Lookup load failed:', err)
-      }
+        toast.error('Initialization failed')
+        if (!isEdit) navigate('/leads')
+      } finally { setLoading(false) }
     }
-    loadLookups()
-  }, [isEdit, searchParams])
+    loadData()
+  }, [id, isEdit, navigate, leadId, isReadOnly])
 
-  useEffect(() => {
-    if (!isEdit || !id) return
-    setLoading(true)
-    leadsApi.get(id)
-      .then(data => {
-        const [firstName = '', ...rest] = (data.name || '').split(' ')
-        const lastName = rest.join(' ')
-        setModel({
-          ...emptyLead,
-          ...data,
-          firstName:         data.firstName   || firstName,
-          lastName:          data.lastName    || lastName,
-          address:           data.address || '',
-          state:             data.state          || '',
-          pincode:           data.pincode        || '',
-          dealAmount:        data.dealAmount     || data.estimated_value || '',
-          notes:             data.notes          || '',
-          followUpDate:      data.followUpDate ? new Date(data.followUpDate).toISOString().split('T')[0] : '',
-          lastContactDate:   data.lastContactDate ? new Date(data.lastContactDate).toISOString().split('T')[0] : (data.last_contact_date || ''),
-          followupNote:      data.followupNote || data.follow_up_note || '',
-          assignedTo:         data.assignedTo?._id || data.assignedTo?.id || data.assignedTo || '',
-        })
+  const checkDuplicate = useCallback(async (field, value) => {
+    if (!value || !value.trim()) return
+    setChecking(true)
+    try {
+      const res = await leadsApi.list({ q: value.trim(), limit: 5 })
+      const conflict = (res?.items || []).find(l => {
+        const matches = field === 'email' ? l.email?.toLowerCase() === value.trim().toLowerCase() : l.phone === value.trim()
+        return matches && (isEdit ? l.id !== id : true)
       })
-      .catch(() => {
-        toast.error('Failed to load lead')
-        if (onCancel) onCancel(); else navigate('/leads')
-      })
-      .finally(() => setLoading(false))
-  }, [id, isEdit, navigate, onCancel])
+      if (conflict) setFieldErrors(prev => ({ ...prev, [field]: `Already exists: "${conflict.first_name} ${conflict.last_name}"` }))
+      else setFieldErrors(prev => { const next = { ...prev }; delete next[field]; return next })
+    } catch { } finally { setChecking(false) }
+  }, [id, isEdit])
 
-  async function handleChange(field, value) {
-    const isPhone = field === 'phone'
-    const isPin   = field === 'pincode'
-    const normalized = isPhone || isPin ? normalizeDigits(value, isPhone ? 10 : 6) : value
-    
-    setModel(prev => ({ ...prev, [field]: normalized }))
-    if (fieldErrors[field]) setFieldErrors(prev => ({ ...prev, [field]: '' }))
-
-    if (field === 'pincode' && normalized.length === 6) {
-      try {
-        const res = await fetch(`https://api.postalpincode.in/pincode/${normalized}`)
-        const data = await res.json()
-        if (data[0].Status === 'Success') {
-          const postOffice = data[0].PostOffice[0]
-          setModel(prev => ({ ...prev, city: postOffice.District, state: postOffice.State }))
-        }
-      } catch (err) {}
-    }
-  }
-
-  function validate() {
+  const validate = () => {
     const errors = {}
-    if (!model.firstName.trim()) errors.firstName = 'First Name is required'
-    if (!model.lastName.trim()) errors.lastName = 'Last Name is required'
-    if (!model.email.trim()) errors.email = 'Email Address is required'
-    if (!model.phone.trim()) errors.phone = 'Phone Number is required'
-    else if (model.phone.trim().length !== 10) errors.phone = 'Must be 10 digits'
-    if (!model.source) errors.source = 'Source is required'
-    if (!model.status) errors.status = 'Status is required'
+    
+    const fNameErr = validateRequired('First Name', model.first_name)
+    if (fNameErr) errors.first_name = fNameErr
+
+    const emailErr = validateEmail('Email', model.email) || validateRequired('Email', model.email)
+    if (emailErr) errors.email = emailErr
+
+    const phoneErr = validatePhone('Phone', model.phone, { required: true })
+    if (phoneErr) errors.phone = phoneErr
+
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
   }
 
   async function handleSubmit(e) {
     if (e) e.preventDefault()
-    if (!validate()) return
+    if (isReadOnly) return
+    
+    if (!validate()) {
+      const firstError = Object.values(fieldErrors)[0] || 'Please fix validation errors'
+      return toast.warn(firstError)
+    }
+
+    if (isEdit && initialModel) {
+      const isChanged = Object.keys(INITIAL_LEAD).some(key => model[key] !== initialModel[key])
+      if (!isChanged) {
+        return toast.info('No changes detected')
+      }
+    }
+
     setSaving(true)
     try {
-      const payload = {
-        ...model,
-        name: `${model.firstName} ${model.lastName}`.trim(),
-        dealAmount: model.dealAmount ? Number(model.dealAmount) : 0,
-      }
+      const payload = { ...model }
+      delete payload.id
+      delete payload._id
+      delete payload.created_at
+      delete payload.updated_at
+      delete payload.__v
+
       const saved = isEdit ? await leadsApi.update(id, payload) : await leadsApi.create(payload)
       toast.success(`Lead ${isEdit ? 'updated' : 'created'}`)
-      if (onSuccess) onSuccess(saved)
-      else navigate(`/leads/${saved.id || id}`)
-    } catch (err) {
-      if (err.response?.status === 409 && err.response?.data?.duplicate) {
-        setDuplicateModal({ existing: err.response.data.existing, matchedBy: err.response.data.matchedBy })
-        return
-      }
-      toast.error(err.response?.data?.message || 'Failed to save')
-    } finally {
-      setSaving(false)
+      if (onSuccess) onSuccess(saved); else navigate(`/leads/${saved.id || id}`)
+    } catch (err) { 
+      toast.error(err.message || 'Failed to save') 
+    } finally { 
+      setSaving(false) 
     }
   }
 
@@ -200,7 +192,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
     }
   }
 
-  if (loading) return <div className="p-40 text-center text-dimmed">Loading lead...</div>
+  if (loading) return <div className="p-40 text-center text-dimmed">Accessing lead vault...</div>
 
   const modalContent = (
     <div className="crm-modal-portal-overlay">
@@ -208,155 +200,190 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
         <div className="crm-modal-sheet-header">
           <div className="sheet-title-area">
             <h2 className="sheet-title">{isEdit ? 'Update Lead' : 'Add New Lead'}</h2>
-            <p className="sheet-subtitle">{isEdit ? `Editing ${model.firstName}` : 'Add a new lead'}</p>
+            <p className="sheet-subtitle">{isEdit ? `Editing record for ${model.first_name} ${model.last_name}` : 'Initialize a new prospect in the CRM'}</p>
           </div>
         </div>
 
         <form className="crm-modal-sheet-body custom-scrollbar" onKeyDown={handleKeyDown} onSubmit={handleSubmit}>
           <div className="sheet-content-container">
-            {/* Personal Details */}
+            {/* Core Identity */}
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
-                <Icon name="user" />
-                <span>Personal Details</span>
+                <FiUser />
+                <span>Prospect Identity</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
                   <label>First Name</label>
-                  <input
-                    className="crm-input"
-                    autoFocus
-                    value={model.firstName}
-                    onChange={e => handleChange('firstName', e.target.value)}
-                    placeholder="Enter first name"
-                  />
-                  {fieldErrors.firstName && <span className="error-text">{fieldErrors.firstName}</span>}
+                  <div className={`crm-input-group ${fieldErrors.first_name ? 'error' : ''}`}>
+                    <div className="input-icon-box"><FiUser /></div>
+                    <input 
+                      autoFocus 
+                      value={model.first_name} 
+                      onChange={e => {
+                        setModel({ ...model, first_name: normalizeName(e.target.value) })
+                        if (fieldErrors.first_name) setFieldErrors(prev => ({ ...prev, first_name: '' }))
+                      }} 
+                      placeholder="e.g. John" 
+                    />
+                  </div>
+                  {fieldErrors.first_name && <span className="error-text">{fieldErrors.first_name}</span>}
                 </div>
                 <div className="sheet-field">
                   <label>Last Name</label>
-                  <input
-                    className="crm-input"
-                    value={model.lastName}
-                    onChange={e => handleChange('lastName', e.target.value)}
-                    placeholder="Enter last name"
-                  />
-                  {fieldErrors.lastName && <span className="error-text">{fieldErrors.lastName}</span>}
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiUser /></div>
+                    <input 
+                      value={model.last_name} 
+                      onChange={e => setModel({ ...model, last_name: normalizeName(e.target.value) })} 
+                      placeholder="e.g. Doe" 
+                    />
+                  </div>
                 </div>
-                <div className="sheet-field full-width">
-                  <label>Email Address</label>
-                  <input
-                    className="crm-input"
-                    type="email"
-                    autoComplete="off"
-                    value={model.email}
-                    onChange={e => handleChange('email', e.target.value)}
-                    placeholder="email@example.com"
-                  />
+                <div className="sheet-field">
+                  <label>Primary Email</label>
+                  <div className={`crm-input-group ${fieldErrors.email ? 'error' : ''}`}>
+                    <div className="input-icon-box"><FiMail /></div>
+                    <input 
+                      type="email" 
+                      value={model.email} 
+                      onBlur={e => checkDuplicate('email', e.target.value)} 
+                      onChange={e => {
+                        setModel({ ...model, email: e.target.value })
+                        if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: '' }))
+                      }} 
+                      placeholder="john.doe@example.com" 
+                    />
+                  </div>
                   {fieldErrors.email && <span className="error-text">{fieldErrors.email}</span>}
                 </div>
                 <div className="sheet-field">
-                  <label>Phone Number</label>
-                  <input
-                    className="crm-input"
-                    value={model.phone}
-                    onChange={e => handleChange('phone', e.target.value)}
-                    placeholder="9876543210"
-                    maxLength={10}
-                  />
+                  <label>Secure Phone</label>
+                  <div className={`crm-input-group ${fieldErrors.phone ? 'error' : ''}`}>
+                    <div className="input-icon-box"><FiPhone /></div>
+                    <input 
+                      value={model.phone} 
+                      onBlur={e => checkDuplicate('phone', e.target.value)} 
+                      onChange={e => {
+                        setModel({ ...model, phone: normalizeDigits(e.target.value).slice(0, 10) })
+                        if (fieldErrors.phone) setFieldErrors(prev => ({ ...prev, phone: '' }))
+                      }} 
+                      placeholder="10-digit number" 
+                    />
+                  </div>
                   {fieldErrors.phone && <span className="error-text">{fieldErrors.phone}</span>}
                 </div>
-                <div className="sheet-field">
-                  <label>Pincode</label>
-                  <input
-                    className="crm-input"
-                    value={model.pincode}
-                    onChange={e => handleChange('pincode', e.target.value)}
-                    placeholder="400001"
-                    maxLength={6}
-                  />
-                  {fieldErrors.pincode && <span className="error-text">{fieldErrors.pincode}</span>}
-                </div>
               </div>
             </section>
 
-            {/* Lead Details */}
+            {/* Classification */}
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
-                <Icon name="briefcase" />
-                <span>Details</span>
+                <FiLayers />
+                <span>Classification & Source</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
-                  <label>Source</label>
-                  <select className="crm-input" value={model.source} onChange={e => handleChange('source', e.target.value)}>
-                    <option value="">Select Source</option>
-                    {availableSources.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  {fieldErrors.source && <span className="error-text">{fieldErrors.source}</span>}
-                </div>
-                <div className="sheet-field">
-                  <label>Status</label>
-                  <select className="crm-input" value={model.status} onChange={e => handleChange('status', e.target.value)}>
-                    <option value="">Select Status</option>
-                    {availableStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  {fieldErrors.status && <span className="error-text">{fieldErrors.status}</span>}
-                </div>
-                <div className="sheet-field">
-                  <label>Priority</label>
-                  <select className="crm-input" value={model.priority} onChange={e => handleChange('priority', e.target.value)}>
-                    <option value="Hot">Hot</option>
-                    <option value="Warm">Warm</option>
-                    <option value="Cold">Cold</option>
-                  </select>
-                </div>
-                <div className="sheet-field">
-                  <label>Potential Amount (₹)</label>
-                  <input
-                    className="crm-input"
-                    type="number"
-                    value={model.dealAmount}
-                    onChange={e => handleChange('dealAmount', e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-                {canAssign && (
-                  <div className="sheet-field full-width">
-                    <label>Assigned Staff</label>
-                    <select className="crm-input" value={model.assignedTo} onChange={e => handleChange('assignedTo', e.target.value)}>
-                      <option value="">Unassigned</option>
-                      {employees.map(u => <option key={u.id || u._id} value={u.id || u._id}>{u.name}</option>)}
+                  <label>Acquisition Source</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiLink /></div>
+                    <select value={model.source} onChange={e => setModel({ ...model, source: e.target.value })}>
+                      {availableSources.length > 0 
+                        ? availableSources.map(s => <option key={s.id} value={s.name}>{s.name}</option>)
+                        : ['Organic', 'Referral', 'Social', 'Ads'].map(name => <option key={name} value={name}>{name}</option>)
+                      }
                     </select>
                   </div>
-                )}
+                </div>
+                <div className="sheet-field">
+                  <label>Interest Level</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiStar /></div>
+                    <select value={model.interest_level} onChange={e => setModel({ ...model, interest_level: e.target.value })}>
+                      <option value="High">High (Hot)</option>
+                      <option value="Medium">Medium (Warm)</option>
+                      <option value="Low">Low (Cold)</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </section>
 
-            {/* Follow-up */}
+            {/* Geography */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <FiMapPin />
+                <span>Geographic Intelligence</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field full-width">
+                  <label>Street Address</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiMapPin /></div>
+                    <input 
+                      value={model.address} 
+                      onChange={e => setModel({ ...model, address: e.target.value })} 
+                      placeholder="Suite, Building, Street..." 
+                    />
+                  </div>
+                </div>
+                <div className="sheet-field">
+                  <label>City / Region</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiMapPin /></div>
+                    <input value={model.city} onChange={e => setModel({ ...model, city: e.target.value })} placeholder="e.g. Mumbai" />
+                  </div>
+                </div>
+                <div className="sheet-field">
+                  <label>State / Province</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiMapPin /></div>
+                    <input value={model.state} onChange={e => setModel({ ...model, state: e.target.value })} placeholder="e.g. Maharashtra" />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Operational */}
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
-                <Icon name="calendar" />
-                <span>Follow-up</span>
+                <FiActivity />
+                <span>Operational Governance</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
-                  <label>Call Back Date</label>
-                  <input
-                    className="crm-input"
-                    type="date"
-                    value={model.followUpDate}
-                    onChange={e => handleChange('followUpDate', e.target.value)}
-                  />
+                  <label>Lifecycle Status</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiTag /></div>
+                    <select value={model.status} onChange={e => setModel({ ...model, status: e.target.value })}>
+                      {availableStatuses.length > 0 
+                        ? availableStatuses.map(s => <option key={s.id} value={s.name}>{s.name}</option>)
+                        : ['New', 'Contacted', 'Qualified', 'Lost'].map(name => <option key={name} value={name}>{name}</option>)
+                      }
+                    </select>
+                  </div>
+                </div>
+                <div className="sheet-field">
+                  <label>Assigned Officer</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiBriefcase /></div>
+                    <select value={model.assigned_to} onChange={e => setModel({ ...model, assigned_to: e.target.value })}>
+                      <option value="">Unassigned</option>
+                      {allUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div className="sheet-field full-width">
-                  <label>Notes</label>
-                  <textarea
-                    className="crm-input"
-                    style={{ minHeight: '100px' }}
-                    value={model.notes}
-                    onChange={e => handleChange('notes', e.target.value)}
-                    placeholder="Add any relevant information about this lead..."
-                  />
+                  <label>Strategic Notes</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiMessageSquare /></div>
+                    <textarea 
+                      style={{ minHeight: '100px' }} 
+                      value={model.notes} 
+                      onChange={e => setModel({ ...model, notes: e.target.value })} 
+                      placeholder="Add background context, requirements, or meeting summaries..." 
+                    />
+                  </div>
                 </div>
               </div>
             </section>
@@ -364,33 +391,17 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
         </form>
 
         <div className="crm-modal-sheet-footer">
-          <p className="footer-hint">Your data is safe.</p>
+          <p className="footer-hint">Data is encrypted with 256-bit security.</p>
           <div style={{ display: 'flex', gap: '16px' }}>
             <button className="crm-btn-premium glass" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
-            <button className="crm-btn-premium vibrant" disabled={saving} onClick={handleSubmit}>
-              {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Lead'}
+            <button className="crm-btn-premium vibrant" disabled={saving || checking} onClick={handleSubmit}>
+              {saving ? 'Processing...' : isEdit ? 'Save Changes' : 'Create Lead'}
             </button>
           </div>
         </div>
       </div>
-
-      {duplicateModal && (
-        <DuplicateLeadModal
-          duplicate={duplicateModal.existing}
-          matchedBy={duplicateModal.matchedBy}
-          onClose={() => setDuplicateModal(null)}
-          onUpdate={async (existing) => {
-             // Logic simplified for template consistency
-             leadsApi.update(existing.id, { ...model, name: `${model.firstName} ${model.lastName}`.trim() })
-             .then(() => {
-               toast.success('Lead updated');
-               navigate(`/leads/${existing.id}`);
-             });
-          }}
-        />
-      )}
     </div>
   )
 
-  return createPortal(modalContent, document.body)
+  return createPortal(modalContent, document.getElementById('modal-root-content') || document.body)
 }

@@ -2,11 +2,25 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { toast } from 'react-toastify'
+import { 
+  FiUser, 
+  FiMessageSquare, 
+  FiActivity, 
+  FiSettings, 
+  FiTag, 
+  FiFlag,
+  FiBriefcase,
+  FiInfo
+} from 'react-icons/fi'
 import { supportApi } from '../../../services/workflow.js'
 import { customersApi } from '../../../services/customers.js'
 import { usersApi } from '../../../services/users.js'
 import { Icon } from '../../../layouts/icons.jsx'
 import { useAuth } from '../../../context/AuthContext.jsx'
+
+import { 
+  validateRequired 
+} from '../../../utils/formValidation.js'
 
 export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
   const { id: paramsId } = useParams()
@@ -26,11 +40,13 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
     category: 'General',
     assigned_to: '',
   })
+  const [initialData, setInitialData] = useState(null)
 
   const [customers, setCustomers] = useState([])
   const [allUsers, setAllUsers] = useState([])
   const [loading, setLoading] = useState(isEdit && !!id)
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving]   = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
 
   useEffect(() => {
     async function loadResources() {
@@ -53,7 +69,7 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
     setLoading(true)
     supportApi.get(id)
       .then(ticket => {
-        setFormData({
+        const normalized = {
           customer_id: ticket.customer_id?._id || ticket.customer_id?.id || ticket.customer_id || '',
           user_customer_id: ticket.user_customer_id?._id || ticket.user_customer_id?.id || '',
           subject: ticket.subject || '',
@@ -61,7 +77,9 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
           priority: ticket.priority || 'medium',
           category: ticket.category || 'General',
           assigned_to: ticket.assigned_to?._id || ticket.assigned_to?.id || ticket.assigned_to || '',
-        })
+        }
+        setFormData(normalized)
+        setInitialData(normalized)
       })
       .catch(() => {
         toast.error('Failed to load ticket')
@@ -70,9 +88,32 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
       .finally(() => setLoading(false))
   }, [id, isEdit, navigate, onCancel])
 
+  function validate() {
+    const errors = {}
+    
+    const subjectErr = validateRequired('Subject', formData.subject)
+    if (subjectErr) errors.subject = subjectErr
+
+    const descErr = validateRequired('Description', formData.description)
+    if (descErr) errors.description = descErr
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   async function handleSubmit(e) {
     if (e) e.preventDefault()
-    if (!formData.subject || !formData.description) return toast.warn('Subject and Description are required')
+    if (!validate()) {
+      const firstError = Object.values(fieldErrors)[0] || 'Please fix validation errors'
+      return toast.warn(firstError)
+    }
+
+    if (isEdit && initialData) {
+      const isChanged = Object.keys(initialData).some(key => formData[key] !== initialData[key])
+      if (!isChanged) {
+        return toast.info('No changes detected')
+      }
+    }
 
     setSaving(true)
     try {
@@ -102,7 +143,7 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
       <div className="crm-modal-sheet animate-sheet-in">
         <div className="crm-modal-sheet-header">
           <div className="sheet-title-area">
-            <h2 className="sheet-title">{isEdit ? 'Edit Support Ticket' : 'Raise New Ticket'}</h2>
+            <h2 className="sheet-title">{isEdit ? 'Edit Ticket' : 'Raise New Ticket'}</h2>
             <p className="sheet-subtitle">{isEdit ? `Refining ticket ID: ${id}` : 'Submit a support request to the helpdesk'}</p>
           </div>
         </div>
@@ -113,23 +154,29 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
             {!isCustomer && (
               <section className="form-sheet-section">
                 <div className="form-sheet-section-header">
-                  <Icon name="user" />
+                  <FiUser />
                   <span>Account Linking</span>
                 </div>
                 <div className="form-sheet-grid">
                   <div className="sheet-field">
                     <label>Customer Account</label>
-                    <select className="crm-input" value={formData.customer_id} onChange={e => setFormData({ ...formData, customer_id: e.target.value })}>
-                      <option value="">None / Internal Only</option>
-                      {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiUser /></div>
+                      <select value={formData.customer_id} onChange={e => setFormData({ ...formData, customer_id: e.target.value })}>
+                        <option value="">None / Internal Only</option>
+                        {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div className="sheet-field">
                     <label>System User</label>
-                    <select className="crm-input" value={formData.user_customer_id} onChange={e => setFormData({ ...formData, user_customer_id: e.target.value })}>
-                      <option value="">Select User...</option>
-                      {allUsers.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
-                    </select>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiUser /></div>
+                      <select value={formData.user_customer_id} onChange={e => setFormData({ ...formData, user_customer_id: e.target.value })}>
+                        <option value="">Select User...</option>
+                        {allUsers.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -138,29 +185,41 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
             {/* Ticket Details */}
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
-                <Icon name="activity" />
+                <FiMessageSquare />
                 <span>Ticket Intelligence</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field full-width">
                   <label>Subject</label>
-                  <input
-                    className="crm-input"
-                    autoFocus
-                    value={formData.subject}
-                    onChange={e => setFormData({ ...formData, subject: e.target.value })}
-                    placeholder="Brief summary of the issue"
-                  />
+                  <div className={`crm-input-group ${fieldErrors.subject ? 'error' : ''}`}>
+                    <div className="input-icon-box"><FiInfo /></div>
+                    <input
+                      autoFocus
+                      value={formData.subject}
+                      onChange={e => {
+                        setFormData({ ...formData, subject: e.target.value })
+                        if (fieldErrors.subject) setFieldErrors(prev => ({ ...prev, subject: '' }))
+                      }}
+                      placeholder="Brief summary of the issue"
+                    />
+                  </div>
+                  {fieldErrors.subject && <span className="error-text">{fieldErrors.subject}</span>}
                 </div>
                 <div className="sheet-field full-width">
                   <label>Detailed Description</label>
-                  <textarea
-                    className="crm-input"
-                    style={{ minHeight: '120px' }}
-                    value={formData.description}
-                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Provide as much detail as possible..."
-                  />
+                  <div className={`crm-input-group ${fieldErrors.description ? 'error' : ''}`}>
+                    <div className="input-icon-box" style={{ alignItems: 'flex-start', paddingTop: '12px' }}><FiMessageSquare /></div>
+                    <textarea
+                      style={{ minHeight: '120px' }}
+                      value={formData.description}
+                      onChange={e => {
+                        setFormData({ ...formData, description: e.target.value })
+                        if (fieldErrors.description) setFieldErrors(prev => ({ ...prev, description: '' }))
+                      }}
+                      placeholder="Provide as much detail as possible..."
+                    />
+                  </div>
+                  {fieldErrors.description && <span className="error-text">{fieldErrors.description}</span>}
                 </div>
               </div>
             </section>
@@ -168,38 +227,47 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
             {/* Configuration */}
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
-                <Icon name="settings" />
+                <FiSettings />
                 <span>Classification & Assignment</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
                   <label>Priority</label>
-                  <select className="crm-input" value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })}>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiFlag /></div>
+                    <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })}>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="sheet-field">
                   <label>Category</label>
-                  <select className="crm-input" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
-                    <option value="General">General Inquiry</option>
-                    <option value="Technical">Technical Issue</option>
-                    <option value="Billing">Billing/Payments</option>
-                    <option value="Bug">Software Bug</option>
-                    <option value="Feature">Feature Request</option>
-                  </select>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiTag /></div>
+                    <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                      <option value="General">General Inquiry</option>
+                      <option value="Technical">Technical Issue</option>
+                      <option value="Billing">Billing/Payments</option>
+                      <option value="Bug">Software Bug</option>
+                      <option value="Feature">Feature Request</option>
+                    </select>
+                  </div>
                 </div>
                 {!isCustomer && (
                   <div className="sheet-field">
                     <label>Assign To</label>
-                    <select className="crm-input" value={formData.assigned_to} onChange={e => setFormData({ ...formData, assigned_to: e.target.value })}>
-                      <option value="">Not Assigned</option>
-                      {allUsers.filter(u => u.role !== 'Customer').map(m => (
-                        <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
-                      ))}
-                    </select>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiBriefcase /></div>
+                      <select value={formData.assigned_to} onChange={e => setFormData({ ...formData, assigned_to: e.target.value })}>
+                        <option value="">Not Assigned</option>
+                        {allUsers.filter(u => u.role !== 'Customer').map(m => (
+                          <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 )}
               </div>
@@ -220,5 +288,5 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
     </div>
   )
 
-  return createPortal(modalContent, document.body)
+  return createPortal(modalContent, document.getElementById('modal-root-content') || document.body)
 }

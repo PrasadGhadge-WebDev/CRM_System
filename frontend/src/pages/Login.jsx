@@ -1,9 +1,25 @@
 import { useState, useEffect } from 'react'
 import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom'
-import { FiEye, FiEyeOff, FiLoader, FiArrowLeft, FiSun, FiMoon } from 'react-icons/fi'
+import { 
+  FiEye, 
+  FiEyeOff, 
+  FiLoader, 
+  FiArrowLeft, 
+  FiSun, 
+  FiMoon, 
+  FiMail, 
+  FiLock, 
+  FiUser, 
+  FiPhone,
+  FiChevronDown
+} from 'react-icons/fi'
 import { toast } from 'react-toastify'
+import PasswordInput from '../components/PasswordInput.jsx'
 import { useAuth } from '../context/AuthContext'
+import { validateLoginForm, validateRegisterForm, validateRegisterField, validateLoginField } from '../utils/authValidation'
+import { normalizeDigits, normalizeName, normalizeEmail } from '../utils/formValidation'
 import '../styles/auth-minimal.css'
+import '../styles/forms-premium.css'
 
 export default function AuthPage() {
   const location = useLocation()
@@ -15,13 +31,15 @@ export default function AuthPage() {
 
   // Form states
   const [formData, setFormData] = useState({
-    name: '',
+    fullName: '',
     email: '',
     phone: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: 'Admin'
   })
   const [fieldErrors, setFieldErrors] = useState({})
+  const [touched, setTouched] = useState({})
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
@@ -29,6 +47,7 @@ export default function AuthPage() {
   useEffect(() => {
     setIsRegister(location.pathname === '/register')
     setFieldErrors({}) // Clear errors on toggle
+    setTouched({}) // Clear touched on toggle
   }, [location.pathname])
 
   useEffect(() => {
@@ -38,76 +57,89 @@ export default function AuthPage() {
 
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
 
+  const updateFieldError = (name, value) => {
+    let error = ''
+    if (isRegister) {
+      error = validateRegisterField(name, value)
+      if (name === 'confirmPassword' && !error) {
+        if (value !== formData.password) {
+          error = 'Passwords do not match'
+        }
+      }
+    } else {
+      error = validateLoginField(name, value)
+    }
+
+    setFieldErrors(prev => {
+      const next = { ...prev }
+      if (error) next[name] = error
+      else delete next[name]
+      return next
+    })
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-    // Clear error for this field when corrected
-    if (fieldErrors[name]) {
-      setFieldErrors(prev => {
-        const next = { ...prev }
-        delete next[name]
-        return next
-      })
+    let nextValue = value
+
+    if (name === 'email') nextValue = normalizeEmail(value)
+
+    if (isRegister) {
+      if (name === 'fullName') nextValue = normalizeName(value)
+      if (name === 'phone') nextValue = normalizeDigits(value, 10)
+    }
+
+    setFormData(prev => ({ ...prev, [name]: nextValue }))
+
+    if (touched[name]) {
+      updateFieldError(name, nextValue)
     }
   }
 
+  const handleBlur = (e) => {
+    const { name, value } = e.target
+    setTouched(prev => ({ ...prev, [name]: true }))
+    updateFieldError(name, value)
+  }
+
   const validate = () => {
-    const errors = {}
-    const { name, email, phone, password, confirmPassword } = formData
-
-    // Email validation
-    if (!email) {
-      errors.email = 'Email is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = 'Invalid email format'
-    }
-
-    // Password validation
-    if (!password) {
-      errors.password = 'Password is required'
-    } else if (password.length < 6) {
-      errors.password = 'Password must be at least 6 characters'
-    }
-
     if (isRegister) {
-      // Name validation
-      if (!name) {
-        errors.name = 'Name is required'
-      } else if (name.length < 2) {
-        errors.name = 'Name must be at least 2 characters'
-      }
-
-      // Confirm Password
-      if (!confirmPassword) {
-        errors.confirmPassword = 'Please confirm your password'
-      } else if (confirmPassword !== password) {
+      const errors = validateRegisterForm(formData)
+      if (formData.confirmPassword !== formData.password) {
         errors.confirmPassword = 'Passwords do not match'
       }
-
-      // Phone validation (Optional but if entered must be 10 digits)
-      if (phone && !/^\d{10}$/.test(phone)) {
-        errors.phone = 'Phone number must be exactly 10 digits'
-      }
+      return errors
+    } else {
+      return validateLoginForm(formData)
     }
-
-    return errors
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     const errors = validate()
     setFieldErrors(errors)
+    setTouched({
+      fullName: true,
+      email: true,
+      phone: true,
+      password: true,
+      confirmPassword: true
+    })
 
-    if (Object.keys(errors).length > 0) return
+    if (Object.keys(errors).length > 0) {
+      toast.error('Please correct the errors in the form')
+      return
+    }
 
     setLoading(true)
     try {
       if (isRegister) {
         const result = await registerUser({
-          fullName: formData.name,
+          fullName: formData.fullName,
           email: formData.email,
           phone: formData.phone,
-          password: formData.password
+          password: formData.password,
+          role: formData.role
         })
         if (result.success) {
           toast.success('Account created successfully!')
@@ -116,7 +148,7 @@ export default function AuthPage() {
           toast.error(result.message || 'Registration failed')
         }
       } else {
-        const result = await login(formData.email, formData.password)
+        const result = await login(formData.email, formData.password, formData.role)
         if (result.success) {
           toast.success('Welcome back!')
           navigate('/dashboard')
@@ -156,91 +188,106 @@ export default function AuthPage() {
               {isRegister && (
                 <>
                   <div className="auth-minimal-group">
-                    <label htmlFor="name">Full Name</label>
-                    <input
-                      id="name"
-                      name="name"
-                      type="text"
-                      value={formData.name}
-                      onChange={handleChange}
-                      placeholder="Enter Full Name"
-                      autoComplete="off"
-                      className={fieldErrors.name ? 'input-error' : ''}
-                    />
-                    {fieldErrors.name && <span className="auth-minimal-field-error">{fieldErrors.name}</span>}
+                    <label htmlFor="fullName">Full Name</label>
+                    <div className={`crm-input-group ${fieldErrors.fullName ? 'error' : ''}`}>
+                      <div className="input-icon-box"><FiUser /></div>
+                      <input
+                        id="fullName"
+                        name="fullName"
+                        type="text"
+                        value={formData.fullName}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        placeholder="Enter Full Name"
+                        autoComplete="off"
+                      />
+                    </div>
+                    {fieldErrors.fullName && <span className="auth-minimal-field-error">{fieldErrors.fullName}</span>}
                   </div>
 
                   <div className="auth-minimal-group">
-                    <label htmlFor="phone">Phone Number (Optional)</label>
-                    <input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="Enter 10 Digit Mobile"
-                      autoComplete="off"
-                      className={fieldErrors.phone ? 'input-error' : ''}
-                    />
+                    <label htmlFor="phone">Phone Number</label>
+                    <div className={`crm-input-group ${fieldErrors.phone ? 'error' : ''}`}>
+                      <div className="input-icon-box"><FiPhone /></div>
+                      <input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        placeholder="Enter 10 Digit Mobile"
+                        autoComplete="off"
+                      />
+                    </div>
                     {fieldErrors.phone && <span className="auth-minimal-field-error">{fieldErrors.phone}</span>}
                   </div>
                 </>
               )}
 
               <div className="auth-minimal-group">
-                <label htmlFor="email">Email Address</label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter Email"
-                  autoComplete="off"
-                  className={fieldErrors.email ? 'input-error' : ''}
-                />
-                {fieldErrors.email && <span className="auth-minimal-field-error">{fieldErrors.email}</span>}
+                <label htmlFor="role">Login Role</label>
+                <div className="crm-input-group">
+                  <div className="input-icon-box"><FiLock /></div>
+                  <select
+                    id="role"
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className="auth-minimal-select"
+                  >
+                    <option value="Admin">Administrator</option>
+                    <option value="Manager">Manager</option>
+                    <option value="Employee">Employee</option>
+                    <option value="Accountant">Accountant</option>
+                    <option value="HR">HR Specialist</option>
+                  </select>
+                  <div className="select-chevron-box"><FiChevronDown /></div>
+                </div>
               </div>
 
               <div className="auth-minimal-group">
-                <label htmlFor="password">Password</label>
-                <div className="password-input-wrap">
+                <label htmlFor="email">Email Address</label>
+                <div className={`crm-input-group ${fieldErrors.email ? 'error' : ''}`}>
+                  <div className="input-icon-box"><FiMail /></div>
                   <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
                     onChange={handleChange}
-                    placeholder="Enter Password"
-                    autoComplete="new-password"
-                    className={fieldErrors.password ? 'input-error' : ''}
+                    onBlur={handleBlur}
+                    placeholder="Enter Email"
+                    autoComplete="off"
                   />
-                  <button
-                    type="button"
-                    className="password-toggle"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <FiEyeOff /> : <FiEye />}
-                  </button>
                 </div>
-                {fieldErrors.password && <span className="auth-minimal-field-error">{fieldErrors.password}</span>}
+                {fieldErrors.email && <span className="auth-minimal-field-error">{fieldErrors.email}</span>}
               </div>
 
+              <PasswordInput
+                id="password"
+                name="password"
+                label="Password"
+                value={formData.password}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                placeholder="Enter Password"
+                error={fieldErrors.password}
+                wrapperClass="auth-minimal-group"
+              />
+
               {isRegister && (
-                <div className="auth-minimal-group">
-                  <label htmlFor="confirmPassword">Confirm Password</label>
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Re-enter Password"
-                    autoComplete="new-password"
-                    className={fieldErrors.confirmPassword ? 'input-error' : ''}
-                  />
-                  {fieldErrors.confirmPassword && <span className="auth-minimal-field-error">{fieldErrors.confirmPassword}</span>}
-                </div>
+                <PasswordInput
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  label="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="Re-enter Password"
+                  error={fieldErrors.confirmPassword}
+                  wrapperClass="auth-minimal-group"
+                />
               )}
 
               <div className="auth-minimal-options">

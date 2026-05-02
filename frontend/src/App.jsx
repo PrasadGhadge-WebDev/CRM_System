@@ -38,7 +38,6 @@ import Reports from './pages/Reports.jsx'
 import Filters from './modules/admin/pages/Filters.jsx'
 import PaginationSettings from './modules/admin/pages/PaginationSettings.jsx'
 import TrashList from './modules/admin/pages/TrashList.jsx'
-import Attendance from './modules/admin/pages/Attendance.jsx'
 import RecycleBinIntelligence from './components/RecycleBinIntelligence.jsx'
 
 // Page Imports
@@ -206,7 +205,6 @@ export default function App() {
 
           <Route path="/trash" element={<TrashList />} />
           <Route path="/recycle-bin" element={<RecycleBinIntelligence />} />
-          <Route path="/attendance" element={<ProtectedRoute permission="attendance"><Attendance /></ProtectedRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

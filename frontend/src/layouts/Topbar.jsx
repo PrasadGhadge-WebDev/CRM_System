@@ -7,6 +7,7 @@ import NotificationDropdown from "../components/NotificationDropdown.jsx"
 import GlobalSearch from "../components/GlobalSearch.jsx"
 import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 import menuData from "../assets/menu-animation.json"
+import { FiClock, FiZap, FiMenu } from "react-icons/fi"
 
 export default function Topbar({
   title,
@@ -22,6 +23,12 @@ export default function Topbar({
   const [open, setOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const navigate = useNavigate()
+
+  const trialDaysLeft = user?.trial_ends_at 
+    ? Math.ceil((new Date(user.trial_ends_at) - new Date()) / (24 * 60 * 60 * 1000))
+    : 0;
+  
+  const showTrial = user?.is_trial && trialDaysLeft >= 0;
 
   const firstLetter =
     user?.username?.charAt(0).toUpperCase() || "A"
@@ -41,14 +48,8 @@ export default function Topbar({
 
       {/* LEFT */}
       <div className="topbarLeft">
-        <button className="iconBtn sidebarToggle" onClick={onToggleSidebar} style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: '24px', height: '24px' }}>
-            <DotLottieReact
-              data={menuData}
-              segment={sidebarOpen ? [0, 30] : [30, 0]}
-              autoplay
-            />
-          </div>
+        <button className="iconBtn sidebarToggle" onClick={onToggleSidebar} style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', fontSize: '24px' }}>
+          <FiMenu />
         </button>
         <img src="/CRM_Logo.png" alt="CRM Logo" style={{ width: '32px', height: '32px', marginRight: '10px', objectFit: 'contain' }} />
         <h2 className="topbarTitle">{title}</h2>
@@ -59,6 +60,15 @@ export default function Topbar({
 
       {/* RIGHT */}
       <div className="topbarRight">
+        {showTrial && (
+          <div className="trial-badge-container" onClick={() => navigate('/billing')}>
+            <div className="trial-badge-orb" />
+            <FiZap className="trial-badge-icon" />
+            <span className="trial-badge-text">
+              {trialDaysLeft === 0 ? 'Last Day' : `${trialDaysLeft} Days Trial`}
+            </span>
+          </div>
+        )}
 
         <NotificationDropdown />
 

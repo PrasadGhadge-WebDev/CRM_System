@@ -8,6 +8,10 @@ export function normalizeName(value) {
   return String(value ?? '').replace(/[^A-Za-z\s'-]/g, '')
 }
 
+export function normalizeEmail(value) {
+  return String(value ?? '').replace(/[^a-zA-Z0-9@.]/g, '')
+}
+
 export function isValidEmail(value) {
   if (!value) return true
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim())

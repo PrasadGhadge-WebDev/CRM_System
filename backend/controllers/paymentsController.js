@@ -19,7 +19,7 @@ async function getNextPaymentNumber(companyId) {
 }
 
 exports.listPayments = asyncHandler(async (req, res) => {
-  const { customer_id, invoice_id, deal_id, payment_method, startDate, endDate, page = 1, limit = 20 } = req.query;
+  const { customer_id, invoice_id, deal_id, payment_method, startDate, endDate, q, page = 1, limit = 20 } = req.query;
 
   const filter = { company_id: req.user.company_id };
 
@@ -46,20 +46,55 @@ exports.listPayments = asyncHandler(async (req, res) => {
     if (endDate) filter.payment_date.$lte = new Date(endDate);
   }
 
-  const pageNum = Math.max(1, Number(page) || 1);
-  const limitNum = Math.max(1, Number(limit) || 20);
+  if (q) {
+    const search = { $regex: q, $options: 'i' };
+    filter.$or = [
+      { payment_number: search },
+      { status: search },
+      { notes: search },
+      { reference_number: search },
+      { payment_method: search }
+    ];
+  }
 
-  const [items, total] = await Promise.all([
+  const summaryPipeline = [
+    { $match: filter },
+    {
+      $group: {
+        _id: '$payment_method',
+        count: { $sum: 1 },
+        totalAmount: { $sum: '$amount' }
+      }
+    }
+  ];
+
+  const pageNum = Math.max(1, Number(page) || 1);
+  const limitNum = Math.min(100, Math.max(1, Number(limit) || 20));
+
+  const [items, totalFiltered, methodStats] = await Promise.all([
     Payment.find(filter)
       .populate('customer_id', 'name')
       .populate('invoice_id', 'invoice_number')
       .sort({ created_at: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum),
-    Payment.countDocuments(filter)
+    Payment.countDocuments(filter),
+    Payment.aggregate(summaryPipeline)
   ]);
 
-  res.ok({ items, total, page: pageNum, limit: limitNum });
+  const summary = {
+    total: totalFiltered,
+    totalAmount: 0,
+    byMethod: {}
+  };
+  methodStats.forEach(s => {
+    if (s._id) {
+      summary.byMethod[s._id] = s.count;
+      summary.totalAmount += (s.totalAmount || 0);
+    }
+  });
+
+  res.ok({ items, total: totalFiltered, page: pageNum, limit: limitNum, summary });
 });
 
 exports.createPayment = asyncHandler(async (req, res) => {
@@ -81,11 +116,21 @@ exports.createPayment = asyncHandler(async (req, res) => {
     return res.fail('Business Rule Violation: Payments must be linked to an Invoice.', 400);
   }
 
-  // Auto-find invoice if deal_id is provided but invoice_id is not
+  // Auto-find or Auto-create invoice if deal_id is provided but invoice_id is not
   if (payload.deal_id && !payload.invoice_id) {
     const Invoice = require('../models/Invoice');
-    const invoice = await Invoice.findOne({ deal_id: payload.deal_id, company_id: req.user.company_id });
-    if (!invoice) return res.fail('No Bill found for this Deal. Please generate an invoice first.', 400);
+    let invoice = await Invoice.findOne({ deal_id: payload.deal_id, company_id: req.user.company_id });
+    
+    if (!invoice) {
+      const { autoGenerateInvoice } = require('../utils/financeHelper');
+      const Deal = require('../models/Deal');
+      const deal = await Deal.findById(payload.deal_id);
+      if (deal) {
+        invoice = await autoGenerateInvoice(deal, req.user.id);
+      }
+    }
+    
+    if (!invoice) return res.fail('Failed to associate or generate an invoice for this deal.', 400);
     payload.invoice_id = invoice._id;
   }
 
@@ -96,12 +141,19 @@ exports.createPayment = asyncHandler(async (req, res) => {
   const invoice = await Invoice.findOne({ _id: payload.invoice_id, company_id: req.user.company_id });
   if (!invoice) return res.fail('Invoice not found', 404);
 
-  // Determine Payment Status (Rule 2 & 5)
+  // Determine Payment Status (New Flow: Pending -> Received -> Verified -> Completed)
+  // For initial creation, we can set it to 'Completed' if verified immediately or 'Received'
+  // But based on 4.3: Pending -> Received -> Verified -> Completed
+  // Usually a manual entry is 'Received' or 'Completed'
   const remainingBefore = invoice.total_amount - (invoice.paid_amount || 0);
   if (payload.amount >= remainingBefore) {
-    payload.status = 'Paid';
+    payload.status = 'Completed';
   } else {
-    payload.status = 'Partial';
+    // Even if partial, the payment record itself can be 'Completed' or 'Received'
+    // But the user might want the payment status to reflect the deal status? 
+    // No, 4.3 says Payment Status Flow: Pending -> Received -> Verified -> Completed.
+    // I'll set it to 'Completed' for now if it's a successful entry.
+    payload.status = 'Completed';
   }
 
   const payment = await Payment.create(payload);
@@ -118,6 +170,10 @@ exports.createPayment = asyncHandler(async (req, res) => {
   }
   
   await invoice.save();
+
+  // Reactivate Customer on Payment (Rule: Makes new purchase -> Reactivate to Active)
+  const Customer = require('../models/Customer');
+  await Customer.findByIdAndUpdate(invoice.customer_id, { status: 'Active' });
 
   // Step 7: Update Deal to Completed if Invoice is fully Paid
   if (invoice.status === 'Paid' && invoice.deal_id) {
@@ -167,7 +223,8 @@ exports.getPayment = asyncHandler(async (req, res) => {
   const payment = await Payment.findOne({ _id: req.params.id, company_id: req.user.company_id })
     .populate('customer_id', 'name email')
     .populate('invoice_id', 'invoice_number total_amount paid_amount')
-    .populate('deal_id', 'name');
+    .populate('deal_id', 'name')
+    .populate('received_by', 'name');
   if (!payment) return res.fail('Payment not found', 404);
   res.ok(payment);
 });

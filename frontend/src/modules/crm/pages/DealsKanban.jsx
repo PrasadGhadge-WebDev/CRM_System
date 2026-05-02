@@ -3,13 +3,16 @@ import { Link } from 'react-router-dom'
 import { Icon } from '../../../layouts/icons.jsx'
 import { useAuth } from '../../../context/AuthContext'
 
-const STAGES = ['New', 'Qualified', 'Proposal', 'Won']
+const STAGES = ['Prospecting', 'Qualification', 'Needs Analysis', 'Proposal', 'Negotiation', 'Won', 'Lost']
 
 const STAGE_COLORS = {
-  'New': 'info',
-  'Qualified': 'purple',
-  'Proposal': 'blue',
-  'Won': 'success'
+  'Prospecting': 'info',
+  'Qualification': 'purple',
+  'Needs Analysis': 'blue',
+  'Proposal': 'warning',
+  'Negotiation': 'orange',
+  'Won': 'success',
+  'Lost': 'danger'
 }
 
 export default function DealsKanban({ deals = [], loading, onStatusChange }) {

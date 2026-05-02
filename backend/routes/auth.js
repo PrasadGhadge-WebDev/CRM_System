@@ -24,7 +24,7 @@ router.post('/demo-switch', protect, demoSwitchRole);
 router.post('/onboarding/verify', verifyOnboarding);
 router.post('/onboarding/complete', completeOnboarding);
 router.get('/me', protect, getMe);
-router.put('/me', protect, preventDemoEdit, updateMe);
+router.put('/me', protect, updateMe);
 router.put('/password', protect, preventDemoEdit, updatePassword);
 router.put('/settings', protect, preventDemoSettings, updateSettings);
 router.get('/logout', protect, logout);

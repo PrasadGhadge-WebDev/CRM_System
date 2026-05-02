@@ -6,6 +6,12 @@ import { formatCurrency } from '../../../utils/formatters'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../../context/AuthContext'
 import PageHeader from '../../../components/PageHeader.jsx'
+import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
+import StatusDropdown from '../../crm/components/StatusDropdown.jsx'
+
+function stopRowNavigation(event) {
+  event.stopPropagation()
+}
 
 export default function InvoicesList() {
   const { user } = useAuth()
@@ -17,6 +23,7 @@ export default function InvoicesList() {
   const [endDate, setEndDate] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+  const [summary, setSummary] = useState({ total: 0, byStatus: {} })
   const limit = 20
   const navigate = useNavigate()
 
@@ -30,6 +37,7 @@ export default function InvoicesList() {
       const res = await invoicesApi.list({ q, status, page, limit, startDate, endDate })
       setInvoices(res.items || [])
       setTotal(res.total || 0)
+      setSummary(res.summary || { total: 0, byStatus: {} })
     } catch (err) {
       toast.error('Failed to load invoices')
     } finally {
@@ -52,6 +60,16 @@ export default function InvoicesList() {
     }
   }
 
+  async function onUpdateStatus(id, newStatus) {
+    try {
+      await invoicesApi.update(id, { status: newStatus })
+      toast.success(`Status updated to ${newStatus}`)
+      setInvoices(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item))
+    } catch (err) {
+      toast.error(err.message || 'Update failed')
+    }
+  }
+
   return (
     <div className="stack">
       <section className="crm-fullscreen-shell">
@@ -60,37 +78,31 @@ export default function InvoicesList() {
           <p className="users-subtitle">Track and manage customer billing and payment statuses</p>
         </div>
 
-        <div className="crm-stats-bar-compact">
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">TOTAL INVOICED</span>
-            <span className="stat-pill-value total">{total}</span>
+        <div className="crm-stats-bar-compact overflow-x-auto pb-8">
+          <div className="stat-pill-mini clickable" onClick={() => { setStatus(''); setPage(1); }} style={{ borderBottom: status === '' ? '2px solid var(--primary)' : '' }}>
+            <span className="stat-pill-label">ALL INVOICES</span>
+            <span className="stat-pill-value total">{summary.total}</span>
           </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">PAID</span>
-            <span className="stat-pill-value active">{invoices.filter(i => i.status === 'Paid').length}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">PENDING</span>
-            <span className="stat-pill-value pending">{invoices.filter(i => i.status !== 'Paid' && i.status !== 'Overdue').length}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">OVERDUE</span>
-            <span className="stat-pill-value inactive">{invoices.filter(i => i.status === 'Overdue').length}</span>
-          </div>
+          {Object.entries(summary.byStatus).map(([name, count]) => (
+            <div 
+              key={name} 
+              className="stat-pill-mini clickable" 
+              onClick={() => { setStatus(name); setPage(1); }}
+              style={{ borderBottom: status === name ? '2px solid var(--primary)' : '' }}
+            >
+              <span className="stat-pill-label">{name.toUpperCase()}</span>
+              <span className="stat-pill-value">{count}</span>
+            </div>
+          ))}
         </div>
 
         <div className="unified-action-bar">
           <div className="search-filter-group">
-            <div className="crm-search-input-wrap">
-              <Icon name="search" className="search-icon" />
-              <input 
-                type="text" 
-                placeholder="Search invoices..." 
-                className="crm-input"
-                value={q} 
-                onChange={e => setQ(e.target.value)} 
-              />
-            </div>
+            <ModernSearchBar
+              value={q}
+              onChange={e => { setQ(e.target.value); setPage(1); }}
+              placeholder="Search by invoice number, status, notes, address, terms..."
+            />
 
             <select className="crm-input filter-select" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}>
               <option value="">All Invoices</option>
@@ -166,10 +178,19 @@ export default function InvoicesList() {
                             </div>
                           </td>
                           <td><span className="font-numeric" style={{ color: 'var(--primary)', fontWeight: 800 }}>{formatCurrency(inv.total_amount)}</span></td>
-                          <td>
-                            <span className={`crm-status-pill ${inv.status === 'Paid' ? 'success' : inv.status === 'Overdue' ? 'danger' : 'warning'}`}>
-                              {inv.status}
-                            </span>
+                          <td onClick={stopRowNavigation}>
+                            <StatusDropdown 
+                              status={inv.status} 
+                              options={[
+                                { name: 'Unpaid', color: '#f59e0b' },
+                                { name: 'Partially Paid', color: '#3b82f6' },
+                                { name: 'Paid', color: '#10b981' },
+                                { name: 'Overdue', color: '#ef4444' },
+                                { name: 'Cancelled', color: '#64748b' }
+                              ]} 
+                              onChange={(newStatus) => onUpdateStatus(inv.id, newStatus)}
+                              disabled={!canEdit}
+                            />
                           </td>
                           {(canEdit || canDelete) && (
                             <td className="text-right" onClick={e => e.stopPropagation()}>

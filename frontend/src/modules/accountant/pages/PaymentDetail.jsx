@@ -110,20 +110,42 @@ export default function PaymentDetail() {
                 <div style={{ color: 'var(--text)', fontWeight: 500 }}>{payment.payment_method}</div>
               </div>
               <div>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Transaction ID</label>
-                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{payment.transaction_id || '—'}</div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                  {payment.payment_method === 'Cheque' ? 'Cheque Number' : 'Transaction ID'}
+                </label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>
+                  {payment.payment_method === 'Cheque' ? (payment.cheque_number || '—') : (payment.transaction_id || '—')}
+                </div>
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Status</label>
-                <div style={{ color: 'var(--success)', fontWeight: 700 }}>Success</div>
+                <div style={{ 
+                  color: payment.status === 'Completed' || payment.status === 'Verified' ? 'var(--success)' : 
+                         payment.status === 'Failed' ? 'var(--danger)' : 'var(--warning)', 
+                  fontWeight: 700 
+                }}>
+                  {payment.status || 'Received'}
+                </div>
               </div>
+              {payment.bank_name && (
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Bank Name</label>
+                  <div style={{ color: 'var(--text)', fontWeight: 500 }}>{payment.bank_name}</div>
+                </div>
+              )}
             </div>
-            {payment.notes && (
-              <div style={{ marginTop: '20px' }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Internal Notes</label>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>{payment.notes}</div>
-              </div>
-            )}
+              {payment.received_by && (
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Received By</label>
+                  <div style={{ color: 'var(--text)', fontWeight: 500 }}>{payment.received_by.name || 'System'}</div>
+                </div>
+              )}
+              {payment.notes && (
+                <div style={{ marginTop: '20px' }}>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Internal Notes</label>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>{payment.notes}</div>
+                </div>
+              )}
           </div>
         </div>
 

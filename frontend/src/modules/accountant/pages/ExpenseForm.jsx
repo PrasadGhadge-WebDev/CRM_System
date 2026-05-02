@@ -15,6 +15,7 @@ export default function ExpenseForm({ mode = 'create' }) {
     date: new Date().toISOString().split('T')[0],
     note: ''
   })
+  const [initialModel, setInitialModel] = useState(null)
   
   const [loading, setLoading] = useState(mode === 'edit')
   const [saving, setSaving] = useState(false)
@@ -23,10 +24,12 @@ export default function ExpenseForm({ mode = 'create' }) {
     if (mode === 'edit' && id) {
       expensesApi.get(id).then(res => {
         if (res) {
-          setModel({
+          const normalized = {
             ...res,
             date: res.date ? res.date.split('T')[0] : ''
-          })
+          }
+          setModel(normalized)
+          setInitialModel(normalized)
         }
       }).catch(err => {
         toast.error('Failed to load expense')
@@ -40,6 +43,12 @@ export default function ExpenseForm({ mode = 'create' }) {
     if (!model.amount || !model.category) {
       toast.error('Category and Amount are required')
       return
+    }
+
+    if (mode === 'edit' && initialModel) {
+      if (JSON.stringify(model) === JSON.stringify(initialModel)) {
+        return toast.info('No changes detected')
+      }
     }
 
     setSaving(true)

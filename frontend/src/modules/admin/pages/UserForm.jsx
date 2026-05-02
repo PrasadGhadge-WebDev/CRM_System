@@ -2,7 +2,22 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { 
+  FiUser, 
+  FiMail, 
+  FiPhone, 
+  FiLock, 
+  FiCalendar, 
+  FiShield, 
+  FiActivity, 
+  FiBriefcase,
+  FiMapPin,
+  FiCamera,
+  FiImage,
+  FiEdit
+} from 'react-icons/fi'
 import { usersApi } from '../../../services/users.js'
+import PasswordInput from '../../../components/PasswordInput.jsx'
 import { Icon } from '../../../layouts/icons.jsx'
 import { useAuth } from '../../../context/AuthContext'
 import { rolesApi } from '../../../services/roles.js'
@@ -60,6 +75,7 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
   const isEmployeeView = !isAdmin && !isManager && !isHR
 
   const [model, setModel] = useState(emptyUser)
+  const [initialModel, setInitialModel] = useState(null)
   const [managers, setManagers] = useState([])
   const [availableRoles, setAvailableRoles] = useState([])
   const roleChoices = Array.isArray(availableRoles) ? availableRoles : []
@@ -100,7 +116,7 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
           const match = COUNTRY_CODES.find(c => pNum.startsWith(c.code))
           if (match) { cCode = match.code; pNum = pNum.slice(cCode.length).trim() }
         }
-        setModel({
+        const normalized = {
           ...emptyUser,
           ...data,
           password: '',
@@ -113,7 +129,9 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
           department: data.department || '',
           manager_id: data.manager_id || '',
           joining_date: toDateInput(data.joining_date) || today,
-        })
+        }
+        setModel(normalized)
+        setInitialModel(normalized)
       })
       .catch(() => {
         toast.error('Failed to load user profile')
@@ -163,14 +181,10 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
     if (e.key === 'Enter') {
       const form = e.target.form
       if (!form) return
-      
-      // If it's a textarea or a submit button, allow default Enter behavior
       if (e.target.tagName === 'TEXTAREA' || e.target.type === 'submit') return
-
       e.preventDefault()
       const index = Array.from(form.elements).indexOf(e.target)
       const nextElement = form.elements[index + 1]
-
       if (nextElement && nextElement.tagName !== 'BUTTON') {
         nextElement.focus()
       } else {
@@ -193,6 +207,17 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
 
     const firstError = Object.values(errors).find(v => v)
     if (firstError) { setFieldErrors(errors); toast.warn(firstError); return }
+
+    if (isEdit && initialModel) {
+      // Exclude passwords from change check as they are always empty on edit start
+      const isChanged = Object.keys(emptyUser).some(key => {
+        if (key === 'password' || key === 'confirmPassword') return false
+        return model[key] !== initialModel[key]
+      })
+      if (!isChanged) {
+        return toast.info('No changes detected')
+      }
+    }
 
     setSaving(true)
     try {
@@ -237,45 +262,47 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
             {/* Personal Information */}
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
-                <Icon name="user" />
+                <FiUser />
                 <span>Personal Information</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
                   <label>First Name</label>
-                  <input
-                    className="crm-input"
-                    autoFocus
-                    value={model.firstName}
-                    onChange={e => handleChange('firstName', e.target.value)}
-                    placeholder="Enter first name"
-                  />
+                  <div className={`crm-input-group ${fieldErrors.firstName ? 'error' : ''}`}>
+                    <div className="input-icon-box"><FiUser /></div>
+                    <input
+                      autoFocus
+                      value={model.firstName}
+                      onChange={e => handleChange('firstName', e.target.value)}
+                      placeholder="Enter first name"
+                    />
+                  </div>
                   {fieldErrors.firstName && <span className="error-text">{fieldErrors.firstName}</span>}
                 </div>
                 <div className="sheet-field">
                   <label>Last Name</label>
-                  <input
-                    className="crm-input"
-                    value={model.lastName}
-                    onChange={e => handleChange('lastName', e.target.value)}
-                    placeholder="Enter last name"
-                  />
+                  <div className={`crm-input-group ${fieldErrors.lastName ? 'error' : ''}`}>
+                    <div className="input-icon-box"><FiUser /></div>
+                    <input
+                      value={model.lastName}
+                      onChange={e => handleChange('lastName', e.target.value)}
+                      placeholder="Enter last name"
+                    />
+                  </div>
                   {fieldErrors.lastName && <span className="error-text">{fieldErrors.lastName}</span>}
                 </div>
                 <div className="sheet-field">
                   <label>Phone Number</label>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div className={`crm-input-group ${fieldErrors.phone ? 'error' : ''}`}>
+                    <div className="input-icon-box"><FiPhone /></div>
                     <select 
-                      className="crm-input" 
-                      style={{ width: '75px', flexShrink: 0, paddingRight: '10px' }} 
+                      style={{ width: '80px', flex: 'none', borderRight: '1px solid var(--border-subtle)' }} 
                       value={model.countryCode} 
                       onChange={e => handleChange('countryCode', e.target.value)}
                     >
                       {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                     </select>
                     <input
-                      className="crm-input"
-                      style={{ flex: 1, minWidth: 0 }}
                       value={model.phone}
                       onChange={e => handleChange('phone', e.target.value)}
                       placeholder="9876543210"
@@ -285,7 +312,10 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
                 </div>
                 <div className="sheet-field">
                   <label>Date of Birth</label>
-                  <input className="crm-input" type="date" value={model.date_of_birth} onChange={e => handleChange('date_of_birth', e.target.value)} />
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiCalendar /></div>
+                    <input type="date" value={model.date_of_birth} onChange={e => handleChange('date_of_birth', e.target.value)} />
+                  </div>
                 </div>
               </div>
             </section>
@@ -294,46 +324,38 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
             {!isEmployeeView && (isAdmin || isHR) && (
               <section className="form-sheet-section">
                 <div className="form-sheet-section-header">
-                  <Icon name="shield" />
+                  <FiLock />
                   <span>Login & Security</span>
                 </div>
                 <div className="form-sheet-grid">
                   <div className="sheet-field full-width">
                     <label>Email Address</label>
-                    <input
-                      className="crm-input"
-                      type="email"
-                      autoComplete="off"
-                      value={model.email}
-                      onChange={e => handleChange('email', e.target.value)}
-                      placeholder="user@company.com"
-                    />
+                    <div className={`crm-input-group ${fieldErrors.email ? 'error' : ''}`}>
+                      <div className="input-icon-box"><FiMail /></div>
+                      <input
+                        type="email"
+                        autoComplete="off"
+                        value={model.email}
+                        onChange={e => handleChange('email', e.target.value)}
+                        placeholder="user@company.com"
+                      />
+                    </div>
                     {fieldErrors.email && <span className="error-text">{fieldErrors.email}</span>}
                   </div>
-                  <div className="sheet-field">
-                    <label>Password {isEdit && '(Leave blank to keep current)'}</label>
-                    <input
-                      className="crm-input"
-                      type="password"
-                      autoComplete="new-password"
-                      value={model.password}
-                      onChange={e => handleChange('password', e.target.value)}
-                      placeholder="••••••••"
-                    />
-                    {fieldErrors.password && <span className="error-text">{fieldErrors.password}</span>}
-                  </div>
-                  <div className="sheet-field">
-                    <label>Confirm Password</label>
-                    <input
-                      className="crm-input"
-                      type="password"
-                      autoComplete="new-password"
-                      value={model.confirmPassword}
-                      onChange={e => handleChange('confirmPassword', e.target.value)}
-                      placeholder="••••••••"
-                    />
-                    {fieldErrors.confirmPassword && <span className="error-text">{fieldErrors.confirmPassword}</span>}
-                  </div>
+                  <PasswordInput
+                    label={`Password ${isEdit ? '(Leave blank to keep current)' : ''}`}
+                    value={model.password}
+                    onChange={e => handleChange('password', e.target.value)}
+                    error={fieldErrors.password}
+                    autoComplete="new-password"
+                  />
+                  <PasswordInput
+                    label="Confirm Password"
+                    value={model.confirmPassword}
+                    onChange={e => handleChange('confirmPassword', e.target.value)}
+                    error={fieldErrors.confirmPassword}
+                    autoComplete="new-password"
+                  />
                 </div>
               </section>
             )}
@@ -342,49 +364,64 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
             {!isEmployeeView && (
               <section className="form-sheet-section">
                 <div className="form-sheet-section-header">
-                  <Icon name="briefcase" />
+                  <FiBriefcase />
                   <span>Work Details</span>
                 </div>
                 <div className="form-sheet-grid">
                   <div className="sheet-field">
                     <label>Role</label>
-                    <select className="crm-input" value={model.role} onChange={e => handleChange('role', e.target.value)}>
-                      {visibleRoleChoices.map(role => (
-                        <option key={role.id || role._id || role.name} value={role.name}>{role.name}</option>
-                      ))}
-                      {visibleRoleChoices.length === 0 && (
-                        ['HR', 'Accountant', 'Manager', 'Employee'].map(roleName => (
-                          <option key={roleName} value={roleName}>{roleName}</option>
-                        ))
-                      )}
-                    </select>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiShield /></div>
+                      <select value={model.role} onChange={e => handleChange('role', e.target.value)}>
+                        {visibleRoleChoices.map(role => (
+                          <option key={role.id || role._id || role.name} value={role.name}>{role.name}</option>
+                        ))}
+                        {visibleRoleChoices.length === 0 && (
+                          ['HR', 'Accountant', 'Manager', 'Employee'].map(roleName => (
+                            <option key={roleName} value={roleName}>{roleName}</option>
+                          ))
+                        )}
+                      </select>
+                    </div>
                   </div>
                   <div className="sheet-field">
                     <label>Status</label>
-                    <select className="crm-input" value={model.status} onChange={e => handleChange('status', e.target.value)}>
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="pending">Pending</option>
-                    </select>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiActivity /></div>
+                      <select value={model.status} onChange={e => handleChange('status', e.target.value)}>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="pending">Pending</option>
+                      </select>
+                    </div>
                   </div>
                   <div className="sheet-field">
                     <label>Joining Date</label>
-                    <input className="crm-input" type="date" value={model.joining_date} onChange={e => handleChange('joining_date', e.target.value)} />
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiCalendar /></div>
+                      <input type="date" value={model.joining_date} onChange={e => handleChange('joining_date', e.target.value)} />
+                    </div>
                   </div>
                   <div className="sheet-field">
                     <label>Department</label>
-                    <select className="crm-input" value={model.department} onChange={e => handleChange('department', e.target.value)}>
-                      <option value="">Select Department</option>
-                      {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiBriefcase /></div>
+                      <select value={model.department} onChange={e => handleChange('department', e.target.value)}>
+                        <option value="">Select Department</option>
+                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
                   </div>
                   {!isHR && (
                     <div className="sheet-field full-width">
                       <label>Manager</label>
-                      <select className="crm-input" value={model.manager_id} onChange={e => handleChange('manager_id', e.target.value)}>
-                        <option value="">None (Self)</option>
-                        {managers.map(m => <option key={m.id} value={m.id}>{m.name || m.username}</option>)}
-                      </select>
+                      <div className="crm-input-group">
+                        <div className="input-icon-box"><FiUser /></div>
+                        <select value={model.manager_id} onChange={e => handleChange('manager_id', e.target.value)}>
+                          <option value="">None (Self)</option>
+                          {managers.map(m => <option key={m.id} value={m.id}>{m.name || m.username}</option>)}
+                        </select>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -394,7 +431,7 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
             {/* Profile Photo */}
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
-                <Icon name="image" />
+                <FiImage />
                 <span>Profile Photo</span>
               </div>
               <div className="photo-section-layout">
@@ -405,13 +442,13 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
                   {model.profile_photo ? (
                     <img src={model.profile_photo} alt="User" />
                   ) : (
-                    <Icon name="user" size={40} />
+                    <FiUser size={40} />
                   )}
-                  <div className="upload-overlay"><Icon name="edit" size={20} /></div>
+                  <div className="upload-overlay"><FiEdit size={20} /></div>
                 </div>
                 <div className="photo-controls">
                   <button type="button" className="crm-btn-premium glass" onClick={() => fileInputRef.current?.click()}>
-                    <Icon name="edit" size={16} />
+                    <FiEdit size={16} />
                     <span>Change Profile Photo</span>
                   </button>
                   <p className="footer-hint" style={{ fontStyle: 'normal' }}>Recommended: JPG or PNG, max 2MB</p>
@@ -435,5 +472,5 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
     </div>
   )
 
-  return createPortal(modalContent, document.body)
+  return createPortal(modalContent, document.getElementById('modal-root-content') || document.body)
 }

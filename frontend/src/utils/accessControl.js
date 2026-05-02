@@ -18,7 +18,7 @@ export const ROLE_GROUPS = {
 }
 
 export const NAV_ACCESS = {
-  customers: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.SUPPORT, ROLES.SALES, ROLES.EMPLOYEE],
+  customers: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.SUPPORT, ROLES.SALES, ROLES.EMPLOYEE, ROLES.HR],
   leads: [ROLES.ADMIN, ROLES.MANAGER, ROLES.SALES, ROLES.EMPLOYEE],
   deals: [ROLES.ADMIN, ROLES.MANAGER, ROLES.SALES, ROLES.EMPLOYEE, ROLES.ACCOUNTANT],
   tickets: [ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPPORT, ROLES.EMPLOYEE, ROLES.CUSTOMER],
@@ -26,12 +26,12 @@ export const NAV_ACCESS = {
   invoices: [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CUSTOMER],
   users: [ROLES.ADMIN, ROLES.HR], 
   reports: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT],
+  expenses: [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER],
   billing: ROLE_GROUPS.billingAccess,
   trash: ROLE_GROUPS.trashAccess,
   team: [ROLES.ADMIN, ROLES.MANAGER],
   profile: ROLE_GROUPS.allAuthenticated,
   settings: [ROLES.ADMIN],
-  attendance: [ROLES.ADMIN, ROLES.HR, ROLES.EMPLOYEE],
   notifications: ROLE_GROUPS.allAuthenticated,
 }
 
@@ -43,7 +43,7 @@ export function hasRequiredRole(userRole, allowedRoles) {
 export function hasPermission(user, moduleKey) {
   if (!user) return false
   const normalizedModuleKey = moduleKey.toLowerCase()
-  const HR_ALLOWED_MODULES = ['users', 'attendance', 'notifications', 'profile']
+  const HR_ALLOWED_MODULES = ['users', 'notifications', 'profile']
   
   // Admins have access to everything
   if (user.role === ROLES.ADMIN) return true
@@ -53,7 +53,13 @@ export function hasPermission(user, moduleKey) {
   }
 
   if (user.role === ROLES.HR && !HR_ALLOWED_MODULES.includes(normalizedModuleKey)) {
-    return false
+    // HR is allowed View-Only on Customers
+    if (normalizedModuleKey !== 'customers') return false
+  }
+
+  // Accountant is allowed View-Only on Customers
+  if (user.role === ROLES.ACCOUNTANT && normalizedModuleKey === 'customers') {
+    return true
   }
 
   // Check dynamic permissions from database

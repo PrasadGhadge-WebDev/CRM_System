@@ -1,10 +1,20 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FiUser, FiMail, FiPhone, FiLock, FiLoader, FiArrowLeft, FiSun, FiMoon } from 'react-icons/fi'
+import { 
+  FiUser, 
+  FiMail, 
+  FiPhone, 
+  FiLock, 
+  FiLoader, 
+  FiArrowLeft, 
+  FiSun, 
+  FiMoon 
+} from 'react-icons/fi'
 import { toast } from 'react-toastify'
+import PasswordInput from '../components/PasswordInput.jsx'
 import { useAuth } from '../context/AuthContext'
 import { validateRegisterField, validateRegisterForm } from '../utils/authValidation'
-import { normalizeDigits, normalizeName } from '../utils/formValidation'
+import { normalizeDigits, normalizeName, normalizeEmail } from '../utils/formValidation'
 import { useToastFeedback } from '../utils/useToastFeedback.js'
 import '../styles/auth-minimal.css'
 
@@ -52,7 +62,9 @@ export default function Register() {
         ? normalizeName(value)
         : name === 'phone'
           ? normalizeDigits(value, 10)
-          : value
+          : name === 'email'
+            ? normalizeEmail(value)
+            : value
 
     const nextFormData = { ...formData, [name]: nextValue }
     setFormData(nextFormData)
@@ -171,21 +183,17 @@ export default function Register() {
                 {fieldError.phone && <span className="auth-minimal-field-error">{fieldError.phone}</span>}
               </div>
 
-              <div className="auth-minimal-group">
-                <label htmlFor="password">Password</label>
-                <input
-                  id="password"
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  placeholder="Choose Password"
-                  autoComplete="new-password"
-                  className={fieldError.password ? 'input-error' : ''}
-                />
-                {fieldError.password && <span className="auth-minimal-field-error">{fieldError.password}</span>}
-              </div>
+              <PasswordInput
+                id="password"
+                name="password"
+                label="Password"
+                value={formData.password}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                placeholder="Choose Password"
+                error={fieldError.password}
+                wrapperClass="auth-minimal-group"
+              />
 
               <button type="submit" disabled={loading} className="auth-minimal-btn">
                 {loading ? <FiLoader className="spinner" /> : 'START FREE DEMO'}

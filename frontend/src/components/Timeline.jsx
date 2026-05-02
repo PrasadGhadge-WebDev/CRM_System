@@ -17,6 +17,7 @@ export default function Timeline({ relatedId, relatedType, defaultView = 'feed' 
   const [activityType, setActivityType] = useState('call')
   const [activityDesc, setActivityDesc] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [statusAfterCall, setStatusAfterCall] = useState('')
   const [showActivityForm, setShowActivityForm] = useState(false)
   
   const [filter, setFilter] = useState('all') 
@@ -132,15 +133,19 @@ export default function Timeline({ relatedId, relatedType, defaultView = 'feed' 
         activity_type: activityType,
         description: activityDesc,
         due_date: dueDate || undefined,
+        status_after_call: statusAfterCall || undefined,
         status: dueDate ? 'planned' : 'completed',
         related_to: relatedId,
         related_type: relatedType,
         category: 'manual',
-        color_code: activityType === 'call' ? 'blue' : 'gray'
+        color_code: activityType === 'call' ? 'blue' : 
+                    activityType === 'meeting' ? 'purple' :
+                    activityType === 'email' ? 'green' : 'gray'
       })
       toast.success(`${activityType.charAt(0).toUpperCase() + activityType.slice(1)} logged`)
       setActivityDesc('')
       setDueDate('')
+      setStatusAfterCall('')
       setShowActivityForm(false)
       setPage(1)
       loadTimeline(1, true)
@@ -192,38 +197,73 @@ export default function Timeline({ relatedId, relatedType, defaultView = 'feed' 
       </div>
 
       {showActivityForm && (
-        <form className="glass-form-card animate-slide-down" onSubmit={handleAddActivity}>
-          <div className="form-grid-modern">
-            <div className="input-group-premium">
-              <label>Interaction Type</label>
-              <div className="select-wrap-premium">
-                <select value={activityType} onChange={(e) => setActivityType(e.target.value)}>
-                  <option value="call">📞 Phone Call</option>
-                  <option value="meeting">🤝 Meeting</option>
-                  <option value="email">📧 Email</option>
-                  <option value="task">✅ Task</option>
-                </select>
-              </div>
-            </div>
+        <form className="log-activity-form-premium animate-slide-down" onSubmit={handleAddActivity}>
+          <div className="activity-type-grid">
+            {[
+              { id: 'call', icon: '📞', label: 'Call', color: 'blue' },
+              { id: 'meeting', icon: '🤝', label: 'Meeting', color: 'purple' },
+              { id: 'email', icon: '📧', label: 'Email', color: 'green' },
+              { id: 'task', icon: '✅', label: 'Task', color: 'gray' }
+            ].map(t => (
+              <button 
+                key={t.id}
+                type="button"
+                className={`type-btn ${activityType === t.id ? 'active' : ''} ${t.color}`}
+                onClick={() => setActivityType(t.id)}
+              >
+                <span className="type-icon">{t.icon}</span>
+                <span className="type-label">{t.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="form-grid-modern-v2">
             <div className="input-group-premium grow">
-              <label>Outcome / Notes</label>
-              <input
+              <label>What happened?</label>
+              <textarea
                 value={activityDesc}
                 onChange={(e) => setActivityDesc(e.target.value)}
-                placeholder="What happened?..."
+                placeholder="Brief summary of the interaction..."
+                rows={1}
               />
             </div>
+
+            {activityType === 'call' && (
+              <div className="input-group-premium">
+                <label>Call Outcome</label>
+                <div className="select-wrap-premium">
+                  <select value={statusAfterCall} onChange={(e) => setStatusAfterCall(e.target.value)}>
+                    <option value="">-- Select Outcome --</option>
+                    <option value="Interested">Interested</option>
+                    <option value="Not Interested">Not Interested</option>
+                    <option value="Converted">Converted</option>
+                    <option value="Call Later">Call Later</option>
+                    <option value="Demo Scheduled">Demo Scheduled</option>
+                    <option value="Negotiation">Negotiation</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
             <div className="input-group-premium">
-              <label>Schedule Next</label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
+              <label>Follow-up Date (Optional)</label>
+              <div className="input-with-icon-premium">
+                <Icon name="calendar" size={14} />
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
             </div>
           </div>
-          <div className="form-footer-premium">
-             <button className="btn-premium action-primary">Publish Activity</button>
+
+          <div className="form-footer-v2">
+             <button type="button" className="btn-cancel" onClick={() => setShowActivityForm(false)}>Cancel</button>
+             <button className="btn-premium action-vibrant">
+               <Icon name="check" size={14} />
+               <span>Log Interaction</span>
+             </button>
           </div>
         </form>
       )}
@@ -485,6 +525,110 @@ export default function Timeline({ relatedId, relatedType, defaultView = 'feed' 
         .timeline-loading, .timeline-empty-state { padding: 80px 20px; color: var(--text-dimmed); text-align: center; }
         .animate-slide-down { animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes slideDown { from { transform: translateY(-16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .log-activity-form-premium {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--border);
+          border-radius: 24px;
+          padding: 24px;
+          margin-bottom: 32px;
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          box-shadow: var(--shadow-lg);
+        }
+
+        .activity-type-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+          gap: 12px;
+        }
+
+        .type-btn {
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 12px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .type-btn .type-icon { font-size: 1.5rem; }
+        .type-btn .type-label { font-size: 0.75rem; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .type-btn:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--text-dimmed); }
+        .type-btn.active.blue { background: rgba(59, 130, 246, 0.1); border-color: var(--primary); }
+        .type-btn.active.blue .type-label { color: var(--primary); }
+        .type-btn.active.purple { background: rgba(167, 139, 250, 0.1); border-color: #a78bfa; }
+        .type-btn.active.purple .type-label { color: #a78bfa; }
+        .type-btn.active.green { background: rgba(16, 185, 129, 0.1); border-color: #10b981; }
+        .type-btn.active.green .type-label { color: #10b981; }
+        .type-btn.active.gray { background: rgba(255, 255, 255, 0.1); border-color: var(--text); }
+        .type-btn.active.gray .type-label { color: var(--text); }
+
+        .form-grid-modern-v2 {
+          display: grid;
+          grid-template-columns: 1fr auto auto;
+          gap: 20px;
+          align-items: flex-end;
+        }
+
+        .form-grid-modern-v2 textarea {
+          width: 100%;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 12px 16px;
+          color: var(--text);
+          font-size: 0.9rem;
+          outline: none;
+          resize: none;
+          transition: 0.2s;
+        }
+        .form-grid-modern-v2 textarea:focus { border-color: var(--primary); background: rgba(255, 255, 255, 0.05); }
+
+        .input-with-icon-premium {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+        .input-with-icon-premium svg {
+          position: absolute;
+          left: 12px;
+          color: var(--text-dimmed);
+        }
+        .input-with-icon-premium input {
+          padding-left: 36px !important;
+        }
+
+        .form-footer-v2 {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          margin-top: 8px;
+          border-top: 1px solid var(--border);
+          padding-top: 20px;
+        }
+
+        .btn-cancel {
+          background: transparent;
+          border: none;
+          color: var(--text-dimmed);
+          font-weight: 700;
+          font-size: 0.85rem;
+          padding: 10px 20px;
+          cursor: pointer;
+          transition: 0.2s;
+        }
+        .btn-cancel:hover { color: var(--text); }
+
+        @media (max-width: 900px) {
+          .form-grid-modern-v2 { grid-template-columns: 1fr; }
+        }
       `}</style>
     </div>
   )

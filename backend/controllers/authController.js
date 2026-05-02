@@ -211,6 +211,7 @@ function serializeUser(user, permissions = []) {
     is_trial: user.is_trial ?? false,
     is_demo: user.is_demo ?? false,
     trial_ends_at: user.trial_ends_at || null,
+    created_at: user.created_at || user.createdAt || null,
   };
 }
 
@@ -324,12 +325,19 @@ exports.login = asyncHandler(async (req, res, next) => {
     return res.fail(errors[0], 400, { errors });
   }
 
-  let user = await User.findOne({
+  const query = {
     $or: [
       { email: values.identifier.toLowerCase() },
       { username: values.identifier }
     ]
-  }).select('+password');
+  };
+
+  // If role is provided, ensure it matches the user's role
+  if (req.body.role) {
+    query.role = req.body.role;
+  }
+
+  let user = await User.findOne(query).select('+password');
 
   if (!user && values.identifier === getDefaultAdminEmail()) {
     await ensureDefaultAdmin();
