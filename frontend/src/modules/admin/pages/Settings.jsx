@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import GeneralSettingsTab from './GeneralSettingsTab.jsx'
 import StatusesTab from './StatusesTab.jsx'
 import LeadSourcesTab from './LeadSourcesTab.jsx'
@@ -11,7 +12,14 @@ import { Icon } from '../../../layouts/icons.jsx'
  * Synchronized with global crmContent design tokens.
  */
 export default function Settings() {
+  const location = useLocation()
   const [activeTab, setActiveTab] = useState('general')
+
+  useEffect(() => {
+    if (location.pathname.endsWith('/roles')) {
+      setActiveTab('roles')
+    }
+  }, [location.pathname])
 
   return (
     <div className="crmContent leadsFullscreenShell" style={{ padding: 0 }}>
@@ -123,7 +131,7 @@ export default function Settings() {
         /* Main Content Surface */
         .crm-settings-main { flex: 1; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         .main-surface-scroller { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
-        .view-fade-in { padding: 40px 60px 100px 60px; max-width: 1300px; width: 100%; animation: fadeIn 0.4s ease-out; }
+        .view-fade-in { padding: 20px 40px 60px 40px; width: 100%; animation: fadeIn 0.4s ease-out; }
 
         /* Hide Back Button in Settings context as per request */
         .crm-settings-main .btn-modern-back { display: none !important; }

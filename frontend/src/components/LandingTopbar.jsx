@@ -23,15 +23,15 @@ const LandingTopbar = ({ handleDemoLogin, from }) => {
             <a href="https://maps.google.com/?q=18.1675" target="_blank" rel="noreferrer" className="contact-link">
               <FiMapPin className="icon-info" /> <span>Baramati, MH</span>
             </a>
-            <a href="mailto:divinetechnologies8@gmail.com" className="contact-link">
-              <FiMail className="icon-primary" /> <span>divinetechnologies8@gmail.com</span>
+            <a href="mailto:prasadghadge748@gmail.com" className="contact-link">
+              <FiMail className="icon-primary" /> <span>prasadghadge748@gmail.com</span>
             </a>
           </div>
           <div className="top-contact-right">
-            <a href="tel:+917387275947" className="contact-link">
+            <a href="tel:+919766875355" className="contact-link">
               <FiPhone className="icon-success" /> <span>Call Us</span>
             </a>
-            <a href="https://wa.me/917387275947" target="_blank" rel="noreferrer" className="contact-link whatsapp-link-top">
+            <a href="https://wa.me/919766875355" target="_blank" rel="noreferrer" className="contact-link whatsapp-link-top">
               <FaWhatsapp className="icon-whatsapp" /> <span>WhatsApp</span>
             </a>
             <Link to="/login" state={{ entry: 'landing', from }} className="topbar-login-link">
@@ -81,9 +81,9 @@ const LandingTopbar = ({ handleDemoLogin, from }) => {
               <NavLink to="/contact" className="landing-nav-link" onClick={() => setMobileMenuOpen(false)}><FiMail className="icon-danger" /> Contact</NavLink>
 
               <div className="mobile-contact-info">
-                <a href="mailto:divinetechnologies8@gmail.com" className="mobile-contact-link"><FiMail className="icon-danger" /> divinetechnologies8@gmail.com</a>
-                <a href="tel:+917387275947" className="mobile-contact-link"><FiPhone className="icon-success" /> Text call</a>
-                <a href="https://wa.me/917387275947" target="_blank" rel="noreferrer" className="mobile-contact-link"><FaWhatsapp className="icon-whatsapp" /> WhatsApp</a>
+                <a href="mailto:prasadghadge748@gmail.com" className="mobile-contact-link"><FiMail className="icon-danger" /> prasadghadge748@gmail.com</a>
+                <a href="tel:+919766875355" className="mobile-contact-link"><FiPhone className="icon-success" /> Text call</a>
+                <a href="https://wa.me/919766875355" target="_blank" rel="noreferrer" className="mobile-contact-link"><FaWhatsapp className="icon-whatsapp" /> WhatsApp</a>
               </div>
 
               <Link to="/login" state={{ entry: 'landing', from }} className="landing-nav-link" onClick={() => setMobileMenuOpen(false)}><FiLogIn className="icon-primary" /> Login</Link>

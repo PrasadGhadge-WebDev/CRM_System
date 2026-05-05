@@ -175,20 +175,27 @@ export default function GeneralSettingsTab() {
       </div>
 
       <style>{`
-        .crm-settings-view { display: flex; flex-direction: column; width: 100%; max-width: 900px; margin: 0 auto; }
-        .settings-stack { display: flex; flex-direction: column; gap: 32px; margin-top: 40px; }
+        .crm-settings-view { display: flex; flex-direction: column; width: 100%; margin: 0 auto; }
+        .settings-stack { 
+          display: grid; 
+          grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); 
+          gap: 40px; 
+          margin-top: 24px; 
+        }
         
         .premium-settings-card { 
-          background: rgba(26, 29, 43, 0.6); 
-          border: 1px solid rgba(45, 48, 64, 0.8); 
-          border-radius: 16px; 
-          padding: 32px;
+          background: var(--bg-card); 
+          border: 1px solid var(--border); 
+          border-radius: 20px; 
+          padding: 40px;
           transition: all 0.3s ease;
+          display: flex;
+          flex-direction: column;
         }
         .premium-settings-card:hover {
           border-color: var(--primary);
-          box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
-          background: rgba(26, 29, 43, 0.8);
+          box-shadow: var(--shadow-lg);
+          background: var(--bg-elevated);
         }
 
         .p-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; color: var(--primary); }
@@ -197,20 +204,20 @@ export default function GeneralSettingsTab() {
         .p-card-body { display: flex; flex-direction: column; gap: 24px; }
         
         .p-field-group { display: flex; flex-direction: column; gap: 10px; }
-        .p-field-group label { font-size: 13px; font-weight: 700; color: #9CA3AF; }
+        .p-field-group label { font-size: 13px; font-weight: 700; color: var(--text-muted); }
         
         .p-input, .p-select {
           width: 100%;
-          background: rgba(31, 34, 50, 0.8);
-          border: 1px solid #2D3040;
+          background: var(--bg-surface);
+          border: 1px solid var(--border);
           border-radius: 8px;
           padding: 12px 16px;
-          color: white;
+          color: var(--text);
           font-size: 14px;
           outline: none;
           transition: 0.2s;
         }
-        .p-input:focus, .p-select:focus { border-color: var(--primary); background: #1F2232; }
+        .p-input:focus, .p-select:focus { border-color: var(--primary); background: var(--bg-card); }
 
         .btn-save-premium {
           background: var(--primary);

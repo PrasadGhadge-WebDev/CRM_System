@@ -28,8 +28,11 @@
 body:not(.dark) {
   color-scheme: light;
   --bg: #F5F7FA;
+  --bg-rgb: 245, 247, 250;
   --bg-elevated: #ffffff;
+  --bg-elevated-rgb: 255, 255, 255;
   --bg-surface: #f1f5f9;
+  --bg-surface-rgb: 241, 245, 249;
   --bg-card: #ffffff;
   --bg-hover: rgba(44, 95, 138, 0.05);
   --panel-bg: #ffffff;
@@ -54,6 +57,7 @@ body:not(.dark) {
   --border-subtle: #e2e8f0;
   
   --text: #1E2A3E;
+  --text-rgb: 30, 42, 62;
   --text-muted: #5A6E7F;
   --text-dimmed: #7c8ea1;
 
@@ -70,8 +74,11 @@ body:not(.dark) {
 body.dark {
   color-scheme: dark;
   --bg: #070d19;
+  --bg-rgb: 7, 13, 25;
   --bg-elevated: #0f1b31;
+  --bg-elevated-rgb: 15, 27, 49;
   --bg-surface: #16243b;
+  --bg-surface-rgb: 22, 36, 59;
   --bg-card: #111c31;
   --bg-hover: rgba(255, 255, 255, 0.04);
   --panel-bg: rgba(15, 27, 49, 0.4);
@@ -98,6 +105,7 @@ body.dark {
   --border-subtle: rgba(148, 163, 184, 0.2);
 
   --text: #f8fafc;
+  --text-rgb: 248, 250, 252;
   --text-muted: #cbd5e1;
   --text-dimmed: #94a3b8;
 

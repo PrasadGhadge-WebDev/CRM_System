@@ -111,26 +111,26 @@ export default function Dashboard() {
   ]
 
   const alerts = [
-    { id: 1, title: 'Overdue Payments', sub: '5 invoices are overdue', count: 5, icon: <FiCreditCard />, color: '#fee2e2', iconColor: '#ef4444' },
-    { id: 2, title: 'Missed Follow-ups', sub: '7 follow-ups were missed', count: 7, icon: <FiClock />, color: '#ffedd5', iconColor: '#f59e0b' },
-    { id: 3, title: 'Pending Approvals', sub: '4 approvals are pending', count: 4, icon: <FiUsers />, color: '#dbeafe', iconColor: '#3b82f6' },
-    { id: 4, title: 'New Leads', sub: '12 new leads this week', count: 12, icon: <FiUserPlus />, color: '#dcfce7', iconColor: '#10b981' },
+    { id: 1, title: 'Overdue Payments', sub: '5 invoices are overdue', count: 5, icon: <FiCreditCard />, bgClass: 'alert-red', iconColor: 'var(--danger)' },
+    { id: 2, title: 'Missed Follow-ups', sub: '7 follow-ups were missed', count: 7, icon: <FiClock />, bgClass: 'alert-orange', iconColor: 'var(--warning)' },
+    { id: 3, title: 'Pending Approvals', sub: '4 approvals are pending', count: 4, icon: <FiUsers />, bgClass: 'alert-blue', iconColor: 'var(--primary)' },
+    { id: 4, title: 'New Leads', sub: '12 new leads this week', count: 12, icon: <FiUserPlus />, bgClass: 'alert-green', iconColor: 'var(--success)' },
   ]
 
   const quickActions = [
-    { label: 'Add Lead', icon: <FiTarget />, color: '#eff6ff', textColor: '#3b82f6', path: '/leads/new' },
-    { label: 'Add Employee', icon: <FiUserPlus />, color: '#f0fdf4', textColor: '#10b981', path: '/users?add=true' },
-    { label: 'Create Deal', icon: <FiBriefcase />, color: '#faf5ff', textColor: '#8b5cf6', path: '/deals/new' },
-    { label: 'Generate Invoice', icon: <FiFileText />, color: '#fffbeb', textColor: '#f59e0b', path: '/invoices/new' },
+    { label: 'Add Lead', icon: <FiTarget />, bgClass: 'qa-blue', textColor: 'var(--primary)', path: '/leads/new' },
+    ...(user?.role === 'Admin' || user?.role === 'HR' ? [{ label: 'Add Employee', icon: <FiUserPlus />, bgClass: 'qa-green', textColor: 'var(--success)', path: '/users?add=true' }] : []),
+    { label: 'Create Deal', icon: <FiBriefcase />, bgClass: 'qa-purple', textColor: '#8b5cf6', path: '/deals/new' },
+    { label: 'Generate Invoice', icon: <FiFileText />, bgClass: 'qa-yellow', textColor: 'var(--warning)', path: '/invoices/new' },
   ]
 
   const stats = [
-    { label: 'Total Employees', value: metrics?.users?.total || 128, trend: '+8.2%', icon: <FiUsers />, color: '#eff6ff', iconColor: '#3b82f6' },
-    { label: 'Total Customers', value: metrics?.customers?.total || 1245, trend: '+12.5%', icon: <FiUserCheck />, color: '#f0fdf4', iconColor: '#10b981' },
-    { label: 'Total Leads', value: metrics?.leads?.total || 2350, trend: '+15.3%', icon: <FiTarget />, color: '#faf5ff', iconColor: '#8b5cf6' },
-    { label: 'Total Deals', value: metrics?.deals?.total || 320, trend: '+10.1%', icon: <FiBriefcase />, color: '#fff7ed', iconColor: '#f97316' },
-    { label: 'Total Revenue', value: formatCurrency(metrics?.summary?.totalRevenue || 4860000), trend: '+18.7%', icon: <FiTrendingUp />, color: '#fffbeb', iconColor: '#f59e0b' },
-    { label: 'Pending Payments', value: formatCurrency(metrics?.financials?.unpaidValue || 1240000), trend: '-4.3%', icon: <FiCreditCard />, color: '#fee2e2', iconColor: '#ef4444', negative: true },
+    { label: 'Total Employees', value: metrics?.users?.total || 128, trend: '+8.2%', icon: <FiUsers />, bgClass: 'stat-blue', iconColor: 'var(--primary)' },
+    { label: 'Total Customers', value: metrics?.customers?.total || 1245, trend: '+12.5%', icon: <FiUserCheck />, bgClass: 'stat-green', iconColor: 'var(--success)' },
+    { label: 'Total Leads', value: metrics?.leads?.total || 2350, trend: '+15.3%', icon: <FiTarget />, bgClass: 'stat-purple', iconColor: '#8b5cf6' },
+    { label: 'Total Deals', value: metrics?.deals?.total || 320, trend: '+10.1%', icon: <FiBriefcase />, bgClass: 'stat-orange', iconColor: '#f97316' },
+    { label: 'Total Revenue', value: formatCurrency(metrics?.summary?.totalRevenue || 4860000), trend: '+18.7%', icon: <FiTrendingUp />, bgClass: 'stat-yellow', iconColor: 'var(--warning)' },
+    { label: 'Pending Payments', value: formatCurrency(metrics?.financials?.unpaidValue || 1240000), trend: '-4.3%', icon: <FiCreditCard />, bgClass: 'stat-red', iconColor: 'var(--danger)', negative: true },
   ]
 
   return (
@@ -140,7 +140,7 @@ export default function Dashboard() {
         {stats.map((s, i) => (
           <div key={i} className="metric-card-v3">
             <div className="card-top">
-              <div className="icon-box" style={{ backgroundColor: s.color, color: s.iconColor }}>
+              <div className={`icon-box ${s.bgClass}`} style={{ color: s.iconColor }}>
                 {s.icon}
               </div>
               <span className="label">{s.label}</span>
@@ -171,14 +171,15 @@ export default function Dashboard() {
                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(v) => `${v}L`} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} tickFormatter={(v) => `${v}L`} />
                   <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', background: 'var(--bg-card)', boxShadow: 'var(--shadow-lg)', color: 'var(--text)' }}
+                    itemStyle={{ color: 'var(--text)' }}
                     formatter={(v) => [`₹${v} L`, 'Revenue']}
                   />
-                  <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                  <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                 </AreaChart>
              </ResponsiveContainer>
           </div>
@@ -194,13 +195,13 @@ export default function Dashboard() {
           <div style={{ width: '100%', height: '240px' }}>
              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={conversionData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(v) => v >= 1000 ? `${v/1000}K` : v} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} tickFormatter={(v) => v >= 1000 ? `${v/1000}K` : v} />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', background: 'var(--bg-card)', boxShadow: 'var(--shadow-lg)', color: 'var(--text)' }} itemStyle={{ color: 'var(--text)' }} />
                   <Legend iconType="circle" verticalAlign="top" align="center" wrapperStyle={{ paddingBottom: '20px' }} />
-                  <Bar dataKey="Leads" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={10} />
-                  <Bar dataKey="Conversions" fill="#10b981" radius={[4, 4, 0, 0]} barSize={10} />
+                  <Bar dataKey="Leads" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={10} />
+                  <Bar dataKey="Conversions" fill="var(--success)" radius={[4, 4, 0, 0]} barSize={10} />
                 </BarChart>
              </ResponsiveContainer>
           </div>
@@ -228,7 +229,7 @@ export default function Dashboard() {
                   <td>{i + 1}</td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                       <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>{emp.name.charAt(0)}</div>
+                       <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--bg-surface)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>{emp.name.charAt(0)}</div>
                        {emp.name}
                     </div>
                   </td>
@@ -246,26 +247,28 @@ export default function Dashboard() {
               ))}
             </tbody>
           </table>
-          <button className="btn-link full-width margin-top-12" onClick={() => navigate('/users')}>View All Employees</button>
+          {(user?.role === 'Admin' || user?.role === 'HR') && (
+            <button className="btn-link full-width margin-top-12" onClick={() => navigate('/users')}>View All Employees</button>
+          )}
         </div>
 
         {/* Follow-up Summary */}
         <div className="section-card-v3">
           <h3>Follow-up Summary</h3>
           <div className="follow-up-grid-v3">
-            <div className="follow-up-stat-box-v3" style={{ background: '#eff6ff' }}>
+            <div className="follow-up-stat-box-v3 alert-blue">
               <Icon name="calendar" />
-              <span className="count" style={{ color: '#3b82f6' }}>32</span>
+              <span className="count" style={{ color: 'var(--primary)' }}>32</span>
               <span className="label">Today's</span>
             </div>
-            <div className="follow-up-stat-box-v3" style={{ background: '#fff7ed' }}>
+            <div className="follow-up-stat-box-v3 alert-orange">
               <Icon name="clock" />
               <span className="count" style={{ color: '#f97316' }}>58</span>
               <span className="label">Upcoming</span>
             </div>
-            <div className="follow-up-stat-box-v3" style={{ background: '#fee2e2' }}>
+            <div className="follow-up-stat-box-v3 alert-red">
               <Icon name="alert" />
-              <span className="count" style={{ color: '#ef4444' }}>07</span>
+              <span className="count" style={{ color: 'var(--danger)' }}>07</span>
               <span className="label">Missed</span>
             </div>
           </div>
@@ -293,7 +296,7 @@ export default function Dashboard() {
           <div className="alerts-list">
             {alerts.map(a => (
               <div key={a.id} className="alert-item-v3">
-                <div className="alert-icon-v3" style={{ background: a.color, color: a.iconColor }}>
+                <div className={`alert-icon-v3 ${a.bgClass}`} style={{ color: a.iconColor }}>
                   {a.icon}
                 </div>
                 <div className="alert-content-v3">
@@ -316,7 +319,7 @@ export default function Dashboard() {
            <div className="activity-list">
               {(metrics?.activities?.recent || []).slice(0, 4).map((act, i) => (
                 <div key={i} className="alert-item-v3">
-                   <div className="alert-icon-v3" style={{ background: i%2===0 ? '#dcfce7' : '#f0f9ff', color: i%2===0 ? '#10b981' : '#0369a1' }}>
+                   <div className={`alert-icon-v3 ${i%2===0 ? 'alert-green' : 'alert-blue'}`} style={{ color: i%2===0 ? 'var(--success)' : 'var(--primary)' }}>
                       <FiCheckCircle />
                    </div>
                    <div className="alert-content-v3">
@@ -329,21 +332,21 @@ export default function Dashboard() {
               {(!metrics?.activities?.recent?.length) && (
                 <>
                    <div className="alert-item-v3">
-                      <div className="alert-icon-v3" style={{ background: '#dcfce7', color: '#10b981' }}><FiTarget /></div>
+                      <div className="alert-icon-v3 alert-green" style={{ color: 'var(--success)' }}><FiTarget /></div>
                       <div className="alert-content-v3">
                          <div className="alert-title-v3">New lead "Tech Solutions" has been added by Rahul Sharma.</div>
                       </div>
                       <div className="alert-sub-v3">10 min ago</div>
                    </div>
                    <div className="alert-item-v3">
-                      <div className="alert-icon-v3" style={{ background: '#f5f3ff', color: '#8b5cf6' }}><FiBriefcase /></div>
+                      <div className="alert-icon-v3 alert-purple" style={{ color: '#8b5cf6' }}><FiBriefcase /></div>
                       <div className="alert-content-v3">
                          <div className="alert-title-v3">Deal "Website Development" has been closed won.</div>
                       </div>
                       <div className="alert-sub-v3">1 hour ago</div>
                    </div>
                     <div className="alert-item-v3">
-                       <div className="alert-icon-v3" style={{ background: '#fffbeb', color: '#f59e0b' }}><FiTrendingUp /></div>
+                       <div className="alert-icon-v3 alert-yellow" style={{ color: 'var(--warning)' }}><FiTrendingUp /></div>
                        <div className="alert-content-v3">
                           <div className="alert-title-v3">Payment of ₹85,000 received from ABC Corp.</div>
                        </div>
@@ -360,7 +363,7 @@ export default function Dashboard() {
            <h3>Quick Actions</h3>
            <div className="quick-actions-grid-v3">
               {quickActions.map((qa, i) => (
-                <div key={i} className="quick-action-btn-v3" onClick={() => navigate(qa.path)}>
+                <div key={i} className={`quick-action-btn-v3 ${qa.bgClass}`} onClick={() => navigate(qa.path)}>
                    <div className="icon" style={{ color: qa.textColor }}>{qa.icon}</div>
                    <span className="text">{qa.label}</span>
                 </div>

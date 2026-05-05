@@ -12,13 +12,42 @@ export default function TrashList() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [dateRangeType, setDateRangeType] = useState('all')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
-  useEffect(() => { loadTrash() }, [])
+  useEffect(() => { loadTrash() }, [dateRangeType, startDate, endDate])
 
   async function loadTrash() {
     try {
       setLoading(true)
-      const res = await trashApi.list()
+      
+      let sDate = startDate
+      let eDate = endDate
+      const now = new Date()
+      now.setHours(0,0,0,0)
+
+      if (dateRangeType === 'today') {
+        sDate = now.toISOString()
+        eDate = new Date(new Date().setHours(23,59,59,999)).toISOString()
+      } else if (dateRangeType === 'yesterday') {
+        const y = new Date(now)
+        y.setDate(y.getDate() - 1)
+        sDate = y.toISOString()
+        const yEnd = new Date(y)
+        yEnd.setHours(23,59,59,999)
+        eDate = yEnd.toISOString()
+      } else if (dateRangeType === 'week') {
+        const w = new Date(now)
+        w.setDate(w.getDate() - 7)
+        sDate = w.toISOString()
+      } else if (dateRangeType === 'month') {
+        const m = new Date(now)
+        m.setMonth(m.getMonth() - 1)
+        sDate = m.toISOString()
+      }
+
+      const res = await trashApi.list({ startDate: sDate, endDate: eDate })
       setItems(res.items || [])
     } catch (e) { setError(e.message || 'Failed to load trash') } finally { setLoading(false) }
   }
@@ -51,6 +80,55 @@ export default function TrashList() {
           <p className="users-subtitle">Review and restore recently deleted records</p>
         </div>
 
+        <div className="unified-action-bar" style={{ marginBottom: '20px' }}>
+          <div className="search-filter-group" style={{ justifyContent: 'flex-start' }}>
+            <select 
+              className="crm-input filter-select date-preset-select" 
+              value={dateRangeType} 
+              onChange={(e) => { setDateRangeType(e.target.value) }}
+            >
+              <option value="all">Date: All</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="custom">Custom Range</option>
+            </select>
+
+            {dateRangeType === 'custom' && (
+              <div className="flex items-center gap-4 animate-fade-in">
+                <input
+                  type="date"
+                  className="crm-input date-mini"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+                <span className="muted" style={{ fontSize: '0.7rem' }}>to</span>
+                <input
+                  type="date"
+                  className="crm-input date-mini"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            )}
+
+            {dateRangeType !== 'all' && (
+              <button 
+                className="btn-premium-mini reset-btn"
+                onClick={() => {
+                  setDateRangeType('all')
+                  setStartDate('')
+                  setEndDate('')
+                }}
+              >
+                <Icon name="refresh" size={14} className="reset-icon" />
+                <span>Reset Filters</span>
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="crm-stats-bar-compact">
           <div className="stat-pill-mini">
             <span className="stat-pill-label">TOTAL REMOVED</span>
@@ -74,10 +152,10 @@ export default function TrashList() {
             <span className="muted">Loading deleted records...</span>
           </div>
         ) : (
-          <div className="crm-table-wrap shadow-soft" style={{ background: 'white', border: '1px solid #eef2f6' }}>
+          <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             <div className="crm-table-scroll">
               <table className="crm-table">
-                <thead style={{ background: '#f8fafc' }}>
+                <thead style={{ background: 'var(--bg-elevated)' }}>
                   <tr>
                     <th style={{ width: '35%' }}>NAME / IDENTITY</th>
                     <th style={{ width: '15%' }}>TYPE</th>
@@ -188,13 +266,14 @@ export default function TrashList() {
 
         .trash-type-badge {
           padding: 4px 10px;
-          background: #f1f5f9;
+          background: var(--bg-hover);
           border-radius: 8px;
           font-size: 0.7rem;
           font-weight: 800;
-          color: #475569;
+          color: var(--text-dimmed);
           letter-spacing: 0.05em;
           text-transform: uppercase;
+          border: 1px solid var(--border);
         }
 
         .trash-user { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 600; font-size: 0.85rem; }
@@ -228,8 +307,8 @@ export default function TrashList() {
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
           cursor: pointer; 
         }
-        .modern-action-btn:hover { background: white; color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px var(--primary-soft); }
-        .modern-action-btn.danger:hover { background: #fff1f2; color: var(--danger); border-color: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15); }
+        .modern-action-btn:hover { background: var(--bg-elevated); color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+        .modern-action-btn.danger:hover { background: var(--bg-hover); color: var(--danger); border-color: var(--danger); box-shadow: var(--shadow-sm); }
       `}</style>
     </div>
   )

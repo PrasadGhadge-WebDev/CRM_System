@@ -3,36 +3,41 @@ export const ROLES = {
   MANAGER: 'Manager',
   ACCOUNTANT: 'Accountant',
   HR: 'HR',
-  SALES: 'Sales',
-  SUPPORT: 'Support',
   EMPLOYEE: 'Employee',
+  SALES: 'Sales', // Legacy or subset
+  SUPPORT: 'Support', // Legacy or subset
   CUSTOMER: 'Customer',
 }
 
 export const ROLE_GROUPS = {
-  allAuthenticated: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.HR, ROLES.SALES, ROLES.SUPPORT, ROLES.EMPLOYEE, ROLES.CUSTOMER],
+  allAuthenticated: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.HR, ROLES.EMPLOYEE, ROLES.SALES, ROLES.SUPPORT, ROLES.CUSTOMER],
   admins: [ROLES.ADMIN],
-  reportsAccess: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT],
-  billingAccess: [ROLES.ADMIN, ROLES.ACCOUNTANT],
-  trashAccess: [ROLES.ADMIN, ROLES.MANAGER],
+  staff: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE],
 }
 
 export const NAV_ACCESS = {
-  customers: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.SUPPORT, ROLES.SALES, ROLES.EMPLOYEE, ROLES.HR],
-  leads: [ROLES.ADMIN, ROLES.MANAGER, ROLES.SALES, ROLES.EMPLOYEE],
-  deals: [ROLES.ADMIN, ROLES.MANAGER, ROLES.SALES, ROLES.EMPLOYEE, ROLES.ACCOUNTANT],
-  tickets: [ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPPORT, ROLES.EMPLOYEE, ROLES.CUSTOMER],
-  payments: [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CUSTOMER],
-  invoices: [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CUSTOMER],
-  users: [ROLES.ADMIN, ROLES.HR], 
-  reports: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT],
-  expenses: [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER],
-  billing: ROLE_GROUPS.billingAccess,
-  trash: ROLE_GROUPS.trashAccess,
-  team: [ROLES.ADMIN, ROLES.MANAGER],
-  profile: ROLE_GROUPS.allAuthenticated,
+  dashboard: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.ACCOUNTANT, ROLES.HR],
+  users: [ROLES.ADMIN],
+  roles: [],
+  employees: [ROLES.HR],
+  leads: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE],
+  deals: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE],
+  customers: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.ACCOUNTANT],
+  activities: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE],
+  teamPerformance: [ROLES.ADMIN, ROLES.MANAGER],
+  attendance: [ROLES.ADMIN, ROLES.HR],
+  leaves: [ROLES.ADMIN, ROLES.HR],
+  payroll: [ROLES.ADMIN, ROLES.HR],
+  invoices: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT],
+  payments: [ROLES.ADMIN, ROLES.ACCOUNTANT],
+  expenses: [ROLES.ADMIN, ROLES.ACCOUNTANT],
+  tickets: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE],
+  reports: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.HR],
+  notifications: [ROLES.ADMIN],
   settings: [ROLES.ADMIN],
-  notifications: ROLE_GROUPS.allAuthenticated,
+  trash: [ROLES.ADMIN, ROLES.MANAGER],
+  tasks: [ROLES.EMPLOYEE],
+  profile: ROLE_GROUPS.allAuthenticated,
 }
 
 export function hasRequiredRole(userRole, allowedRoles) {
@@ -43,31 +48,28 @@ export function hasRequiredRole(userRole, allowedRoles) {
 export function hasPermission(user, moduleKey) {
   if (!user) return false
   const normalizedModuleKey = moduleKey.toLowerCase()
-  const HR_ALLOWED_MODULES = ['users', 'notifications', 'profile']
   
-  // Admins have access to everything
-  if (user.role === ROLES.ADMIN) return true
-
-  if (user.role === ROLES.MANAGER && normalizedModuleKey === 'settings') {
-    return false
-  }
-
-  if (user.role === ROLES.HR && !HR_ALLOWED_MODULES.includes(normalizedModuleKey)) {
-    // HR is allowed View-Only on Customers
-    if (normalizedModuleKey !== 'customers') return false
-  }
-
-  // Accountant is allowed View-Only on Customers
-  if (user.role === ROLES.ACCOUNTANT && normalizedModuleKey === 'customers') {
-    return true
-  }
-
-  // Check dynamic permissions from database
+  // Check dynamic permissions from database if they exist
   if (user.permissions && Array.isArray(user.permissions)) {
     if (user.permissions.includes(normalizedModuleKey)) return true
+    
+    // If user is Admin, we might want to still allow everything UNLESS we want to be strict.
+    // The user's request: "if Exits in system and not exsit in my lsit the remove"
+    // This implies strictness.
+    if (user.role === ROLES.ADMIN) {
+        // However, some core things like profile should always be accessible
+        if (['profile', 'dashboard'].includes(normalizedModuleKey)) return true
+        
+        // Check if the permission exists in the database list. 
+        // If the database list exists but doesn't have it, we return false.
+        return false
+    }
   }
 
-  // Fallback to hardcoded rules for default roles
+  // Fallback for Admins if no explicit database permissions are found
+  if (user.role === ROLES.ADMIN) return true
+
+  // Check against NAV_ACCESS mapping for other roles or as fallback
   const allowedRoles = NAV_ACCESS[normalizedModuleKey]
   if (allowedRoles) {
     return allowedRoles.includes(user.role)
@@ -75,3 +77,4 @@ export function hasPermission(user, moduleKey) {
 
   return false
 }
+

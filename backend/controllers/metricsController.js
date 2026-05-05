@@ -231,7 +231,7 @@ exports.getMetrics = asyncHandler(async (req, res) => {
     isEmployee && userObjectId
       ? SupportTicket.find({
           assigned_to: userObjectId,
-          status: { $in: ['open', 'in-progress'] }
+          status: { $in: ['new', 'in-progress'] }
         })
         .sort({ priority: -1, created_at: 1 })
         .limit(5)

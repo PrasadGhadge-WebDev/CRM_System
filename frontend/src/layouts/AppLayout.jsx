@@ -27,7 +27,7 @@ export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 900)
   
   useEffect(() => {
-    const width = sidebarOpen ? '260px' : '80px'
+    const width = sidebarOpen ? '230px' : '80px'
     document.documentElement.style.setProperty('--sidebar-current-width', width)
   }, [sidebarOpen])
 

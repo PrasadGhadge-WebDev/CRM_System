@@ -152,6 +152,10 @@ export default function Topbar({
                     <Icon name="users" />
                     Accountant
                   </div>
+                  <div className="dropdownItem" onClick={() => switchDemoRole('HR')}>
+                    <Icon name="users" />
+                    HR
+                  </div>
                 </>
               )}
 

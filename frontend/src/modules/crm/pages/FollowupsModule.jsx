@@ -18,56 +18,88 @@ export default function FollowupsModule() {
   const [fuTotal, setFuTotal] = useState(0)
   const [fuStatus, setFuStatus] = useState('')
   const [fuMode, setFuMode] = useState('')
+  
+  const [dateRangeType, setDateRangeType] = useState('all')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   const [followUps, setFollowUps] = useState([])
   const [generalActivities, setGeneralActivities] = useState([])
 
+  const getDates = () => {
+    let sDate = startDate
+    let eDate = endDate
+    const now = new Date()
+    now.setHours(0,0,0,0)
+
+    if (dateRangeType === 'today') {
+      sDate = now.toISOString()
+      eDate = new Date(new Date().setHours(23,59,59,999)).toISOString()
+    } else if (dateRangeType === 'yesterday') {
+      const y = new Date(now)
+      y.setDate(y.getDate() - 1)
+      sDate = y.toISOString()
+      const yEnd = new Date(y)
+      yEnd.setHours(23,59,59,999)
+      eDate = yEnd.toISOString()
+    } else if (dateRangeType === 'week') {
+      const w = new Date(now)
+      w.setDate(w.getDate() - 7)
+      sDate = w.toISOString()
+    } else if (dateRangeType === 'month') {
+      const m = new Date(now)
+      m.setMonth(m.getMonth() - 1)
+      sDate = m.toISOString()
+    }
+    return { sDate, eDate }
+  }
+
   const loadGeneralActivities = async () => {
+    const { sDate, eDate } = getDates()
     try {
       const params = {
-        // fetching globally, so no related_to filter
         related_type: 'Lead',
         page: actPage,
         limit: 5,
         status: actStatus,
         activity_type: actType,
-        q
+        q,
+        startDate: sDate,
+        endDate: eDate
       }
       const res = await activitiesApi.list(params)
       setGeneralActivities(res.data?.items || res.items || [])
       setActTotal(res.data?.total || res.total || 0)
-    } catch (error) {
-      // Silenced error log
-    }
+    } catch (error) {}
   }
 
   const loadFollowUps = async () => {
+    const { sDate, eDate } = getDates()
     try {
       const params = {
-        // fetching globally
         related_type: 'Lead',
         page: fuPage,
         limit: 5,
         status: fuStatus,
         activity_type: 'follow-up',
         follow_up_mode: fuMode,
-        q
+        q,
+        startDate: sDate,
+        endDate: eDate
       }
       const res = await activitiesApi.list(params)
       setFollowUps(res.data?.items || res.items || [])
       setFuTotal(res.data?.total || res.total || 0)
-    } catch (error) {
-      // Silenced error log
-    }
+    } catch (error) {}
   }
 
   useEffect(() => {
     loadGeneralActivities()
-  }, [actPage, actStatus, actType, q])
+  }, [actPage, actStatus, actType, q, dateRangeType, startDate, endDate])
 
   useEffect(() => {
     loadFollowUps()
-  }, [fuPage, fuStatus, fuMode, q])
+  }, [fuPage, fuStatus, fuMode, q, dateRangeType, startDate, endDate])
 
   return (
     <div className="followups-module-container stack">
@@ -76,12 +108,66 @@ export default function FollowupsModule() {
         backTo="/dashboard"
       />
 
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}>
-        <ModernSearchBar 
-          value={q} 
-          onChange={e => { setQ(e.target.value); setActPage(1); setFuPage(1); }} 
-          placeholder="Search activities and follow-ups..." 
-        />
+      <div className="unified-action-bar" style={{ marginBottom: '20px', padding: '0 20px' }}>
+        <div className="search-filter-group">
+          <ModernSearchBar 
+            value={q} 
+            onChange={e => { setQ(e.target.value); setActPage(1); setFuPage(1); }} 
+            placeholder="Search activities and follow-ups..." 
+          />
+
+          <select 
+            className="crm-input filter-select date-preset-select" 
+            value={dateRangeType} 
+            onChange={(e) => { setDateRangeType(e.target.value); setActPage(1); setFuPage(1); }}
+          >
+            <option value="all">Date: All</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="custom">Custom Range</option>
+          </select>
+
+          {dateRangeType === 'custom' && (
+            <div className="flex items-center gap-4 animate-fade-in">
+              <input
+                type="date"
+                className="crm-input date-mini"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); setActPage(1); setFuPage(1); }}
+              />
+              <span className="muted" style={{ fontSize: '0.7rem' }}>to</span>
+              <input
+                type="date"
+                className="crm-input date-mini"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); setActPage(1); setFuPage(1); }}
+              />
+            </div>
+          )}
+
+          {(q || dateRangeType !== 'all' || actType || actStatus || fuMode || fuStatus) && (
+            <button 
+              className="btn-premium-mini reset-btn"
+              onClick={() => {
+                setQ('')
+                setActType('')
+                setActStatus('')
+                setFuMode('')
+                setFuStatus('')
+                setDateRangeType('all')
+                setStartDate('')
+                setEndDate('')
+                setActPage(1)
+                setFuPage(1)
+              }}
+            >
+              <Icon name="refresh" size={14} className="reset-icon" />
+              <span>Reset Filters</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="lead-v2-card full-width history-v2 premium-glass-panel mb-24">

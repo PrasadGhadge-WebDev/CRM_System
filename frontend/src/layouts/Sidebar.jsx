@@ -171,6 +171,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
 
   const menuConfig = [
+    { type: 'section', title: 'CORE CONTROL' },
     {
       id: 'dashboard',
       title: 'Dashboard',
@@ -184,10 +185,17 @@ export default function Sidebar({ isOpen, onClose }) {
       path: '/users',
       permission: 'users',
       createPath: '/users?add=true',
-      subItems: [
-        ...dynamicMenu.users
-      ]
     },
+    {
+      id: 'employees',
+      title: 'Employees',
+      icon: 'users',
+      path: '/hr/employees',
+      permission: 'employees',
+      createPath: '/users?add=true',
+    },
+
+    { type: 'section', title: 'SALES PIPELINE' },
     {
       id: 'leads',
       title: 'Leads',
@@ -195,9 +203,6 @@ export default function Sidebar({ isOpen, onClose }) {
       path: '/leads',
       permission: 'leads',
       createPath: '/leads/new',
-      subItems: [
-        ...dynamicMenu.leads
-      ]
     },
     {
       id: 'deals',
@@ -206,9 +211,6 @@ export default function Sidebar({ isOpen, onClose }) {
       path: '/deals',
       permission: 'deals',
       createPath: '/deals?addDeal=true',
-      subItems: [
-        ...dynamicMenu.deals
-      ]
     },
     {
       id: 'customers',
@@ -217,9 +219,60 @@ export default function Sidebar({ isOpen, onClose }) {
       path: '/customers',
       permission: 'customers',
       createPath: '/customers/new',
-      subItems: [
-        ...dynamicMenu.customers
-      ]
+    },
+    {
+      id: 'activities',
+      title: 'Activities',
+      icon: 'activity',
+      path: '/activities',
+      permission: 'activities',
+    },
+    {
+      id: 'tasks',
+      title: 'Tasks',
+      icon: 'tasks',
+      path: '/tasks',
+      permission: 'tasks',
+    },
+
+    { type: 'section', title: 'HR & PERFORMANCE' },
+    {
+      id: 'teamPerformance',
+      title: 'Team Performance',
+      icon: 'reports',
+      permission: 'teamPerformance',
+      path: '/reports/team'
+    },
+    {
+      id: 'attendance',
+      title: 'Attendance',
+      icon: 'calendar',
+      path: '/hr/attendance',
+      permission: 'attendance',
+    },
+    {
+      id: 'leaves',
+      title: 'Leaves',
+      icon: 'clock',
+      path: '/hr/leaves',
+      permission: 'leaves',
+    },
+    {
+      id: 'payroll',
+      title: 'Payroll',
+      icon: 'billing',
+      path: '/hr/payroll',
+      permission: 'payroll',
+    },
+
+    { type: 'section', title: 'FINANCE HUB' },
+    {
+      id: 'invoices',
+      title: 'Invoices',
+      icon: 'billing',
+      path: '/invoices',
+      permission: 'invoices',
+      createPath: '/invoices/new',
     },
     {
       id: 'payments',
@@ -228,21 +281,17 @@ export default function Sidebar({ isOpen, onClose }) {
       path: '/payments',
       permission: 'payments',
       createPath: '/payments/new',
-      subItems: [
-        ...dynamicMenu.payments
-      ]
     },
     {
-      id: 'invoices',
-      title: 'Invoices',
+      id: 'expenses',
+      title: 'Expenses',
       icon: 'billing',
-      path: '/invoices',
-      permission: 'invoices',
-      createPath: '/invoices/new',
-      subItems: [
-        ...dynamicMenu.invoices
-      ]
+      path: '/expenses',
+      permission: 'expenses',
+      createPath: '/expenses/new'
     },
+
+    { type: 'section', title: 'SYSTEM' },
     {
       id: 'support',
       title: 'Tickets',
@@ -250,9 +299,6 @@ export default function Sidebar({ isOpen, onClose }) {
       path: '/tickets',
       permission: 'tickets',
       createPath: '/tickets/new',
-      subItems: [
-        ...dynamicMenu.support
-      ]
     },
     {
       id: 'reports',
@@ -262,12 +308,11 @@ export default function Sidebar({ isOpen, onClose }) {
       path: '/reports'
     },
     {
-      id: 'expenses',
-      title: 'Expenses',
-      icon: 'billing',
-      path: '/expenses',
-      permission: 'expenses',
-      createPath: '/expenses/new'
+      id: 'notifications',
+      title: 'Notifications',
+      icon: 'bell',
+      permission: 'notifications',
+      path: '/notifications'
     },
     {
       id: 'settings',
@@ -284,6 +329,7 @@ export default function Sidebar({ isOpen, onClose }) {
       path: '/trash'
     }
   ]
+
 
   return (
     <aside className={`crmSidebar ${!isOpen ? 'collapsed' : ''}`} aria-label="Sidebar">
@@ -310,74 +356,25 @@ export default function Sidebar({ isOpen, onClose }) {
 
 
         <div className="navSection">
-          {menuConfig.map((item) => {
-            if (item.permission && !hasPermission(user, item.permission)) return null
-
-            const hasSubItems = item.subItems && item.subItems.length > 0
-            const isExpanded = openSubmenus[item.id]
-
-            if (hasSubItems) {
+          {menuConfig.map((item, idx) => {
+            if (item.type === 'section') {
+              // Only show section header if at least one item in it is visible
+              const nextItems = menuConfig.slice(idx + 1)
+              const hasVisibleItem = nextItems.some(next => {
+                if (next.type === 'section') return false
+                if (!next.permission) return true
+                return hasPermission(user, next.permission)
+              })
+              if (!hasVisibleItem) return null
+              
               return (
-                <div key={item.id} className={`navGroup ${isExpanded ? 'expanded' : ''}`}>
-                  <div 
-                    className={`navItem groupHeader ${location.pathname.startsWith(item.path || '/' + item.id) ? 'activeParent' : ''}`}
-                    onClick={(e) => handleGroupClick(e, item)}
-                    title={item.title}
-                  >
-                    <span className="navIcon">
-                      <Icon name={item.icon} />
-                    </span>
-                    <span className="navText">{item.title}</span>
-                    
-                    {item.createPath && (
-                      <button 
-                        className="addInlineBtn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          go(item.createPath)
-                        }}
-                        title={`Add ${item.title}`}
-                      >
-                        <Icon name="plus" size={12} />
-                      </button>
-                    )}
-
-                    <span className="chevron">
-                      <Icon name="chevronDown" />
-                    </span>
-                  </div>
-                  
-                  <div className="navSubmenu">
-                    {item.subItems.map((sub, idx) => {
-                      if (sub.type === 'header') {
-                        return (
-                          <div key={idx} className="submenuHeader">
-                            <span>{sub.title}</span>
-                            <div className="headerLine" />
-                          </div>
-                        )
-                      }
-                      return (
-                        <NavLink 
-                          key={idx} 
-                          className="navItem submenuItem" 
-                          to={sub.path} 
-                          onClick={handleNavClick}
-                        >
-                          <span className="navIcon subIcon" style={sub.statusColor ? { color: sub.statusColor } : {}}>
-                            <Icon name={sub.icon || 'activity'} />
-                          </span>
-                          <span className="navText">{sub.title}</span>
-                          {sub.count !== undefined && (
-                            <span className="countBadge">{sub.count}</span>
-                          )}
-                        </NavLink>
-                      )
-                    })}
-                  </div>
+                <div key={`sec-${idx}`} className="navSectionHeader">
+                  <span>{item.title}</span>
                 </div>
               )
             }
+
+            if (item.permission && !hasPermission(user, item.permission)) return null
 
             return (
               <NavLink 
@@ -392,6 +389,28 @@ export default function Sidebar({ isOpen, onClose }) {
                   <Icon name={item.icon} />
                 </span>
                 <span className="navText">{item.title}</span>
+                {item.createPath && (
+                  <div 
+                    className="addInlineBtn"
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      go(item.createPath)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        go(item.createPath)
+                      }
+                    }}
+                    title={`Add ${item.title}`}
+                  >
+                    <Icon name="plus" size={12} />
+                  </div>
+                )}
               </NavLink>
             )
           })}

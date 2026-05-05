@@ -37,6 +37,7 @@ const INITIAL_LEAD = {
   source: 'Organic',
   status: 'New',
   assigned_to: '',
+  follow_up_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   address: '',
   city: '',
   state: '',
@@ -140,6 +141,12 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
 
     const phoneErr = validatePhone('Phone', model.phone, { required: true })
     if (phoneErr) errors.phone = phoneErr
+
+    if (!model.follow_up_date) {
+      errors.follow_up_date = 'Follow-up date is required'
+    } else if (new Date(model.follow_up_date) < new Date().setHours(0, 0, 0, 0)) {
+      errors.follow_up_date = 'Follow-up date cannot be in the past'
+    }
 
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
@@ -363,15 +370,29 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                     </select>
                   </div>
                 </div>
-                <div className="sheet-field">
-                  <label>Assigned Officer</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiBriefcase /></div>
-                    <select value={model.assigned_to} onChange={e => setModel({ ...model, assigned_to: e.target.value })}>
-                      <option value="">Unassigned</option>
-                      {allUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
+                {user?.role !== 'Employee' && (
+                  <div className="sheet-field">
+                    <label>Assigned Officer</label>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiBriefcase /></div>
+                      <select value={model.assigned_to} onChange={e => setModel({ ...model, assigned_to: e.target.value })}>
+                        <option value="">Unassigned</option>
+                        {allUsers.map(u => <option key={u.id || u._id} value={u.id || u._id}>{u.name}</option>)}
+                      </select>
+                    </div>
                   </div>
+                )}
+                <div className="sheet-field">
+                  <label>Next Follow-up Date</label>
+                  <div className={`crm-input-group ${fieldErrors.follow_up_date ? 'error' : ''}`}>
+                    <div className="input-icon-box"><FiActivity /></div>
+                    <input 
+                      type="date" 
+                      value={model.follow_up_date} 
+                      onChange={e => setModel({ ...model, follow_up_date: e.target.value })} 
+                    />
+                  </div>
+                  {fieldErrors.follow_up_date && <span className="error-text">{fieldErrors.follow_up_date}</span>}
                 </div>
                 <div className="sheet-field full-width">
                   <label>Strategic Notes</label>

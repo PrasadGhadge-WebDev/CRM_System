@@ -44,7 +44,7 @@ export default function CustomerSettingsTab() {
     <div className="categories-pane">
       <div className="section-header-row">
         <h2 className="heading-bold">Client Categories</h2>
-        <p style={{ color: '#9CA3AF', fontSize: '14px', margin: 0 }}>Define segmentation nodes for your customer database.</p>
+        <p style={{ color: 'var(--text-dimmed)', fontSize: '14px', margin: 0 }}>Define segmentation nodes for your customer database.</p>
       </div>
 
       <div className="settings-card">
@@ -73,23 +73,23 @@ export default function CustomerSettingsTab() {
       <style>{`
         .categories-pane { display: flex; flex-direction: column; gap: 24px; }
         .section-header-row { margin-bottom: 8px; }
-        .heading-bold { font-size: 20px; font-weight: 700; color: #FFFFFF; margin-bottom: 8px; }
+        .heading-bold { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
 
-        .settings-card { background: #1A1D2B; padding: 24px; border-radius: 10px; border: 1px solid #2D3040; }
+        .settings-card { background: var(--bg-card); padding: 24px; border-radius: 10px; border: 1px solid var(--border); }
         
         .add-category-row { display: flex; gap: 12px; margin-bottom: 32px; }
-        .input-v9 { flex: 1; background: #1F2232; border: 1px solid #2D3040; border-radius: 8px; padding: 12px; color: #FFFFFF; font-size: 14px; outline: none; }
+        .input-v9 { flex: 1; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: var(--text); font-size: 14px; outline: none; }
         .input-v9:focus { border-color: #3B82F6; }
         
-        .btn-primary-v9 { background: #3B82F6; color: #FFFFFF; border: none; padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .btn-primary-v9 { background: var(--primary); color: #FFFFFF; border: none; padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
 
         .categories-list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
         .category-tag-card { 
-          background: #1F2232; border: 1px solid #2D3040; padding: 14px 20px; border-radius: 8px; 
+          background: var(--bg-surface); border: 1px solid var(--border); padding: 14px 20px; border-radius: 8px; 
           display: flex; justify-content: space-between; align-items: center; transition: 0.2s;
         }
         .category-tag-card:hover { border-color: #3B82F6; background: rgba(59, 130, 246, 0.05); }
-        .cat-name { font-size: 14px; font-weight: 700; color: #FFFFFF; }
+        .cat-name { font-size: 14px; font-weight: 700; color: var(--text); }
         
         .remove-cat-btn { background: none; border: none; color: #6B7280; font-size: 20px; cursor: pointer; line-height: 1; }
         .remove-cat-btn:hover { color: #EF4444; }

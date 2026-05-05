@@ -26,7 +26,7 @@ export default function SecurityTab() {
           </div>
 
           <div className="stack" style={{ marginTop: '20px', gap: '16px' }}>
-            <div className="settingRow" style={{ padding: '16px', background: 'var(--surface-overlay)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <div className="settingRow" style={{ padding: '16px', background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border)' }}>
               <div className="settingMeta">
                 <div className="settingTitle">Password Complexity</div>
                 <div className="settingDescription">Require at least one special character and number</div>

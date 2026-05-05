@@ -110,7 +110,7 @@ export default function StatusesTab() {
                 {(provided) => (
                   <tbody {...provided.droppableProps} ref={provided.innerRef}>
                     {items.map((item, index) => (
-                      <Draggable key={item.id} draggableId={item.id} index={index}>
+                      <Draggable key={String(item.id || item._id || index)} draggableId={String(item.id || item._id || index)} index={index}>
                         {(p, s) => (
                           <tr ref={p.innerRef} {...p.draggableProps} className={`crm-table-row ${s.isDragging ? 'dragging' : ''}`}>
                             <td {...p.dragHandleProps}>
@@ -119,7 +119,7 @@ export default function StatusesTab() {
                                 <span className="text-dimmed font-900">{index + 1}</span>
                               </div>
                             </td>
-                            <td><span className="text-white font-800">{item.name}</span></td>
+                            <td><span className="font-800" style={{ color: 'var(--text)' }}>{item.name}</span></td>
                             <td>
                               <span className="status-badge" style={{ '--pill-color': item.color }}>
                                 {item.name.toUpperCase()}
@@ -187,9 +187,9 @@ export default function StatusesTab() {
 
       <style>{`
         .crm-statuses-module { display: flex; flex-direction: column; }
-        .crm-table-row.dragging { background: var(--primary) !important; opacity: 0.8; }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-panel-premium { box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .crm-table-row.dragging { background: var(--primary-soft) !important; border: 2px solid var(--primary) !important; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(var(--bg-rgb), 0.6); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-panel-premium { box-shadow: var(--shadow-xl); border: 1px solid var(--border); }
         
         .crm-table th {
             padding: 12px 16px !important;

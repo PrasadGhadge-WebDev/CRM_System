@@ -36,11 +36,36 @@ async function ensureDefaultAdmin() {
 
   // 2. Ensure Default Roles exist for this company
   const rolesToSeed = [
-    { name: 'Admin', description: 'Full system access', permissions: ['leads', 'customers', 'deals', 'tickets', 'users', 'reports', 'tasks', 'billing', 'trash', 'settings', 'notifications'], is_system_role: true },
-    { name: 'Manager', description: 'Management access', permissions: ['leads', 'customers', 'deals', 'reports', 'tasks'], is_system_role: true },
-    { name: 'Accountant', description: 'Financial access', permissions: ['customers', 'deals', 'billing', 'reports'], is_system_role: true },
-    { name: 'HR', description: 'Human resources access', permissions: ['users', 'attendance', 'notifications'], is_system_role: true },
-    { name: 'Employee', description: 'Standard staff access', permissions: ['leads', 'tasks'], is_system_role: true },
+    { 
+      name: 'Admin', 
+      description: 'Full system access', 
+      permissions: ['dashboard', 'users', 'leads', 'deals', 'customers', 'activities', 'teamPerformance', 'attendance', 'leaves', 'payroll', 'invoices', 'payments', 'expenses', 'tickets', 'reports', 'notifications', 'settings', 'trash'], 
+      is_system_role: true 
+    },
+    { 
+      name: 'Manager', 
+      description: 'Management access', 
+      permissions: ['dashboard', 'leads', 'deals', 'customers', 'activities', 'teamPerformance', 'invoices', 'tickets', 'reports', 'trash'], 
+      is_system_role: true 
+    },
+    { 
+      name: 'Employee', 
+      description: 'Standard staff access', 
+      permissions: ['dashboard', 'leads', 'deals', 'customers', 'activities', 'tasks', 'tickets'], 
+      is_system_role: true 
+    },
+    { 
+      name: 'Accountant', 
+      description: 'Financial access', 
+      permissions: ['dashboard', 'customers', 'invoices', 'payments', 'expenses', 'reports'], 
+      is_system_role: true 
+    },
+    { 
+      name: 'HR', 
+      description: 'Human resources access', 
+      permissions: ['dashboard', 'employees', 'attendance', 'leaves', 'payroll', 'reports'], 
+      is_system_role: true 
+    },
   ];
 
   for (const r of rolesToSeed) {

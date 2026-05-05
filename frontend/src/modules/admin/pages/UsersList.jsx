@@ -310,7 +310,7 @@ export default function UsersList() {
 
             {(q || role || status) && (
               <button 
-                className="btn-clear-filters"
+                className="btn-premium-mini reset-btn"
                 onClick={() => {
                   setQ('')
                   setRole('')
@@ -318,7 +318,8 @@ export default function UsersList() {
                   setPage(1)
                 }}
               >
-                Clear Filters
+                <Icon name="refresh" size={14} className="reset-icon" />
+                <span>Reset Filters</span>
               </button>
             )}
 
@@ -595,9 +596,9 @@ export default function UsersList() {
          .search-filter-group { 
             display: flex; 
             align-items: center; 
-            gap: 10px; 
+            gap: 24px; 
             flex: 1; 
-            justify-content: space-between; 
+            justify-content: flex-start; 
          }
          .filter-select { max-width: 150px; }
          
@@ -625,7 +626,7 @@ export default function UsersList() {
          .crm-table-wrap { border-radius: 16px; overflow: hidden; }
 
          .crm-input { width: 100%; background: var(--bg-surface) !important; border: 1px solid var(--border-strong) !important; border-radius: 10px !important; padding: 8px 14px !important; color: var(--text) !important; font-size: 0.85rem !important; transition: all 0.2s; }
-         .crm-search-input-wrap { position: relative; width: 100%; flex: 1; max-width: none; }
+         .crm-search-input-wrap { position: relative; width: 100%; flex: 1; max-width: 500px; }
          .crm-search-input-wrap .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 1; color: var(--text-dimmed); font-size: 14px; }
          .crm-search-input-wrap .crm-input { padding-left: 36px !important; }
          

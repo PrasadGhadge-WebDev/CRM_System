@@ -4,19 +4,23 @@ const {
   listPayments,
   createPayment,
   getPayment,
+  updatePayment,
+  approvePayment,
   deletePayment
 } = require('../controllers/paymentsController');
 const { protect, authorize } = require('../middleware/auth');
 
 router.use(protect);
-router.use(authorize('Admin', 'Accountant', 'Manager'));
 
 router.route('/')
-  .get(listPayments)
-  .post(createPayment);
+  .get(authorize('Admin', 'Accountant', 'Manager', 'HR', 'Employee'), listPayments)
+  .post(authorize('Admin', 'Accountant'), createPayment);
 
 router.route('/:id')
-  .get(getPayment)
-  .delete(deletePayment);
+  .get(authorize('Admin', 'Accountant', 'Manager', 'HR', 'Employee'), getPayment)
+  .patch(authorize('Admin', 'Accountant'), updatePayment)
+  .delete(authorize('Admin'), deletePayment);
+
+router.post('/:id/approve', authorize('Admin', 'Manager'), approvePayment);
 
 module.exports = router;

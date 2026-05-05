@@ -3,12 +3,13 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { supportApi } from '../../../services/workflow.js'
 import { usersApi } from '../../../services/users.js'
+import SearchableSelect from '../components/SearchableSelect.jsx'
 import PageHeader from '../../../components/PageHeader.jsx'
 import { Icon } from '../../../layouts/icons.jsx'
 import { useAuth } from '../../../context/AuthContext.jsx'
 
 const STATUS_OPTIONS = [
-  { value: 'open', label: 'Open' },
+  { value: 'new', label: 'New' },
   { value: 'in-progress', label: 'In Progress' },
   { value: 'resolved', label: 'Resolved' },
   { value: 'closed', label: 'Closed' }
@@ -108,6 +109,25 @@ export default function TicketDetail() {
     }
   }
 
+  async function handleResolve() {
+    const problem = window.prompt('1. What was the problem?')
+    if (!problem) return
+    const method = window.prompt('2. How was it solved?')
+    if (!method) return
+    const prevention = window.prompt('3. How to avoid this again?')
+    if (!prevention) return
+
+    const solution = `Problem: ${problem}\nSolution: ${method}\nPrevention: ${prevention}`
+    
+    try {
+      await supportApi.update(id, { status: 'resolved', solution })
+      toast.success('Ticket marked as Resolved')
+      loadData()
+    } catch {
+      toast.error('Failed to resolve ticket')
+    }
+  }
+
   async function handleEscalate() {
     const reason = window.prompt('Reason for escalation:')
     if (!reason) return
@@ -127,7 +147,17 @@ export default function TicketDetail() {
   if (!ticket) return <div className="center padding60 muted">Ticket not found.</div>
 
   const canManage = isAdmin || isManager
-  const canReply = ticket.status !== 'closed'
+  const isHR = user?.role === 'HR'
+  const isAccountant = user?.role === 'Accountant'
+  const isAgent = isEmployee || user?.role === 'Support'
+
+  const canReply = ticket.status !== 'closed' && !isHR && !isAccountant
+  const canResolve = (isAdmin || isManager || isAgent) && (ticket.status === 'new' || ticket.status === 'in-progress')
+  const canClose = (isAdmin || isManager) || (isCustomer && ticket.status === 'resolved')
+  const canEscalate = !ticket.is_escalated && (isAdmin || isManager || isAgent)
+  const canAssign = isAdmin || isManager
+
+  const isSLABreached = ticket.deadline && new Date(ticket.deadline) < new Date() && ticket.status !== 'closed' && ticket.status !== 'resolved'
 
   return (
     <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
@@ -138,16 +168,28 @@ export default function TicketDetail() {
           <span>Back to Tickets</span>
         </button>
         <div style={{ display: 'flex', gap: '12px' }}>
-          {canManage && (
-            <button onClick={() => updateStatus(ticket.status === 'closed' ? 'open' : 'closed')} className="crm-btn-premium" style={{ background: ticket.status === 'closed' ? 'var(--success)' : 'var(--danger)', color: '#ffffff', border: 'none', padding: '8px 16px', borderRadius: '8px' }}>
+          {isSLABreached && (
+            <div style={{ background: 'var(--danger)', color: 'white', padding: '8px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, animation: 'pulse 2s infinite' }}>
+              <Icon name="alert" size={16} />
+              <span>SLA BREACH (Red Alert)</span>
+            </div>
+          )}
+          {canClose && (
+            <button onClick={() => updateStatus(ticket.status === 'closed' ? 'new' : 'closed')} className="crm-btn-premium" style={{ background: ticket.status === 'closed' ? 'var(--success)' : 'var(--danger)', color: '#ffffff', border: 'none', padding: '8px 16px', borderRadius: '8px' }}>
               <Icon name={ticket.status === 'closed' ? 'activity' : 'check'} />
               <span>{ticket.status === 'closed' ? 'Reopen Ticket' : 'Close Ticket'}</span>
             </button>
           )}
-          {!ticket.is_escalated && (isAdmin || isEmployee) && (
+          {canEscalate && (
             <button onClick={handleEscalate} className="crm-btn-premium" style={{ background: '#f59e0b', color: '#ffffff', border: 'none', padding: '8px 24px', borderRadius: '8px' }} disabled={escalating}>
               <Icon name="bell" />
               <span>{escalating ? 'Escalating...' : 'Escalate'}</span>
+            </button>
+          )}
+          {canResolve && (
+            <button onClick={handleResolve} className="crm-btn-premium" style={{ background: 'var(--success)', color: '#ffffff', border: 'none', padding: '8px 24px', borderRadius: '8px' }}>
+              <Icon name="check" />
+              <span>Resolve</span>
             </button>
           )}
         </div>
@@ -180,7 +222,7 @@ export default function TicketDetail() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Icon name="activity" size={14} />
-                <span>ID: #{ticket.ticket_id}</span>
+                <span>ID: {ticket.ticket_id}</span>
               </div>
             </div>
           </div>
@@ -190,16 +232,18 @@ export default function TicketDetail() {
 
         {/* Time Stats Row */}
         <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
-           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
-             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Opened On:</span>
-             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)' }}>{new Date(ticket.created_at).toLocaleString()}</span>
-           </div>
-           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-             <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
-             <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Handler:</span>
-             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary)' }}>{ticket.assigned_to?.name || 'Unassigned'}</span>
-           </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Deadline:</span>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: ticket.deadline && new Date(ticket.deadline) < new Date() ? 'var(--danger)' : 'var(--text)' }}>
+                {ticket.deadline ? new Date(ticket.deadline).toLocaleDateString() : 'No Deadline'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Assignee:</span>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary)' }}>{ticket.assigned_to?.name || 'Unassigned'}</span>
+            </div>
         </div>
       </section>
 
@@ -223,7 +267,7 @@ export default function TicketDetail() {
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Ticket ID</label>
-                <div style={{ color: 'var(--text)', fontWeight: 500 }}>#{ticket.ticket_id}</div>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{ticket.ticket_id}</div>
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Escalated</label>
@@ -234,6 +278,25 @@ export default function TicketDetail() {
               <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Original Request</label>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>{ticket.description}</div>
             </div>
+            {ticket.solution && (
+              <div style={{ marginTop: '20px', padding: '16px', background: 'var(--success-soft)', borderRadius: '8px', border: '1px solid var(--success)' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--success)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: '8px' }}>Official Resolution</label>
+                <div style={{ color: 'var(--text)', fontSize: '0.95rem', fontWeight: 500 }}>{ticket.solution}</div>
+              </div>
+            )}
+            {ticket.attachments && ticket.attachments.length > 0 && (
+              <div style={{ marginTop: '20px' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Attachments</label>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  {ticket.attachments.map((at, idx) => (
+                    <a key={idx} href={at.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border)', textDecoration: 'none', color: 'var(--text)', fontSize: '0.85rem' }}>
+                      <Icon name="image" size={14} />
+                      <span>{at.name}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -249,17 +312,18 @@ export default function TicketDetail() {
                   <span>🧑💼</span> Assigned Handler
                 </div>
                 <div style={{ fontWeight: 600, color: 'var(--text)' }}>
-                   {canManage ? (
-                      <select 
-                        style={{ width: '100%', border: 'none', background: 'transparent', fontWeight: 700, color: 'var(--primary)', padding: 0, cursor: 'pointer', outline: 'none' }}
-                        value={ticket.assigned_to?._id || ''} 
-                        onChange={(e) => assignTicket(e.target.value)}
-                      >
-                        <option value="">Unassigned</option>
-                        {teamMembers.map(m => (
-                          <option key={m.id} value={m.id}>{m.name}</option>
-                        ))}
-                      </select>
+                   {canAssign ? (
+                      <SearchableSelect 
+                        value={ticket.assigned_to?._id || ticket.assigned_to?.id || ''}
+                        onChange={(val) => assignTicket(val)}
+                        options={[
+                          { value: '', label: 'Unassigned' },
+                          ...teamMembers.map(m => ({ value: m.id || m._id, label: m.name }))
+                        ]}
+                        placeholder="Select Handler..."
+                        icon="user"
+                        style={{ minWidth: '100%' }}
+                      />
                    ) : (ticket.assigned_to?.name || 'Unassigned')}
                 </div>
               </div>
@@ -288,8 +352,8 @@ export default function TicketDetail() {
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>⏱️</span> Priority Action
                 </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                   {STATUS_OPTIONS.slice(0, 3).map(opt => (
+                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                   {STATUS_OPTIONS.map(opt => (
                       <button 
                         key={opt.value} 
                         onClick={() => updateStatus(opt.value)}
@@ -357,6 +421,11 @@ export default function TicketDetail() {
           .crm-profile-grid-desktop {
             grid-template-columns: 1fr !important;
           }
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.05); opacity: 0.8; }
+          100% { transform: scale(1); opacity: 1; }
         }
       `}</style>
     </div>

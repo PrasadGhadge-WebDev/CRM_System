@@ -67,6 +67,11 @@ export default function DealsList() {
   const [stage, setStage] = useState(stageParam)
   const [assignedTo, setAssignedTo] = useState(assignedToParam)
   const [page, setPage] = useState(pageParam)
+  const [dateRange, setDateRange] = useState(searchParams.get('dateRange') || 'all')
+  const [customDates, setCustomDates] = useState({ 
+    start: searchParams.get('startDate') || '', 
+    end: searchParams.get('endDate') || '' 
+  })
   
   const [formModal, setFormModal] = useState({ open: false, deal: null })
 
@@ -84,6 +89,9 @@ export default function DealsList() {
     if (debouncedQ.trim()) next.set('q', debouncedQ.trim())
     if (stage.trim()) next.set('stage', stage.trim())
     if (assignedTo.trim()) next.set('assigned_to', assignedTo.trim())
+    if (dateRange !== 'all') next.set('dateRange', dateRange)
+    if (customDates.start) next.set('startDate', customDates.start)
+    if (customDates.end) next.set('endDate', customDates.end)
     if (page > 1) next.set('page', String(page))
     if (viewMode !== 'list') next.set('view', viewMode)
     
@@ -116,11 +124,42 @@ export default function DealsList() {
   const loadDeals = useCallback(async () => {
     setLoading(true)
     setError('')
+
+    let startDate = ''
+    let endDate = ''
+    const now = new Date()
+    now.setHours(0,0,0,0)
+
+    if (dateRange === 'today') {
+      startDate = now.toISOString()
+      endDate = new Date(new Date().setHours(23,59,59,999)).toISOString()
+    } else if (dateRange === 'yesterday') {
+      const y = new Date(now)
+      y.setDate(y.getDate() - 1)
+      startDate = y.toISOString()
+      const yEnd = new Date(y)
+      yEnd.setHours(23,59,59,999)
+      endDate = yEnd.toISOString()
+    } else if (dateRange === 'week') {
+      const w = new Date(now)
+      w.setDate(w.getDate() - 7)
+      startDate = w.toISOString()
+    } else if (dateRange === 'month') {
+      const m = new Date(now)
+      m.setMonth(m.getMonth() - 1)
+      startDate = m.toISOString()
+    } else if (dateRange === 'custom' && customDates.start && customDates.end) {
+      startDate = new Date(customDates.start).toISOString()
+      endDate = new Date(new Date(customDates.end).setHours(23,59,59,999)).toISOString()
+    }
+
     try {
       const res = await dealsApi.list({
         q: debouncedQ,
         stage,
         assigned_to: assignedTo,
+        startDate,
+        endDate,
         page,
         limit: viewMode === 'board' ? 'all' : limitParam
       })
@@ -132,7 +171,7 @@ export default function DealsList() {
     } finally {
       setLoading(false)
     }
-  }, [debouncedQ, stage, assignedTo, page, viewMode])
+  }, [debouncedQ, stage, assignedTo, page, viewMode, dateRange, customDates])
 
   useEffect(() => {
     loadDeals()
@@ -271,6 +310,39 @@ export default function DealsList() {
               icon="user"
             />
 
+            <SearchableSelect
+              value={dateRange}
+              onChange={(val) => { setDateRange(val); setPage(1); }}
+              options={[
+                { value: 'all', label: 'Date: All' },
+                { value: 'today', label: 'Today' },
+                { value: 'yesterday', label: 'Yesterday' },
+                { value: 'week', label: 'This Week' },
+                { value: 'month', label: 'This Month' },
+                { value: 'custom', label: 'Custom Range' }
+              ]}
+              placeholder="Date: All"
+              icon="calendar"
+            />
+
+            {dateRange === 'custom' && (
+              <div className="flex items-center gap-4 animate-fade-in">
+                <input 
+                  type="date" 
+                  className="crm-input date-mini" 
+                  value={customDates.start} 
+                  onChange={e => setCustomDates(prev => ({ ...prev, start: e.target.value }))}
+                />
+                <span className="muted" style={{ fontSize: '0.7rem' }}>to</span>
+                <input 
+                  type="date" 
+                  className="crm-input date-mini" 
+                  value={customDates.end} 
+                  onChange={e => setCustomDates(prev => ({ ...prev, end: e.target.value }))}
+                />
+              </div>
+            )}
+
             <div className="crm-toggle-group">
               <button 
                 className={`toggle-item ${viewMode === 'list' ? 'active' : ''}`}
@@ -295,17 +367,20 @@ export default function DealsList() {
               </button>
             )}
 
-            {(q || stage || assignedTo) && (
+            {(q || stage || assignedTo || dateRange !== 'all') && (
               <button 
-                className="btn-clear-filters"
+                className="btn-premium-mini reset-btn"
                 onClick={() => {
                   setQ('')
                   setStage('')
                   setAssignedTo('')
+                  setDateRange('all')
+                  setCustomDates({ start: '', end: '' })
                   setPage(1)
                 }}
               >
-                Clear Filters
+                <Icon name="refresh" size={14} className="reset-icon" />
+                <span>Reset Filters</span>
               </button>
             )}
           </div>
@@ -489,26 +564,26 @@ export default function DealsList() {
       <style>{`
           .crm-table th {
              padding: 12px 16px !important;
-             background: #f3f4f6 !important;
+             background: var(--bg-surface) !important;
              font-size: 0.75rem !important;
              font-weight: 800 !important;
-             color: #4b5563 !important;
+             color: var(--text-dimmed) !important;
              letter-spacing: 0.05em !important;
              text-transform: uppercase !important;
              border-bottom: 2px solid var(--border-strong) !important;
           }
 
           .crm-table-row { transition: background 0.2s ease; cursor: pointer; border-bottom: 1px solid var(--border-subtle) !important; }
-          .crm-table-row:hover { background: #f9fafb !important; }
+          .crm-table-row:hover { background: var(--bg-hover) !important; }
           .crm-table-row td { padding: 14px 16px !important; vertical-align: middle; }
           
           .usersPrimaryText { color: var(--text); font-size: 0.95rem; font-weight: 700; }
-          .usersEmailText { font-size: 0.85rem; color: #64748b; }
+          .usersEmailText { font-size: 0.85rem; color: var(--text-dimmed); }
           
           .crm-action-group { display: flex; gap: 8px; justify-content: flex-end; }
-          .modern-action-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-strong); background: white; color: #64748b; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; cursor: pointer; }
+          .modern-action-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text-dimmed); display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; cursor: pointer; }
           .modern-action-btn:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-          .modern-action-btn.danger:hover { color: #ef4444; border-color: #ef4444; background: #fee2e2; }
+          .modern-action-btn.danger:hover { color: var(--danger); border-color: var(--danger); background: var(--bg-hover); }
 
           /* Responsive Layout */
           .crm-mobile-cards { display: none; }
@@ -534,19 +609,19 @@ export default function DealsList() {
             
             .card-body { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); }
             .card-stat { display: flex; justify-content: space-between; align-items: center; }
-            .stat-label { font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase; }
+            .stat-label { font-size: 0.75rem; color: var(--text-dimmed); font-weight: 700; text-transform: uppercase; }
             .stat-value { font-weight: 800; color: var(--text); }
 
             .card-footer { display: flex; justify-content: space-between; align-items: center; }
-            .update-date { font-size: 0.75rem; color: #64748b; }
+            .update-date { font-size: 0.75rem; color: var(--text-dimmed); }
             .card-actions { display: flex; gap: 8px; }
-            .icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: white; display: flex; align-items: center; justify-content: center; }
+            .icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: center; }
             .icon-btn.danger { color: #ef4444; }
           }
 
          .users-page-header { margin-bottom: 12px; }
          .users-title { font-size: 1.5rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }
-         .users-subtitle { font-size: 0.9rem; color: #64748b; font-weight: 500; }
+         .users-subtitle { font-size: 0.9rem; color: var(--text-dimmed); font-weight: 500; }
 
          .unified-action-bar { 
             display: flex; 
@@ -578,8 +653,8 @@ export default function DealsList() {
          .btn-clear-filters:hover { text-decoration: underline; }
 
           .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 20px; justify-content: space-between; }
-          .stat-pill-mini { background: white; border: 1px solid var(--border-strong); padding: 12px 20px; border-radius: 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 150px; box-shadow: var(--shadow-sm); }
-         .stat-pill-label { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+          .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 12px 20px; border-radius: 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 150px; box-shadow: var(--shadow-sm); }
+         .stat-pill-label { font-size: 11px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
          .stat-pill-value { font-size: 22px; font-weight: 900; }
          .stat-pill-value.total { color: var(--text); }
          .stat-pill-value.active { color: #10b981; }
@@ -587,7 +662,7 @@ export default function DealsList() {
 
          .crm-table-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--border-strong) !important; }
 
-         .crm-input { width: 100%; background: white !important; border: 1px solid #d1d5db !important; border-radius: 10px !important; padding: 10px 14px !important; color: #1f2937 !important; font-size: 0.9rem !important; transition: all 0.2s; }
+         .crm-input { width: 100%; background: var(--bg-card) !important; border: 1px solid var(--border) !important; border-radius: 10px !important; padding: 10px 14px !important; color: var(--text) !important; font-size: 0.9rem !important; transition: all 0.2s; }
          .crm-input:focus { border-color: var(--primary) !important; ring: 2px var(--primary-soft) !important; }
          
          .crm-search-input-wrap { position: relative; width: 100%; flex: 1; max-width: 400px; }
@@ -612,13 +687,13 @@ export default function DealsList() {
             height: 100%;
             border: none;
             background: transparent;
-            color: #64748b;
+            color: var(--text-dimmed);
             cursor: pointer;
             border-radius: 8px;
             transition: all 0.2s;
           }
           .toggle-item.active {
-            background: white;
+            background: var(--bg-card);
             color: var(--primary);
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
           }
@@ -634,7 +709,7 @@ export default function DealsList() {
             align-items: center;
             gap: 8px;
             border: 1px solid #e2e8f0;
-            background: white;
+            background: var(--bg-card);
          }
          .status-dot { width: 8px; height: 8px; border-radius: 50%; }
          

@@ -195,6 +195,12 @@ export default function PaymentForm({ onCancel, onSuccess }) {
                     required
                   />
                   {fieldErrors.amount && <span className="error-text">{fieldErrors.amount}</span>}
+                  {model.amount > 50000 && (
+                    <div className="text-xs font-bold" style={{ color: 'var(--warning)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Icon name="info" size={12} />
+                      Requires Manager approval (&gt; ₹50k)
+                    </div>
+                  )}
                 </div>
                 <div className="sheet-field">
                   <label>Payment Date</label>

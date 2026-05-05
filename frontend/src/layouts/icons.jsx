@@ -1,5 +1,5 @@
-export function Icon({ name }) {
-  const common = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none' }
+export function Icon({ name, size = 18 }) {
+  const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none' }
 
   const stroke = {
     stroke: 'currentColor',
@@ -102,8 +102,20 @@ export function Icon({ name }) {
 
     case 'chevronDown':
       return (
-        <svg {...common} aria-hidden="true" style={{ width: 14, height: 14 }}>
+        <svg {...common} aria-hidden="true">
           <path {...stroke} d="m6 9 6 6 6-6" />
+        </svg>
+      )
+    case 'chevronLeft':
+      return (
+        <svg {...common} aria-hidden="true">
+          <path {...stroke} d="m15 18-6-6 6-6" />
+        </svg>
+      )
+    case 'chevronRight':
+      return (
+        <svg {...common} aria-hidden="true">
+          <path {...stroke} d="m9 18 6-6-6-6" />
         </svg>
       )
 

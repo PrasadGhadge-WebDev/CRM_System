@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { withIdTransform } = require('../utils/mongooseTransforms');
 
 const userSchema = new mongoose.Schema(
@@ -22,6 +23,10 @@ const userSchema = new mongoose.Schema(
     },
     joining_date: {
       type: Date,
+    },
+    designation: {
+      type: String,
+      trim: true,
     },
     date_of_birth: {
       type: Date,
@@ -75,6 +80,10 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
       select: false,
     },
+    force_password_change: {
+      type: Boolean,
+      default: true,
+    },
     profile_photo: {
       type: String,
       trim: true,
@@ -123,6 +132,8 @@ const userSchema = new mongoose.Schema(
     date_of_birth: {
       type: Date,
     },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
@@ -142,6 +153,23 @@ userSchema.pre('save', async function () {
 // Match user password to hashed password in database
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Generate and hash password token
+userSchema.methods.getResetPasswordToken = function () {
+  // Generate token
+  const resetToken = crypto.randomBytes(20).toString('hex');
+
+  // Hash token and set to resetPasswordToken field
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  // Set expire (1 hour)
+  this.resetPasswordExpire = Date.now() + 60 * 60 * 1000;
+
+  return resetToken;
 };
 
 withIdTransform(userSchema);

@@ -318,7 +318,7 @@ export default function RolesTab() {
   )
 
   return (
-    <div className="crm-roles-module content-fade-in" style={{ backgroundColor: '#0F1117', color: '#FFFFFF', minHeight: '100vh', padding: '24px', fontFamily: 'Inter, sans-serif' }}>
+    <div className="crm-roles-module content-fade-in" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)', minHeight: '100vh', padding: '24px', fontFamily: 'Inter, sans-serif' }}>
       <PageHeader 
         title="Access Permissions" 
         description="Define institutional hierarchy and data visibility protocols."
@@ -392,8 +392,13 @@ export default function RolesTab() {
                 const id = String(role.id || role._id)
                 const isSelected = selectedIds.includes(id)
                 return (
-                  <tr key={id} className={`role-row-v7 ${isSelected ? 'selected' : ''}`}>
-                    <td>
+                  <tr 
+                    key={id} 
+                    className={`role-row-v7 ${isSelected ? 'selected' : ''}`}
+                    onClick={() => handleEdit(role, false)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={isSelected} onChange={e => handleSelectRow(id, e.target.checked)} />
                     </td>
                     <td><span className="role-name-text">{role.name}</span></td>
@@ -404,9 +409,8 @@ export default function RolesTab() {
                         {role.status.charAt(0).toUpperCase() + role.status.slice(1).toLowerCase()}
                       </span>
                     </td>
-                    <td className="text-right">
+                    <td className="text-right" onClick={e => e.stopPropagation()}>
                       <div className="role-actions-group-v7">
-                        <button className="action-icon-btn-v7 view" onClick={() => handleEdit(role, true)} title="View Role"><Icon name="eye" size={14} /></button>
                         <button className="action-icon-btn-v7 edit" onClick={() => handleEdit(role, false)} title="Edit Role"><Icon name="edit" size={14} /></button>
                         <button className="action-icon-btn-v7 delete" onClick={() => handleDelete(id)} title="Delete Role"><Icon name="trash" size={14} /></button>
                       </div>
@@ -449,15 +453,55 @@ export default function RolesTab() {
         .role-top-action-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; margin-top: 32px; gap: 20px; }
         .search-filter-group-v7 { display: flex; align-items: center; gap: 12px; flex: 1; }
         
+        .crm-search-bar-modern {
+          display: flex;
+          align-items: center;
+          background: var(--bg-surface);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 0 4px 0 16px;
+          height: 42px;
+          transition: all 0.2s;
+          flex: 1;
+        }
+        .crm-search-bar-modern:focus-within {
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px var(--primary-soft);
+        }
+        .crm-search-input {
+          flex: 1;
+          background: transparent;
+          border: none;
+          color: var(--text);
+          font-size: 14px;
+          outline: none;
+        }
+        .search-action-icon {
+          width: 34px;
+          height: 34px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--primary);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: 0.2s;
+        }
+        .search-action-icon:hover {
+          background: var(--primary-hover);
+          transform: scale(1.05);
+        }
 
         
         .filter-select-v7 { 
-          background: #1A1D2B; border: 1px solid #2D3040; color: white; border-radius: 10px; 
+          background: var(--bg-surface); border: 1px solid var(--border); color: var(--text); border-radius: 10px; 
           padding: 0 12px; height: 42px; outline: none; font-size: 14px; min-width: 140px;
         }
         
         .btn-apply-v7 {
-          background: #3B82F6; color: white; border: none; border-radius: 10px; 
+          background: var(--primary); color: white; border: none; border-radius: 10px; 
           padding: 0 20px; height: 42px; font-weight: 700; cursor: pointer;
         }
         
@@ -466,45 +510,133 @@ export default function RolesTab() {
           padding: 0 20px; height: 42px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer;
         }
 
-        .role-table-container-v7 { background: #1A1D2B; border: 1px solid #2D3040; border-radius: 12px; overflow: hidden; }
+        .role-table-container-v7 { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
         .crm-table-v7 { width: 100%; border-collapse: collapse; }
         .crm-table-v7 th { 
-          background: #1F2232; color: #9CA3AF; text-align: left; padding: 14px 16px; 
+          background: var(--bg-surface); color: var(--text-muted); text-align: left; padding: 14px 16px; 
           font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
-          border-bottom: 1px solid #2D3040;
+          border-bottom: 1px solid var(--border);
         }
-        .crm-table-v7 td { padding: 14px 16px; border-bottom: 1px solid #2D3040; }
+        .crm-table-v7 td { padding: 14px 16px; border-bottom: 1px solid var(--border); }
         
         .role-row-v7 { transition: background 0.2s; }
-        .role-row-v7:hover { background: rgba(59, 130, 246, 0.05); }
-        .role-row-v7.selected { background: rgba(59, 130, 246, 0.1); }
+        .role-row-v7:hover { background: var(--bg-hover); }
+        .role-row-v7.selected { background: var(--primary-soft); }
         
-        .role-name-text { font-weight: 700; color: #FFFFFF; }
-        .role-desc-text { color: #9CA3AF; }
+        .role-name-text { font-weight: 700; color: var(--text); }
+        .role-desc-text { color: var(--text-muted); }
         
         .role-badge-v7 { 
           display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 700;
         }
-        .role-badge-v7.active { background: rgba(16, 185, 129, 0.1); color: #FFFFFF; }
-        .role-badge-v7.active .badge-dot-v7 { width: 6px; height: 6px; border-radius: 50%; background: #10B981; }
+        .role-badge-v7.active { background: var(--primary-soft); color: var(--primary); }
+        .role-badge-v7.active .badge-dot-v7 { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
         
-        .role-badge-v7.inactive { background: rgba(107, 114, 128, 0.1); color: #9CA3AF; }
-        .role-badge-v7.inactive .badge-dot-v7 { width: 6px; height: 6px; border-radius: 50%; background: #6B7280; }
+        .role-badge-v7.inactive { background: var(--bg-surface); color: var(--text-muted); }
+        .role-badge-v7.inactive .badge-dot-v7 { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dimmed); }
 
         .role-actions-group-v7 { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
         .action-icon-btn-v7 { 
           width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; 
           border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; background: transparent;
         }
-        .action-icon-btn-v7.view { color: #3B82F6; }
-        .action-icon-btn-v7.view:hover { background: rgba(59, 130, 246, 0.1); }
-        .action-icon-btn-v7.edit { color: #F59E0B; }
-        .action-icon-btn-v7.edit:hover { background: rgba(245, 158, 11, 0.1); }
-        .action-icon-btn-v7.delete { color: #EF4444; }
-        .action-icon-btn-v7.delete:hover { background: rgba(239, 68, 68, 0.1); }
+        .action-icon-btn-v7.view { color: var(--primary); }
+        .action-icon-btn-v7.view:hover { background: var(--primary-soft); }
+        .action-icon-btn-v7.edit { color: var(--warning); }
+        .action-icon-btn-v7.edit:hover { background: color-mix(in srgb, var(--warning) 12%, transparent); }
+        .action-icon-btn-v7.delete { color: var(--danger); }
+        .action-icon-btn-v7.delete:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
         .role-footer-v7 { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }
-        .pagination-info-v7 { color: #9CA3AF; font-size: 13px; font-weight: 500; }
+        .pagination-info-v7 { color: var(--text-muted); font-size: 13px; font-weight: 500; }
+
+        .permissions-matrix-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          gap: 20px;
+          margin-top: 16px;
+        }
+        .matrix-card {
+          background: var(--bg-surface);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 16px;
+          transition: all 0.2s;
+        }
+        .matrix-card:hover {
+          border-color: var(--primary);
+          box-shadow: var(--shadow-md);
+        }
+        .matrix-card-title {
+          font-size: 11px;
+          font-weight: 900;
+          color: var(--primary);
+          margin-bottom: 12px;
+          letter-spacing: 0.1em;
+        }
+        .matrix-card-options {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
+        .matrix-option {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text);
+          cursor: pointer;
+        }
+        .matrix-option input {
+          width: 16px;
+          height: 16px;
+          accent-color: var(--primary);
+          cursor: pointer;
+        }
+        .global-overrides-container {
+          background: var(--bg-surface);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 24px;
+          margin-top: 16px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 32px;
+        }
+        .overrides-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 24px;
+        }
+        .matrix-option.global {
+          font-size: 14px;
+          font-weight: 700;
+        }
+        .sheet-status-box {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          min-width: 120px;
+        }
+        .sheet-toggle-btn {
+          height: 40px;
+          padding: 0 20px;
+          border-radius: 12px;
+          border: 1px solid var(--border);
+          background: var(--bg-card);
+          color: var(--text-muted);
+          font-weight: 800;
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .sheet-toggle-btn.active {
+          background: var(--primary-soft);
+          color: var(--primary);
+          border-color: var(--primary);
+        }
 
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

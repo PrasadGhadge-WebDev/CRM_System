@@ -56,6 +56,7 @@ export default function CustomersList() {
     sortOrder: searchParams.get('sortOrder') || 'desc',
     page: Math.max(1, Number(searchParams.get('page')) || 1),
     limit: Math.min(100, Math.max(1, Number(searchParams.get('limit')) || 20)),
+    dateRangeType: searchParams.get('dateRangeType') || 'all'
   })
 
   const debouncedQ = useDebouncedValue(filters.q, 300)
@@ -72,13 +73,40 @@ export default function CustomersList() {
     if (filters.sortOrder !== 'desc') next.set('sortOrder', filters.sortOrder)
     if (filters.page > 1) next.set('page', String(filters.page))
     if (filters.limit !== 20) next.set('limit', String(filters.limit))
+    if (filters.dateRangeType !== 'all') next.set('dateRangeType', filters.dateRangeType)
     setSearchParams(next, { replace: true })
   }, [debouncedQ, filters, setSearchParams])
 
   const loadCustomers = useCallback(async () => {
     setLoading(true)
+    
+    let startDate = filters.startDate
+    let endDate = filters.endDate
+    const now = new Date()
+    now.setHours(0,0,0,0)
+
+    if (filters.dateRangeType === 'today') {
+      startDate = now.toISOString()
+      endDate = new Date(new Date().setHours(23,59,59,999)).toISOString()
+    } else if (filters.dateRangeType === 'yesterday') {
+      const y = new Date(now)
+      y.setDate(y.getDate() - 1)
+      startDate = y.toISOString()
+      const yEnd = new Date(y)
+      yEnd.setHours(23,59,59,999)
+      endDate = yEnd.toISOString()
+    } else if (filters.dateRangeType === 'week') {
+      const w = new Date(now)
+      w.setDate(w.getDate() - 7)
+      startDate = w.toISOString()
+    } else if (filters.dateRangeType === 'month') {
+      const m = new Date(now)
+      m.setMonth(m.getMonth() - 1)
+      startDate = m.toISOString()
+    }
+
     try {
-      const res = await customersApi.list({ ...filters, q: debouncedQ })
+      const res = await customersApi.list({ ...filters, startDate, endDate, q: debouncedQ })
       setItems(res.items || [])
       setTotal(res.total || 0)
       setSummary(res.summary || { total: 0, byStatus: {} })
@@ -197,22 +225,38 @@ export default function CustomersList() {
               />
             )}
 
-            <div className="date-range-filter" style={{ display: 'flex', gap: '8px' }}>
-              <input 
-                type="date" 
-                className="crm-input" 
-                style={{ width: '130px' }}
-                value={filters.startDate} 
-                onChange={e => setFilters(f => ({ ...f, startDate: e.target.value, page: 1 }))} 
-              />
-              <input 
-                type="date" 
-                className="crm-input" 
-                style={{ width: '130px' }}
-                value={filters.endDate} 
-                onChange={e => setFilters(f => ({ ...f, endDate: e.target.value, page: 1 }))} 
-              />
-            </div>
+            <SearchableSelect
+              value={filters.dateRangeType}
+              onChange={val => setFilters(f => ({ ...f, dateRangeType: val, page: 1 }))}
+              options={[
+                { value: 'all', label: 'Date: All' },
+                { value: 'today', label: 'Today' },
+                { value: 'yesterday', label: 'Yesterday' },
+                { value: 'week', label: 'This Week' },
+                { value: 'month', label: 'This Month' },
+                { value: 'custom', label: 'Custom Range' }
+              ]}
+              placeholder="Date: All"
+              icon="calendar"
+            />
+
+            {filters.dateRangeType === 'custom' && (
+              <div className="flex items-center gap-4 animate-fade-in">
+                <input 
+                  type="date" 
+                  className="crm-input date-mini" 
+                  value={filters.startDate} 
+                  onChange={e => setFilters(f => ({ ...f, startDate: e.target.value, page: 1 }))} 
+                />
+                <span className="muted" style={{ fontSize: '0.7rem' }}>to</span>
+                <input 
+                  type="date" 
+                  className="crm-input date-mini" 
+                  value={filters.endDate} 
+                  onChange={e => setFilters(f => ({ ...f, endDate: e.target.value, page: 1 }))} 
+                />
+              </div>
+            )}
 
             <button
               className="btn-premium-mini add-user-btn"
@@ -222,9 +266,9 @@ export default function CustomersList() {
               <span>Add Customer</span>
             </button>
 
-            {(filters.q || filters.status || filters.assigned_to || filters.startDate || filters.endDate) && (
+            {(filters.q || filters.status || filters.assigned_to || filters.dateRangeType !== 'all') && (
               <button 
-                className="btn-clear-filters"
+                className="btn-premium-mini reset-btn"
                 onClick={() => {
                   setFilters({
                     q: '',
@@ -233,6 +277,7 @@ export default function CustomersList() {
                     assigned_to: '',
                     startDate: '',
                     endDate: '',
+                    dateRangeType: 'all',
                     sortField: 'created_at',
                     sortOrder: 'desc',
                     page: 1,
@@ -240,7 +285,8 @@ export default function CustomersList() {
                   })
                 }}
               >
-                Clear All
+                <Icon name="refresh" size={14} className="reset-icon" />
+                <span>Reset Filters</span>
               </button>
             )}
           </div>

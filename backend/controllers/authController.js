@@ -27,31 +27,31 @@ async function seedDefaultRoles(companyId) {
     {
       name: 'Admin',
       description: 'Full system access',
-      permissions: ['leads', 'customers', 'deals', 'tickets', 'users', 'reports', 'tasks', 'billing', 'trash', 'settings', 'notifications'],
+      permissions: ['dashboard', 'users', 'leads', 'deals', 'customers', 'activities', 'teamPerformance', 'attendance', 'leaves', 'payroll', 'invoices', 'payments', 'expenses', 'tickets', 'reports', 'notifications', 'settings', 'trash'],
       is_system_role: true,
     },
     {
       name: 'Manager',
       description: 'Management access',
-      permissions: ['leads', 'customers', 'deals', 'reports', 'tasks'],
-      is_system_role: true,
-    },
-    {
-      name: 'Accountant',
-      description: 'Financial access',
-      permissions: ['customers', 'deals', 'billing', 'reports'],
-      is_system_role: true,
-    },
-    {
-      name: 'HR',
-      description: 'Human resources access',
-      permissions: ['users', 'attendance', 'notifications'],
+      permissions: ['dashboard', 'leads', 'deals', 'customers', 'activities', 'teamPerformance', 'invoices', 'tickets', 'reports', 'trash'],
       is_system_role: true,
     },
     {
       name: 'Employee',
       description: 'Standard staff access',
-      permissions: ['leads', 'tasks'],
+      permissions: ['dashboard', 'leads', 'deals', 'customers', 'activities', 'tasks', 'tickets'],
+      is_system_role: true,
+    },
+    {
+      name: 'Accountant',
+      description: 'Financial access',
+      permissions: ['dashboard', 'customers', 'invoices', 'payments', 'expenses', 'reports'],
+      is_system_role: true,
+    },
+    {
+      name: 'HR',
+      description: 'Human resources access',
+      permissions: ['dashboard', 'employees', 'attendance', 'leaves', 'payroll', 'reports'],
       is_system_role: true,
     },
   ].map((role) => ({ ...role, company_id: companyId }));
@@ -212,6 +212,7 @@ function serializeUser(user, permissions = []) {
     is_demo: user.is_demo ?? false,
     trial_ends_at: user.trial_ends_at || null,
     created_at: user.created_at || user.createdAt || null,
+    force_password_change: user.force_password_change ?? false,
   };
 }
 
@@ -552,9 +553,10 @@ exports.updatePassword = asyncHandler(async (req, res, next) => {
   }
 
   user.password = newPassword;
+  user.force_password_change = false;
   await user.save();
 
-  res.ok(null, 'Password updated successfully');
+  res.ok({ user: serializeUser(user) }, 'Password updated successfully');
 });
 
 // @desc    Update current user settings
@@ -658,6 +660,34 @@ exports.completeOnboarding = asyncHandler(async (req, res, next) => {
   await user.save();
 
   res.ok(serializeUser(user), 'Profile completed successfully. You can now login.');
+});
+
+// @desc    Reset password
+// @route   PUT /api/auth/resetpassword/:token
+// @access  Public
+exports.resetPassword = asyncHandler(async (req, res, next) => {
+  // Get hashed token
+  const resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
+
+  const user = await User.findOne({
+    resetPasswordToken,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return res.fail('Invalid or expired token', 400);
+  }
+
+  // Set new password
+  user.password = req.body.password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+
+  res.ok({ user: serializeUser(user) }, 'Password reset successful');
 });
 
 // @desc    Log user out / clear cookie

@@ -429,6 +429,7 @@ exports.createLead = asyncHandler(async (req, res, next) => {
     payload.interested_product = payload.interested_product || '';
     payload.budget_range = payload.budget_range || '';
     payload.remarks_internal = payload.remarks_internal || '';
+    if (payload.interest_level && !payload.priority) payload.priority = payload.interest_level;
 
     if (payload.dealAmount == null) {
       payload.dealAmount = Number(payload.estimated_value || payload.budget || 0);
@@ -513,9 +514,9 @@ exports.createLead = asyncHandler(async (req, res, next) => {
 
     const created = await Lead.create(payload);
 
-    // Notify assignee
+    // Notify assignee (Non-blocking)
     if (created.assignedTo) {
-      await sendLeadAssignmentNotification({
+      sendLeadAssignmentNotification({
         lead: created,
         assignee_id: created.assignedTo,
         assignee_model: created.assignedToModel,
@@ -589,6 +590,7 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
     if (payload.assigned_to && !payload.assignedTo) payload.assignedTo = payload.assigned_to;
     if (payload.estimated_value && !payload.dealAmount) payload.dealAmount = payload.estimated_value;
     if (payload.follow_up_date && !payload.followUpDate) payload.followUpDate = payload.follow_up_date;
+    if (payload.interest_level && !payload.priority) payload.priority = payload.interest_level;
 
     const { status } = payload;
 
@@ -651,6 +653,35 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       await Lead.deleteOne({ _id: cleanId, company_id: req.user.company_id });
       return res.ok(null, 'Lead marked as Junk and permanently deleted');
     }
+
+    // 3. Duplicate Check: email OR phone within same company (excluding current lead)
+    const normalizedEmail = payload.email ? String(payload.email).trim().toLowerCase() : null;
+    const normalizedPhone = payload.phone ? String(payload.phone).replace(/\D/g, '') : null;
+
+    if (normalizedEmail || normalizedPhone) {
+      const dupConditions = [];
+      if (normalizedEmail) dupConditions.push({ email: normalizedEmail });
+      if (normalizedPhone) dupConditions.push({ phone: normalizedPhone });
+
+      const existing = await Lead.findOne({
+        _id: { $ne: cleanId },
+        company_id: req.user.company_id,
+        isDeleted: { $ne: true },
+        $or: dupConditions,
+      }).select('_id name email phone');
+
+      if (existing) {
+        const matched = [];
+        if (normalizedEmail && existing.email === normalizedEmail) matched.push('email');
+        if (normalizedPhone && existing.phone === normalizedPhone) matched.push('phone');
+        return res.status(409).json({
+          success: false,
+          message: `Update failed: A lead with this ${matched.join(' & ')} already exists (${existing.name})`,
+          duplicate: true
+        });
+      }
+    }
+
     const oldLead = await Lead.findOne({ _id: cleanId, company_id: req.user.company_id });
     if (!oldLead) return res.fail('Lead not found', 404);
 
@@ -673,13 +704,15 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       { _id: cleanId, company_id: req.user.company_id },
       payload,
       { new: true, runValidators: true }
-    );
+    ).populate('assignedTo', 'name email');
 
-    // Notify if assignment changed
-    if (updated && payload.assignedTo && String(payload.assignedTo) !== String(oldLead.assignedTo)) {
-      await sendLeadAssignmentNotification({
+    if (!updated) return res.fail('Failed to update lead after verification', 500);
+
+    // Notify if assignment changed (Non-blocking)
+    if (payload.assignedTo && String(payload.assignedTo) !== String(oldLead.assignedTo)) {
+      sendLeadAssignmentNotification({
         lead: updated,
-        assignee_id: updated.assignedTo,
+        assignee_id: updated.assignedTo?._id || updated.assignedTo,
         assignee_model: updated.assignedToModel,
         assigner_name: req.user.name
       }).catch(err => console.error('Failed to notify assignee:', err));
@@ -697,8 +730,7 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       });
     }
 
-
-    if (updated && status && status !== oldLead.status) {
+    if (status && status !== oldLead.status) {
       const { logActivity } = require('../utils/activityLogger');
       await logActivity({
         company_id: req.user.company_id,
@@ -728,6 +760,18 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
     return res.ok(updated);
   } catch (err) {
     console.error('Update Lead Error:', err);
+    
+    // Handle Mongoose Validation Errors
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map(val => val.message);
+      return res.status(400).json({ success: false, message: messages.join(', ') });
+    }
+
+    // Handle Mongo Duplicate Key Error (if pre-check missed it or race condition)
+    if (err.code === 11000) {
+      return res.status(409).json({ success: false, message: 'A lead with this email or phone already exists' });
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Internal server error during lead update',

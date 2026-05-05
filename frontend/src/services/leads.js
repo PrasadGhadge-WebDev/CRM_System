@@ -65,4 +65,7 @@ export const leadsApi = {
     const data = await api.post(`/api/leads/${cleanId(id)}/convert-to-deal`, payload)
     return data
   },
+  // Aliases for compatibility
+  remove(id, hard) { return this.delete(id, hard); },
+  bulkRemove(ids, hard) { return this.bulkDelete(ids, hard); },
 }

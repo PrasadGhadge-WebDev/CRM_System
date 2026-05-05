@@ -292,7 +292,7 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
         customer_id: createdCustomers[0]._id,
         subject: 'Need help with user access setup',
         description: 'The admin team wants to bulk invite new users and assign roles quickly.',
-        status: 'open',
+        status: 'new',
         priority: 'high',
         assigned_to: userId,
         assigned_to_model: targetUserModel,

@@ -15,7 +15,7 @@ const LeadSchema = new mongoose.Schema(
     company: { type: String, trim: true, index: true },
     source: { type: String, required: true, trim: true, default: 'Referral', index: true },
     status: { type: String, required: true, trim: true, default: 'New', index: true },
-    priority: { type: String, enum: ['High', 'Medium', 'Low'], default: 'Medium', index: true },
+    priority: { type: String, enum: ['High', 'Medium', 'Low', 'Hot', 'Warm', 'Cold'], default: 'Medium', index: true },
     interested_product: { type: String, trim: true },
     budget_range: { 
       type: String, 

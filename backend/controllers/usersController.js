@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { moveDocumentToTrash } = require('../utils/trash');
+const crypto = require('crypto');
+const notifier = require('../utils/notifier');
 
 const ALLOWED_ROLES = ['Admin', 'Manager', 'Accountant', 'Employee'];
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
@@ -164,38 +166,74 @@ exports.listUsers = asyncHandler(async (req, res) => {
   res.ok({ items, page: pageNum, limit: wantsAll ? 'all' : limitNum, total: totalFiltered, summary });
 });
 
-exports.createUser = asyncHandler(async (req, res) => {
-  const payload = cleanPayload(req.body || {}, { inferUsernameFromName: true });
-  // Never trust client-provided company payload.
-  delete payload.company_id;
 
-  const hrRoleError = ensureHRCanOnlyManageEmployees(req, payload.role || 'Employee');
+
+exports.createUser = asyncHandler(async (req, res) => {
+  const { name, email, password, role, status, department, designation, phone, username: providedUsername } = req.body;
+
+  // 1. Basic Validation
+  if (!name || !email || !password) {
+    return res.fail('Name, Email and Password are required', 400);
+  }
+
+  // 2. Check for existing email
+  const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+  if (existingUser) {
+    return res.fail('Email already in use', 400);
+  }
+
+  // 3. Resolve Unique Username
+  // Use provide username or infer from name/email
+  const baseUsername = providedUsername || name.replace(/\s+/g, '').toLowerCase() || email.split('@')[0];
+  let username = baseUsername.toLowerCase().replace(/[^a-z0-9._-]+/g, '');
+  
+  let suffix = 1;
+  while (await User.exists({ username })) {
+    username = `${baseUsername.toLowerCase().replace(/[^a-z0-9._-]+/g, '')}${suffix}`;
+    suffix++;
+  }
+
+  // 4. HR Permission check (if applicable)
+  const hrRoleError = ensureHRCanOnlyManageEmployees(req, role || 'Employee');
   if (hrRoleError) {
     return res.fail(hrRoleError, 403);
   }
 
-  // If it's an onboarding user, we only need username and password
-  if (req.body.is_onboarding) {
-    if (!payload.username || !payload.password) {
-      return res.fail('Username and password are required for onboarding staff', 400);
-    }
-    payload.is_profile_complete = false;
+  // 4. Create User (Password hashing handled by model pre-save)
+  const user = new User({
+    name,
+    username,
+    email: email.toLowerCase().trim(),
+    password,
+    role: role || 'Employee',
+    status: status || 'active',
+    department,
+    designation,
+    phone,
+    company_id: req.user.company_id,
+    is_profile_complete: true
+  });
+
+  // 5. Generate Reset Token and Email if Active
+  if (user.status === 'active') {
+    const resetToken = user.getResetPasswordToken();
+    await user.save();
+
+    // Send Welcome Email with Reset Link (Background)
+    notifier.sendWelcomeEmailWithResetLink(
+      user.email,
+      user.name,
+      resetToken,
+      user.role,
+      process.env.FRONTEND_URL || 'http://localhost:3000'
+    ).catch(err => console.error('Failed to send welcome email:', err));
   } else {
-    // Normal user creation requires email
-    if (!payload.email) {
-      return res.fail('Email is required', 400);
-    }
-    const existing = await ensureUniqueEmail(payload.email);
-    if (existing) {
-      return res.fail('Email already in use', 400);
-    }
-    payload.is_profile_complete = true;
+    await user.save();
   }
 
-  payload.company_id = req.user.company_id;
-  const created = await User.create(payload);
-  res.created(created);
+  res.created(user);
 });
+
 
 exports.getUser = asyncHandler(async (req, res) => {
   const user = await User.findOne({ 
@@ -223,6 +261,7 @@ exports.updateUser = asyncHandler(async (req, res) => {
     'phone',
     'employee_id',
     'department',
+    'designation',
     'joining_date',
     'manager_id',
     'role',
@@ -274,10 +313,32 @@ exports.updateUser = asyncHandler(async (req, res) => {
       user[key] = undefined;
       return;
     }
+    if (key === 'password') return;
     user[key] = value;
   });
 
+  let generatedPassword = null;
+  if (req.body.send_email) {
+    generatedPassword = crypto.randomBytes(6).toString('hex');
+    user.password = generatedPassword;
+    user.force_password_change = true;
+  } else if (updates.password) {
+    user.password = updates.password;
+    user.force_password_change = false; // Admin manually set it
+  }
+
   await user.save();
+  
+  if (generatedPassword) {
+    // Background execution (Non-blocking)
+    sendUserCreationEmail(
+      user.email, 
+      user.name, 
+      generatedPassword, 
+      user.role, 
+      process.env.FRONTEND_URL
+    ).catch(err => console.error('Account update email failed:', err));
+  }
   let reloaded;
   try {
     reloaded = await User.findById(req.params.id).populate('company_id', 'company_name status');

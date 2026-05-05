@@ -4,21 +4,31 @@ const { withIdTransform } = require('../utils/mongooseTransforms');
 const SupportTicketSchema = new mongoose.Schema(
   {
     company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: false, index: true },
-    ticket_id: { type: String, unique: true, index: true }, // TKT-101 format
+    ticket_id: { type: String, unique: true, index: true }, // 101 format
     ticket_no: { type: Number }, // Raw sequence number
     customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: false, index: true },
     user_customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, index: true }, // If the customer is a system user
     subject: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
-    status: { type: String, default: 'open', index: true }, // open, in-progress, resolved, closed
+    status: { type: String, default: 'new', enum: ['new', 'in-progress', 'resolved', 'closed'], index: true },
     priority: { type: String, default: 'medium', index: true }, // low, medium, high, urgent
     assigned_to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     category: { type: String, trim: true },
+    deadline: { type: Date },
+    closed_at: { type: Date },
     is_escalated: { type: Boolean, default: false },
     escalation_reason: { type: String, trim: true },
     escalated_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     escalated_at: { type: Date },
     solution: { type: String, trim: true },
+    attachments: [
+      {
+        name: String,
+        url: String,
+        file_type: String,
+        uploaded_at: { type: Date, default: Date.now }
+      }
+    ],
     messages: [
       {
         sender_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -47,7 +57,7 @@ SupportTicketSchema.pre('save', async function () {
       .sort({ ticket_no: -1 });
 
     this.ticket_no = lastTicket && lastTicket.ticket_no ? lastTicket.ticket_no + 1 : 101;
-    this.ticket_id = `TKT-${this.ticket_no}`;
+    this.ticket_id = `${this.ticket_no}`;
   }
 });
 

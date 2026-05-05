@@ -53,6 +53,7 @@ app.use('/api/settings', require('./routes/settings'));
 app.use('/api/statuses', require('./routes/status'));
 app.use('/api/lead-sources', require('./routes/leadSource'));
 app.use('/api/workflow', require('./routes/workflow'));
+app.use('/api/contact', require('./routes/contact'));
 
 // Accountant Modules
 app.use('/api/invoices', require('./routes/invoices'));
@@ -60,6 +61,7 @@ app.use('/api/payments', require('./routes/payments'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/accountant-dashboard', require('./routes/accountantDashboard'));
 app.use('/api/hr-dashboard', require('./routes/hrDashboard'));
+app.use('/api/attendance', require('./routes/attendance'));
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

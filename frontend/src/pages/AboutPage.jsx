@@ -1,5 +1,5 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   FiZap, FiLayers, FiLock, FiUsers, FiActivity, FiShield, FiCpu, FiDatabase
 } from 'react-icons/fi'
@@ -132,9 +132,9 @@ export default function AboutPage() {
             <button className="btn-primary-landing" onClick={handleDemoLogin}>
               Start Free Demo
             </button>
-            <a href="/contact" className="btn-primary-landing cta-secondary-btn">
+            <Link to="/contact" className="btn-primary-landing cta-secondary-btn">
               Get in Touch
-            </a>
+            </Link>
           </div>
         </div>
       </section>

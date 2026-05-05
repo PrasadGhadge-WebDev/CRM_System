@@ -186,7 +186,7 @@ exports.createSupportTicket = asyncHandler(async (req, res) => {
     subject,
     description,
     priority: priority || 'medium',
-    status: 'open',
+    status: 'new',
     category,
   });
 

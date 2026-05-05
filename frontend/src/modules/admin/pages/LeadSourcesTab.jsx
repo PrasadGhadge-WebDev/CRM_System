@@ -100,11 +100,11 @@ export default function LeadSourcesTab() {
               {items.map((source, index) => (
                 <tr key={source.id} className="crm-table-row">
                   <td><span className="text-dimmed font-900">{index + 1}</span></td>
-                  <td><span className="text-white font-800">{source.name}</span></td>
+                  <td><span className="font-800" style={{ color: 'var(--text)' }}>{source.name}</span></td>
                   <td>
                     <span className={`crm-status-pill-modern ${source.status === 'Active' ? 'status-active' : 'status-inactive'}`}>
                       <div className="status-dot" />
-                      {source.status.toUpperCase()}
+                      {(source.status || 'Active').toUpperCase()}
                     </span>
                   </td>
                   <td><span className="text-muted font-700">{source.order}</span></td>
@@ -163,8 +163,8 @@ export default function LeadSourcesTab() {
 
       <style>{`
         .crm-sources-module { display: flex; flex-direction: column; }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-panel-premium { box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(var(--bg-rgb), 0.6); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-panel-premium { box-shadow: var(--shadow-xl); border: 1px solid var(--border); }
         
         .crm-table th {
             padding: 12px 16px !important;

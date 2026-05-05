@@ -21,6 +21,7 @@ export default function InvoicesList() {
   const [status, setStatus] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [dateRangeType, setDateRangeType] = useState('all')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [summary, setSummary] = useState({ total: 0, byStatus: {} })
@@ -34,7 +35,33 @@ export default function InvoicesList() {
   const fetchInvoices = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await invoicesApi.list({ q, status, page, limit, startDate, endDate })
+      
+      let sDate = startDate
+      let eDate = endDate
+      const now = new Date()
+      now.setHours(0,0,0,0)
+
+      if (dateRangeType === 'today') {
+        sDate = now.toISOString()
+        eDate = new Date(new Date().setHours(23,59,59,999)).toISOString()
+      } else if (dateRangeType === 'yesterday') {
+        const y = new Date(now)
+        y.setDate(y.getDate() - 1)
+        sDate = y.toISOString()
+        const yEnd = new Date(y)
+        yEnd.setHours(23,59,59,999)
+        eDate = yEnd.toISOString()
+      } else if (dateRangeType === 'week') {
+        const w = new Date(now)
+        w.setDate(w.getDate() - 7)
+        sDate = w.toISOString()
+      } else if (dateRangeType === 'month') {
+        const m = new Date(now)
+        m.setMonth(m.getMonth() - 1)
+        sDate = m.toISOString()
+      }
+
+      const res = await invoicesApi.list({ q, status, page, limit, startDate: sDate, endDate: eDate })
       setInvoices(res.items || [])
       setTotal(res.total || 0)
       setSummary(res.summary || { total: 0, byStatus: {} })
@@ -43,7 +70,7 @@ export default function InvoicesList() {
     } finally {
       setLoading(false)
     }
-  }, [q, status, page])
+  }, [q, status, page, dateRangeType, startDate, endDate])
 
   useEffect(() => {
     fetchInvoices()
@@ -113,6 +140,37 @@ export default function InvoicesList() {
               <option value="Cancelled">Cancelled</option>
             </select>
 
+            <select 
+              className="crm-input filter-select date-preset-select" 
+              value={dateRangeType} 
+              onChange={(e) => { setDateRangeType(e.target.value); setPage(1); }}
+            >
+              <option value="all">Date: All</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="custom">Custom Range</option>
+            </select>
+
+            {dateRangeType === 'custom' && (
+              <div className="flex items-center gap-4 animate-fade-in">
+                <input
+                  type="date"
+                  className="crm-input date-mini"
+                  value={startDate}
+                  onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+                />
+                <span className="muted" style={{ fontSize: '0.7rem' }}>to</span>
+                <input
+                  type="date"
+                  className="crm-input date-mini"
+                  value={endDate}
+                  onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+                />
+              </div>
+            )}
+
             <button
               className="btn-premium-mini add-user-btn"
               onClick={() => navigate('/invoices/new')}
@@ -121,18 +179,20 @@ export default function InvoicesList() {
               <span>Add Invoice</span>
             </button>
 
-            {(q || status || startDate || endDate) && (
+            {(q || status || dateRangeType !== 'all') && (
               <button 
-                className="btn-clear-filters"
+                className="btn-premium-mini reset-btn"
                 onClick={() => {
                   setQ('')
                   setStatus('')
                   setStartDate('')
                   setEndDate('')
+                  setDateRangeType('all')
                   setPage(1)
                 }}
               >
-                Clear All
+                <Icon name="refresh" size={14} className="reset-icon" />
+                <span>Reset Filters</span>
               </button>
             )}
           </div>

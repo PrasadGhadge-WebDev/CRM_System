@@ -42,42 +42,46 @@ function buildCandidates({ companyLabel, dbSmtp }) {
   return candidates;
 }
 
-async function trySendWithCandidates({ candidates, to, subject, text, html }) {
+async function trySendWithCandidates({ candidates, to, subject, text, html, attachments = [] }) {
   let lastError;
+  const maxRetries = 3;
 
   for (const candidate of candidates) {
-    try {
-      const info = await candidate.transporter.sendMail({
-        from: candidate.from,
-        to,
-        subject,
-        text,
-        html,
-      });
+    let attempt = 0;
+    while (attempt < maxRetries) {
+      try {
+        const info = await candidate.transporter.sendMail({
+          from: candidate.from,
+          to,
+          subject,
+          text,
+          html,
+          attachments,
+        });
 
-      console.log(`SUCCESS: Email sent via [${candidate.name}] to ${to}. MessageId: ${info.messageId}`);
-      logToFile(`SUCCESS: via=${candidate.name} to=${to} messageId=${info.messageId}`);
-      return info;
-    } catch (error) {
-      lastError = error;
-      console.error(`SMTP ERROR: Delivery failed via [${candidate.name}]`);
-      console.error(`Target: ${to}`);
-      console.error(`Subject: ${subject}`);
-      console.error(`Error Code: ${error.code || 'N/A'}`);
-      console.error(`Error Message: ${error.message}`);
-      logToFile(`ERROR: via=${candidate.name} to=${to} code=${error.code || 'N/A'} message=${error.message}`);
+        console.log(`SUCCESS: Email sent via [${candidate.name}] to ${to}. Attempt ${attempt + 1}. MessageId: ${info.messageId}`);
+        logToFile(`SUCCESS: via=${candidate.name} to=${to} attempt=${attempt + 1} messageId=${info.messageId}`);
+        return info;
+      } catch (error) {
+        attempt++;
+        lastError = error;
+        console.error(`SMTP ERROR: Delivery failed via [${candidate.name}] (Attempt ${attempt}/${maxRetries})`);
+        logToFile(`ERROR: via=${candidate.name} to=${to} attempt=${attempt} code=${error.code || 'N/A'} message=${error.message}`);
 
-      const msg = String(error?.message || '').toLowerCase();
-      if (msg.includes('eauth') || msg.includes('invalid login') || msg.includes('bad credentials')) {
-        console.warn('TIP: Gmail requires an App Password (not your normal password) when 2-Step Verification is enabled.');
+        if (attempt >= maxRetries) {
+          console.error(`Max retries reached for [${candidate.name}]. Trying next candidate if available.`);
+        } else {
+          // Exponential backoff or simple delay
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); 
+        }
       }
     }
   }
 
-  throw lastError || new Error('Failed to send email (unknown error).');
+  throw lastError || new Error('Failed to send email after multiple attempts.');
 }
 
-exports.sendEmail = async ({ to, subject, text, html }) => {
+exports.sendEmail = async ({ to, subject, text, html, attachments = [] }) => {
   let company = null;
   try {
     company = await Company.findOne();
@@ -98,14 +102,5 @@ exports.sendEmail = async ({ to, subject, text, html }) => {
     throw new Error(msg);
   }
 
-  if (process.env.EMAIL_PASS === 'your_gmail_app_password_here') {
-    const msg = 'EMAIL_PASS is still the placeholder value; replace it with a real Gmail App Password.';
-    console.warn(msg);
-    logToFile(`WARN: ${msg}`);
-  }
-
-  console.log(`Attempting to send email: "${subject}" to [${to}]`);
-  logToFile(`SEND: subject="${subject}" to="${to}" candidates=${candidates.map((c) => c.name).join(',')}`);
-
-  return trySendWithCandidates({ candidates, to, subject, text, html });
+  return trySendWithCandidates({ candidates, to, subject, text, html, attachments });
 };

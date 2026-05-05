@@ -6,8 +6,8 @@
   --sidebar-item-active-bg-internal: rgba(44, 95, 138, 0.08);
   --sidebar-item-hover-internal: rgba(44, 95, 138, 0.04);
   --sidebar-border-internal: #E2E8F0;
-  --sidebar-width: 280px;
-  --sidebar-collapsed-width: 80px;
+  --sidebar-width: 230px;
+  --sidebar-collapsed-width: 70px;
 }
 
 body.dark .crmSidebar {
@@ -40,7 +40,7 @@ body.dark .crmSidebar {
 }
 
 .sidebarTop {
-  padding: 32px 24px;
+  padding: 20px 16px;
   border-bottom: 1px solid var(--sidebar-border-internal);
 }
 
@@ -88,14 +88,26 @@ body.dark .crmSidebar {
   margin-bottom: 32px;
 }
 
-.navSectionLabel {
-  font-size: 0.7rem;
+.navSectionLabel,
+.navSectionHeader {
+  font-size: 0.65rem;
   font-weight: 800;
   color: var(--sidebar-text-muted-internal);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  margin-bottom: 16px;
+  margin: 24px 0 12px 0;
   padding-left: 14px;
+  opacity: 0.85;
+  display: flex;
+  align-items: center;
+}
+
+.navSectionHeader::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--sidebar-border-internal);
+  margin-left: 12px;
   opacity: 0.6;
 }
 
@@ -129,13 +141,13 @@ body.dark .crmSidebar {
 .navItem {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  margin-bottom: 4px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 3px;
+  border-radius: 8px;
   text-decoration: none;
   color: var(--sidebar-text-internal);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.9rem;
   transition: all 0.2s;
   border: 1px solid transparent;
   cursor: pointer;
@@ -177,23 +189,28 @@ body.dark .crmSidebar {
 }
 
 .addInlineBtn {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 8px;
-  border: 1px solid var(--sidebar-border-internal);
+  border: 1.5px solid var(--sidebar-border-internal);
   background: var(--bg-card, #ffffff);
   color: var(--sidebar-text-muted-internal);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: all 0.2s;
-  margin-right: 12px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-right: 8px;
+  cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 5;
 }
 
 .addInlineBtn svg {
   width: 14px;
   height: 14px;
+  stroke-width: 3px;
 }
 
 .navItem:hover .addInlineBtn {
@@ -204,6 +221,12 @@ body.dark .crmSidebar {
   background: var(--primary, #3b82f6);
   color: white;
   border-color: var(--primary, #3b82f6);
+  transform: scale(1.15) rotate(90deg);
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+}
+
+.addInlineBtn:active {
+  transform: scale(0.95) rotate(90deg);
 }
 
 .chevron {
@@ -229,9 +252,9 @@ body.dark .crmSidebar {
 }
 
 .submenuItem {
-  font-size: 0.94rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  padding: 10px 16px;
+  padding: 8px 14px;
 }
 
 .countBadge {
@@ -321,6 +344,7 @@ body.dark .crmSidebar {
 .collapsed .chevron,
 .collapsed .addInlineBtn,
 .collapsed .navSectionLabel,
+.collapsed .navSectionHeader,
 .collapsed .userMeta,
 .collapsed .submenuHeader,
 .collapsed .countBadge {

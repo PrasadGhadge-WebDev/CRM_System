@@ -11,6 +11,9 @@ export default function ActivityLogs() {
   const [limit, setLimit] = useState(20)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [dateRangeType, setDateRangeType] = useState('all')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   useToastFeedback({ error })
 
@@ -19,8 +22,33 @@ export default function ActivityLogs() {
     setLoading(true)
     setError('')
 
+    let sDate = startDate
+    let eDate = endDate
+    const now = new Date()
+    now.setHours(0,0,0,0)
+
+    if (dateRangeType === 'today') {
+      sDate = now.toISOString()
+      eDate = new Date(new Date().setHours(23,59,59,999)).toISOString()
+    } else if (dateRangeType === 'yesterday') {
+      const y = new Date(now)
+      y.setDate(y.getDate() - 1)
+      sDate = y.toISOString()
+      const yEnd = new Date(y)
+      yEnd.setHours(23,59,59,999)
+      eDate = yEnd.toISOString()
+    } else if (dateRangeType === 'week') {
+      const w = new Date(now)
+      w.setDate(w.getDate() - 7)
+      sDate = w.toISOString()
+    } else if (dateRangeType === 'month') {
+      const m = new Date(now)
+      m.setMonth(m.getMonth() - 1)
+      sDate = m.toISOString()
+    }
+
     activitiesApi
-      .list({ page, limit })
+      .list({ page, limit, startDate: sDate, endDate: eDate })
       .then((res) => {
         if (canceled) return
         setItems(res.items || [])
@@ -38,7 +66,7 @@ export default function ActivityLogs() {
     return () => {
       canceled = true
     }
-  }, [page, limit])
+  }, [page, limit, dateRangeType, startDate, endDate])
 
   return (
     <div className="stack">
@@ -46,6 +74,56 @@ export default function ActivityLogs() {
         <div className="users-page-header">
           <h1 className="users-title">Institutional Audit</h1>
           <p className="users-subtitle">Track system-wide actions, data state changes, and personnel operations</p>
+        </div>
+
+        <div className="unified-action-bar" style={{ marginBottom: '20px' }}>
+          <div className="search-filter-group" style={{ justifyContent: 'flex-start' }}>
+            <select 
+              className="crm-input filter-select date-preset-select" 
+              value={dateRangeType} 
+              onChange={(e) => { setDateRangeType(e.target.value); setPage(1); }}
+            >
+              <option value="all">Date: All</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="custom">Custom Range</option>
+            </select>
+
+            {dateRangeType === 'custom' && (
+              <div className="flex items-center gap-4 animate-fade-in">
+                <input
+                  type="date"
+                  className="crm-input date-mini"
+                  value={startDate}
+                  onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+                />
+                <span className="muted" style={{ fontSize: '0.7rem' }}>to</span>
+                <input
+                  type="date"
+                  className="crm-input date-mini"
+                  value={endDate}
+                  onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+                />
+              </div>
+            )}
+
+            {dateRangeType !== 'all' && (
+              <button 
+                className="btn-premium-mini reset-btn"
+                onClick={() => {
+                  setDateRangeType('all')
+                  setStartDate('')
+                  setEndDate('')
+                  setPage(1)
+                }}
+              >
+                <Icon name="refresh" size={14} className="reset-icon" />
+                <span>Reset Filters</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="crm-table-wrap shadow-soft">

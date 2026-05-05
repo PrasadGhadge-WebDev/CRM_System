@@ -7,6 +7,7 @@ import LottieLoader from '../../../components/LottieLoader.jsx'
 import LottieEmpty from '../../../components/LottieEmpty.jsx'
 import PageHeader from '../../../components/PageHeader.jsx'
 import { supportApi } from '../../../services/workflow.js'
+import { usersApi } from '../../../services/users.js'
 import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
 import { useAuth } from '../../../context/AuthContext.jsx'
 import StatusDropdown from '../components/StatusDropdown.jsx'
@@ -22,7 +23,8 @@ export default function SupportList() {
   const isAdmin = user?.role === 'Admin'
   const isManager = user?.role === 'Manager'
   const isAccountant = user?.role === 'Accountant'
-  const canManage = isAdmin || isManager
+  const isCustomer = user?.role === 'Customer'
+  const canManage = isAdmin || isManager || user?.role === 'Support Agent'
 
   const [searchParams, setSearchParams] = useSearchParams()
   const [items, setItems] = useState([])
@@ -30,6 +32,7 @@ export default function SupportList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [summary, setSummary] = useState({ total: 0, byStatus: {} })
+  const [agents, setAgents] = useState([])
 
   const [filters, setFilters] = useState({
     q: searchParams.get('q') || '',
@@ -40,9 +43,41 @@ export default function SupportList() {
     customer_is_vip: searchParams.get('customer_is_vip') || '',
     sortField: searchParams.get('sortField') || 'created_at',
     sortOrder: searchParams.get('sortOrder') || 'desc',
-    page: Math.max(1, Number(searchParams.get('page')) || 1),
     limit: Math.min(100, Math.max(1, Number(searchParams.get('limit')) || 20)),
+    startDate: searchParams.get('startDate') || '',
+    endDate: searchParams.get('endDate') || '',
+    assigned_to: searchParams.get('assigned_to') || '',
+    dateRangeType: searchParams.get('dateRangeType') || 'all'
   })
+
+  const applyDatePreset = (type) => {
+    const now = new Date()
+    let start = ''
+    let end = ''
+
+    if (type === 'today') {
+      start = new Date(now.setHours(0,0,0,0)).toISOString()
+      end = new Date(now.setHours(23,59,59,999)).toISOString()
+    } else if (type === 'yesterday') {
+      const yesterday = new Date(now.setDate(now.getDate() - 1))
+      start = new Date(yesterday.setHours(0,0,0,0)).toISOString()
+      end = new Date(yesterday.setHours(23,59,59,999)).toISOString()
+    } else if (type === 'week') {
+      const lastWeek = new Date(now.setDate(now.getDate() - 7))
+      start = lastWeek.toISOString()
+    } else if (type === 'month') {
+      const lastMonth = new Date(now.setMonth(now.getMonth() - 1))
+      start = lastMonth.toISOString()
+    }
+
+    setFilters(prev => ({
+      ...prev,
+      dateRangeType: type,
+      startDate: start,
+      endDate: end,
+      page: 1
+    }))
+  }
 
   const debouncedQ = useDebouncedValue(filters.q, 300)
 
@@ -58,6 +93,9 @@ export default function SupportList() {
     if (filters.sortOrder !== 'desc') next.set('sortOrder', filters.sortOrder)
     if (filters.page > 1) next.set('page', String(filters.page))
     if (filters.limit !== 20) next.set('limit', String(filters.limit))
+    if (filters.startDate) next.set('startDate', filters.startDate)
+    if (filters.endDate) next.set('endDate', filters.endDate)
+    if (filters.assigned_to) next.set('assigned_to', filters.assigned_to)
     setSearchParams(next, { replace: true })
   }, [debouncedQ, filters, setSearchParams])
 
@@ -65,16 +103,20 @@ export default function SupportList() {
     setLoading(true)
     setError('')
     try {
-      const res = await supportApi.list({ ...filters, q: debouncedQ, all: user?.role === 'Admin' ? true : undefined })
+      const [res, usersRes] = await Promise.all([
+        supportApi.list({ ...filters, q: debouncedQ, all: user?.role === 'Admin' ? true : undefined }),
+        (isAdmin || isManager) ? usersApi.list({ limit: 100 }) : Promise.resolve({ items: [] })
+      ])
       setItems(Array.isArray(res) ? res : res.items || [])
       setTotal(res.total || (Array.isArray(res) ? res.length : 0))
       setSummary(res.summary || { total: 0, byStatus: {} })
+      setAgents(Array.isArray(usersRes) ? usersRes : usersRes.items || [])
     } catch {
       setError('Failed to load tickets')
     } finally {
       setLoading(false)
     }
-  }, [debouncedQ, filters, user?.role])
+  }, [debouncedQ, filters, user?.role, isAdmin, isManager])
 
   useEffect(() => {
     loadTickets()
@@ -106,12 +148,23 @@ export default function SupportList() {
     setFilters(prev => ({ ...prev, ...newFilters, page: 1 }))
   }
 
-  const toggleEscalated = () => {
-    handleFilterChange({ is_escalated: !filters.is_escalated })
-  }
-
-  const setBillingFilter = () => {
-    handleFilterChange({ category: 'Billing', is_escalated: false })
+  const resetFilters = () => {
+    setFilters({
+      q: '',
+      status: '',
+      priority: '',
+      category: (isAccountant ? 'Billing' : ''),
+      is_escalated: false,
+      customer_is_vip: '',
+      sortField: 'created_at',
+      sortOrder: 'desc',
+      page: 1,
+      limit: 20,
+      startDate: '',
+      endDate: '',
+      assigned_to: '',
+      dateRangeType: 'all'
+    })
   }
 
   return (
@@ -142,19 +195,30 @@ export default function SupportList() {
 
         <div className="unified-action-bar">
           <div className="search-filter-group">
-            <ModernSearchBar
-              value={filters.q}
-              onChange={(e) => handleFilterChange({ q: e.target.value })}
-              placeholder="Search by ticket ID, subject, category, customer, solution, escalation reason..."
-            />
+            <div className="search-wrap-mini">
+              <ModernSearchBar
+                value={filters.q}
+                onChange={(e) => handleFilterChange({ q: e.target.value })}
+                placeholder="Search tickets..."
+              />
+            </div>
 
             <select className="crm-input filter-select" value={filters.status} onChange={(e) => handleFilterChange({ status: e.target.value })}>
               <option value="">All Statuses</option>
-              <option value="open">Open</option>
+              <option value="new">New</option>
               <option value="in-progress">In-Progress</option>
               <option value="resolved">Resolved</option>
               <option value="closed">Closed</option>
             </select>
+
+            {(isAdmin || isManager) && (
+              <select className="crm-input filter-select" value={filters.assigned_to} onChange={(e) => handleFilterChange({ assigned_to: e.target.value })}>
+                <option value="">All Agents</option>
+                {agents.filter(a => a.role !== 'Customer').map(a => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            )}
 
             <select className="crm-input filter-select" value={filters.priority} onChange={(e) => handleFilterChange({ priority: e.target.value })}>
               <option value="">All Priority</option>
@@ -164,6 +228,50 @@ export default function SupportList() {
               <option value="urgent">Urgent</option>
             </select>
 
+            <div className="flex items-center gap-4">
+              <select 
+                className="crm-input filter-select date-preset-select" 
+                value={filters.dateRangeType} 
+                onChange={(e) => applyDatePreset(e.target.value)}
+              >
+                <option value="all">Date: All</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+
+              {filters.dateRangeType === 'custom' && (
+                <div className="flex items-center gap-4 animate-fade-in">
+                  <input
+                    type="date"
+                    className="crm-input date-mini"
+                    value={filters.startDate ? filters.startDate.split('T')[0] : ''}
+                    onChange={(e) => handleFilterChange({ startDate: e.target.value })}
+                  />
+                  <span className="muted" style={{ fontSize: '0.7rem' }}>to</span>
+                  <input
+                    type="date"
+                    className="crm-input date-mini"
+                    value={filters.endDate ? filters.endDate.split('T')[0] : ''}
+                    onChange={(e) => handleFilterChange({ endDate: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+
+            {(filters.q || filters.status || filters.priority || filters.dateRangeType !== 'all') && (
+              <button 
+                className="btn-premium-mini reset-btn" 
+                onClick={resetFilters}
+                title="Reset all filters"
+              >
+                <Icon name="refresh" size={14} className="reset-icon" />
+                <span>Reset Filters</span>
+              </button>
+            )}
+
             <button
               className="btn-premium-mini add-user-btn"
               onClick={() => navigate('/tickets/new')}
@@ -171,28 +279,6 @@ export default function SupportList() {
               <Icon name="plus" size={16} />
               <span>Add Ticket</span>
             </button>
-
-            {(filters.q || filters.status || filters.priority || filters.category || filters.is_escalated) && (
-              <button 
-                className="btn-clear-filters"
-                onClick={() => {
-                  setFilters({
-                    q: '',
-                    status: '',
-                    priority: '',
-                    category: '',
-                    is_escalated: false,
-                    customer_is_vip: '',
-                    sortField: 'created_at',
-                    sortOrder: 'desc',
-                    page: 1,
-                    limit: 20
-                  })
-                }}
-              >
-                Clear All
-              </button>
-            )}
           </div>
         </div>
 
@@ -213,11 +299,15 @@ export default function SupportList() {
                   <table className="crm-table">
                     <thead style={{ background: 'var(--bg-surface)' }}>
                       <tr>
-                        <th style={{ color: 'var(--text-dimmed)' }}>SUPPORT TICKET</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>TICKET</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>SUBJECT</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>CATEGORY</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>CUSTOMER</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>PRIORITY</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>STATUS</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>ASSIGNED TO</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>CREATED</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>DEADLINE</th>
                         <th className="text-right" style={{ color: 'var(--text-dimmed)' }}>ACTIONS</th>
                       </tr>
                     </thead>
@@ -229,32 +319,57 @@ export default function SupportList() {
                           onClick={() => navigate(`/tickets/${t.id}`)}
                         >
                           <td>
+                            <span style={{ fontWeight: 600, color: 'var(--text)' }}>
+                              {t.ticket_id}
+                            </span>
+                          </td>
+                          <td>
                             <div className="flex items-center gap-12">
-                              <div className="support-avatar">
-                                {t.customer_id?.is_vip ? '★' : (t.subject || 'S').charAt(0).toUpperCase()}
-                              </div>
                               <div className="support-info">
-                                <div className="support-subject" style={{ fontWeight: 800, color: 'var(--text)' }}>{t.subject}</div>
-                                <div className="support-meta">#{t.ticket_id} • {t.category || 'General'}</div>
+                                <div className="support-subject" style={{ fontWeight: 800, color: 'var(--text)' }}>
+                                  {t.subject}
+                                  {t.is_sla_breached && <span className="sla-tag-mini">SLA BREACH</span>}
+                                </div>
+                                {t.attachments?.length > 0 && (
+                                  <div className="support-meta" style={{ marginTop: '4px' }}>
+                                    <span className="attachment-indicator" title={`${t.attachments.length} attachments`}>
+                                      <Icon name="paperclip" size={10} />
+                                      <span style={{ fontSize: '0.7rem', marginLeft: '2px' }}>{t.attachments.length}</span>
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </td>
                           <td>
-                             <div className="crm-user-mention">
-                               <Icon name="user" size={14} />
-                               <span style={{ color: 'var(--text)' }}>{t.customer_id?.name || t.user_customer_id?.name || 'Unknown'}</span>
-                             </div>
+                            <span className="crm-status-pill info" style={{ fontSize: '0.75rem' }}>{t.category || 'General'}</span>
                           </td>
-                          <td>
-                            <span className={`crm-status-pill ${t.priority === 'urgent' || t.priority === 'high' ? 'danger' : t.priority === 'medium' ? 'warning' : 'success'}`}>
-                              {t.priority}
-                            </span>
-                          </td>
+                           {!isCustomer && (
+                            <td>
+                              <div className="customer-info">
+                                <div className="customer-name" style={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                                  {t.customer_id?.name || 'Unknown'}
+                                </div>
+                                <div className="customer-meta" style={{ fontSize: '0.7rem', color: 'var(--text-dimmed)' }}>
+                                  {t.customer_id?.company_name || 'Individual'}
+                                </div>
+                              </div>
+                            </td>
+                           )}
+
+                           {!isAccountant && (
+                            <td>
+                              <span className={`priority-badge-modern ${t.priority?.toLowerCase()}`}>
+                                {t.priority?.toUpperCase() || 'MEDIUM'}
+                              </span>
+                            </td>
+                           )}
+
                           <td onClick={stopRowNavigation}>
                             <StatusDropdown 
                               status={t.status} 
                               options={[
-                                { name: 'open', color: '#3b82f6' },
+                                { name: 'new', color: '#3b82f6' },
                                 { name: 'in-progress', color: '#f59e0b' },
                                 { name: 'resolved', color: '#10b981' },
                                 { name: 'closed', color: '#64748b' }
@@ -263,18 +378,55 @@ export default function SupportList() {
                               disabled={!canManage}
                             />
                           </td>
+
+                          {!isCustomer && !isAccountant && (
+                            <td>
+                              <div className="agent-select-container">
+                                {isManager ? (
+                                  <select 
+                                    className="agent-inline-select"
+                                    value={t.assigned_to?._id || ''}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => handleAssign(t._id, e.target.value)}
+                                  >
+                                    <option value="">Unassigned</option>
+                                    {agents.map(a => (
+                                      <option key={a._id} value={a._id}>{a.name}</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <div className="agent-name-static">
+                                    {t.assigned_to?.name || 'Not Assigned'}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          )}
+
                           <td>
-                             <div className="crm-user-mention">
-                               {t.assigned_to ? (
-                                 <>
-                                   <div className="crm-user-dot" />
-                                   <span style={{ color: 'var(--text)' }}>{t.assigned_to.name}</span>
-                                 </>
-                               ) : (
-                                 <span className="muted italic">Not Assigned</span>
-                               )}
-                             </div>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
+                                {new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                              <span style={{ fontSize: '11px', color: 'var(--text-dimmed)', marginTop: '2px' }}>
+                                {new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
                           </td>
+
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: new Date(t.deadline) < new Date() ? 'var(--danger)' : 'var(--text)' }}>
+                                {t.deadline ? new Date(t.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Deadline'}
+                              </span>
+                              {t.deadline && (
+                                <span style={{ fontSize: '11px', color: 'var(--text-dimmed)', marginTop: '2px' }}>
+                                  {new Date(t.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
                           <td className="text-right" onClick={(e) => e.stopPropagation()}>
                              <div className="crm-action-group">
                                <button className="crm-action-btn" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }} onClick={() => navigate(`/tickets/${t.id}/edit`)}><Icon name="edit" /></button>
@@ -302,19 +454,29 @@ export default function SupportList() {
 
 
       <style>{`
-         .users-page-header { margin-bottom: 8px; }
-         .users-title { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
-         .users-subtitle { font-size: 0.85rem; color: var(--text-dimmed); font-weight: 500; }
+         .users-page-header { margin-bottom: 4px; padding: 0 4px; }
+         .users-title { font-size: 1.2rem; font-weight: 800; color: var(--text); margin-bottom: 0; }
+         .users-subtitle { font-size: 0.8rem; color: var(--text-dimmed); font-weight: 500; }
 
-         .unified-action-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 8px; flex-wrap: wrap; }
-         .search-filter-group { display: flex; align-items: center; gap: 16px; flex: 1; justify-content: space-between; }
-         .filter-select { max-width: 150px; }
-         .btn-clear-filters { background: none; border: none; color: var(--primary); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+         .unified-action-bar { margin-bottom: 16px; padding: 0 4px; overflow: visible; }
+         .search-filter-group { display: flex; align-items: center; gap: 14px; width: 100%; flex-wrap: nowrap; justify-content: flex-start; }
+         .flex { display: flex; }
+         .items-center { align-items: center; }
+         .gap-4 { gap: 12px; }
+         .search-wrap-mini { width: 320px; flex-shrink: 0; }
+         .filter-select { max-width: 140px; min-width: 110px; flex-shrink: 1; }
+         .date-preset-select { width: 130px !important; min-width: 130px !important; }
+         .animate-fade-in { animation: fadeIn 0.3s ease; }
+         @keyframes fadeIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
+         .date-mini { width: 110px !important; max-width: 110px !important; padding: 4px 10px !important; font-size: 0.75rem !important; height: 36px; flex-shrink: 0; }
+         .btn-premium-mini.add-user-btn { height: 36px; padding: 0 16px !important; font-size: 0.8rem !important; margin-left: 12px; }
+         .reset-btn { background: var(--bg-surface) !important; color: var(--text-muted) !important; border: 1px solid var(--border-strong) !important; height: 36px; padding: 0 12px !important; font-size: 0.75rem !important; margin-left: auto; display: flex; align-items: center; gap: 6px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+         .reset-btn:hover { background: var(--bg-hover) !important; color: var(--primary) !important; border-color: var(--primary) !important; }
          .btn-clear-filters:hover { text-decoration: underline; }
 
-         .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; justify-content: space-between; }
-         .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 10px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 130px; box-shadow: var(--shadow-sm); }
-         .stat-pill-label { font-size: 10px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
+         .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; justify-content: space-between; padding: 0 4px; }
+         .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 8px 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 0; flex: 1; min-width: 120px; box-shadow: var(--shadow-sm); }
+         .stat-pill-label { font-size: 9px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
          .stat-pill-value { font-size: 20px; font-weight: 900; }
          .stat-pill-value.total { color: var(--text); }
          .stat-pill-value.active { color: var(--success); }
@@ -328,7 +490,15 @@ export default function SupportList() {
          .add-user-btn:hover { background: var(--primary-hover) !important; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4); }
 
          .crm-table th { padding: 12px 16px !important; border-bottom: 2px solid var(--border-strong) !important; color: var(--text-dimmed) !important; font-weight: 800 !important; font-size: 0.7rem !important; }
-         .crm-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--border-strong) !important; }
+         .crm-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--border-strong) !important; vertical-align: middle; }
+         
+         .support-avatar { position: relative; width: 38px; height: 38px; border-radius: 10px; background: var(--bg-surface); border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--primary); }
+         .sla-breach-pulse { border-color: var(--danger); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); animation: sla-pulse 2s infinite; }
+         @keyframes sla-pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+         
+         .sla-tag-mini { background: var(--danger); color: white; font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
+         .support-subject { display: flex; align-items: center; gap: 4px; }
+         .attachment-indicator { margin-left: 8px; color: var(--text-dimmed); display: inline-flex; align-items: center; background: var(--bg-surface); border: 1px solid var(--border-strong); padding: 2px 4px; border-radius: 4px; }
          
          @media (max-width: 1000px) {
             .crm-stats-bar-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

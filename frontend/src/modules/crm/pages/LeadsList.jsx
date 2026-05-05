@@ -147,10 +147,12 @@ export default function LeadsList() {
       endDate = yEnd.toISOString()
     } else if (dateRange === 'week') {
       const w = new Date(today)
-      w.setDate(w.getDate() - w.getDay())
+      w.setDate(w.getDate() - 7)
       startDate = w.toISOString()
     } else if (dateRange === 'month') {
-      startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString()
+      const m = new Date(today)
+      m.setMonth(m.getMonth() - 1)
+      startDate = m.toISOString()
     } else if (dateRange === 'custom' && customDates.start && customDates.end) {
       startDate = new Date(customDates.start).toISOString()
       endDate = new Date(new Date(customDates.end).setHours(23,59,59,999)).toISOString()
@@ -231,17 +233,22 @@ export default function LeadsList() {
   async function confirmDelete(hard) {
     try {
       if (deleteTarget.isBulk) {
-        await leadsApi.bulkDelete(selectedLeads, hard)
-        toast.success(hard ? 'Leads permanently deleted' : 'Leads moved to trash')
-        setSelectedLeads([])
+        await leadsApi.bulkDelete(selectedLeads, hard);
+        toast.success(hard ? 'Leads permanently deleted' : 'Leads moved to trash');
+        setItems(prev => prev.filter(item => !selectedLeads.includes(String(item.id || item._id))));
+        setSelectedLeads([]);
       } else {
-        await leadsApi.delete(deleteTarget.id, hard)
-        toast.success(hard ? 'Lead permanently deleted' : 'Lead moved to trash')
+        await leadsApi.delete(deleteTarget.id, hard);
+        toast.success(hard ? 'Lead permanently deleted' : 'Lead moved to trash');
+        setItems(prev => prev.filter(item => String(item.id || item._id) !== String(deleteTarget.id)));
       }
-      setIsDeleteModalOpen(false)
-      loadItems()
+      setIsDeleteModalOpen(false);
+      // Trigger a re-fetch of stats/counts
+      setPage(prev => (prev === 1 ? 1.1 : 1)); // Hacky but triggers useEffect if page is dependency
+      setTimeout(() => setPage(Math.floor(page)), 10);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete')
+      console.error('Delete error:', err);
+      toast.error(err.message || 'Failed to delete');
     }
   }
 
@@ -469,19 +476,17 @@ export default function LeadsList() {
             />
 
             {dateRange === 'custom' && (
-              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+              <div className="flex items-center gap-4 animate-fade-in">
                 <input 
                   type="date" 
-                  className="crm-input" 
-                  style={{ width: '120px', padding: '4px 8px !important', height: '32px' }} 
+                  className="crm-input date-mini" 
                   value={customDates.start} 
                   onChange={e => setCustomDates(prev => ({ ...prev, start: e.target.value }))}
                 />
-                <span className="muted">-</span>
+                <span className="muted" style={{ fontSize: '0.7rem' }}>to</span>
                 <input 
                   type="date" 
-                  className="crm-input" 
-                  style={{ width: '120px', padding: '4px 8px !important', height: '32px' }} 
+                  className="crm-input date-mini" 
                   value={customDates.end} 
                   onChange={e => setCustomDates(prev => ({ ...prev, end: e.target.value }))}
                 />
@@ -519,7 +524,7 @@ export default function LeadsList() {
 
             {(q || status || source || dateRange !== 'all' || assignedTo || followupDate) && (
               <button 
-                className="btn-clear-filters"
+                className="btn-premium-mini reset-btn"
                 onClick={() => {
                   setQ('')
                   setStatus('')
@@ -531,7 +536,8 @@ export default function LeadsList() {
                   setPage(1)
                 }}
               >
-                Clear All
+                <Icon name="refresh" size={14} className="reset-icon" />
+                <span>Reset Filters</span>
               </button>
             )}
           </div>

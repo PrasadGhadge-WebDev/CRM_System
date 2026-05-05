@@ -32,17 +32,22 @@ import PaymentForm from './modules/accountant/pages/PaymentForm.jsx'
 import PaymentDetail from './modules/accountant/pages/PaymentDetail.jsx'
 import InvoiceForm from './modules/accountant/pages/InvoiceForm.jsx'
 import InvoiceDetail from './modules/accountant/pages/InvoiceDetail.jsx'
+import ExpensesList from './modules/accountant/pages/ExpensesList.jsx'
+import ExpenseForm from './modules/accountant/pages/ExpenseForm.jsx'
 import Settings from './modules/admin/pages/Settings.jsx'
 import Notifications from './modules/admin/pages/Notifications.jsx'
 import Reports from './pages/Reports.jsx'
 import Filters from './modules/admin/pages/Filters.jsx'
 import PaginationSettings from './modules/admin/pages/PaginationSettings.jsx'
 import TrashList from './modules/admin/pages/TrashList.jsx'
+import Attendance from './modules/admin/pages/Attendance.jsx'
+import FollowupsModule from './modules/crm/pages/FollowupsModule.jsx'
 import RecycleBinIntelligence from './components/RecycleBinIntelligence.jsx'
 
 // Page Imports
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
+import ResetPassword from './pages/ResetPassword.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import Profile from './pages/Profile.jsx'
 
@@ -53,6 +58,7 @@ import { ROLE_GROUPS } from './utils/accessControl'
 import LandingPage from './pages/LandingPage.jsx'
 import AboutPage from './pages/AboutPage.jsx'
 import FeaturesPage from './pages/FeaturesPage.jsx'
+import ContactPage from './pages/ContactPage.jsx'
 import TrialExpiredPage from './pages/TrialExpiredPage.jsx'
 import { useAuth } from './context/AuthContext'
 import ScrollToTop from './components/ScrollToTop.jsx'
@@ -81,8 +87,10 @@ export default function App() {
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/features" element={<FeaturesPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/access-denied" element={<AccessDenied />} />
             <Route path="/trial-expired" element={<TrialExpiredPage />} />
           </Route>
@@ -97,6 +105,9 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/reports" element={<ProtectedRoute permission="reports"><Reports /></ProtectedRoute>} />
           <Route path="/profile" element={<Profile />} />
+
+          <Route path="/activities" element={<ProtectedRoute permission="activities"><FollowupsModule /></ProtectedRoute>} />
+          <Route path="/tasks" element={<ProtectedRoute permission="tasks"><div className="crmContent"><h1>Tasks</h1><p>Module under development</p></div></ProtectedRoute>} />
 
           <Route path="/customers" element={<ProtectedRoute permission="customers"><CustomersList /></ProtectedRoute>} />
           <Route path="/customers/new" element={<ProtectedRoute permission="customers"><CustomerForm mode="create" /></ProtectedRoute>} />
@@ -137,6 +148,12 @@ export default function App() {
             />
           </Route>
 
+          {/* HR Module Routes */}
+          <Route path="/hr/employees" element={<ProtectedRoute permission="employees"><UsersList /></ProtectedRoute>} />
+          <Route path="/hr/attendance" element={<ProtectedRoute permission="attendance"><Attendance /></ProtectedRoute>} />
+          <Route path="/hr/leaves" element={<ProtectedRoute permission="leaves"><Attendance /></ProtectedRoute>} />
+          <Route path="/hr/payroll" element={<ProtectedRoute permission="payroll"><div className="crmContent"><h1>Payroll</h1><p>Module under development</p></div></ProtectedRoute>} />
+
           <Route
             element={
               <ProtectedRoute permission="payments">
@@ -164,6 +181,18 @@ export default function App() {
 
           <Route
             element={
+              <ProtectedRoute permission="expenses">
+                <Outlet />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/expenses" element={<ExpensesList />} />
+            <Route path="/expenses/new" element={<ExpenseForm mode="create" />} />
+            <Route path="/expenses/:id/edit" element={<ExpenseForm mode="edit" />} />
+          </Route>
+
+          <Route
+            element={
               <ProtectedRoute permission="billing">
                 <Outlet />
               </ProtectedRoute>
@@ -180,6 +209,7 @@ export default function App() {
             }
           >
             <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/roles" element={<Settings />} />
           </Route>
 
           <Route
@@ -191,6 +221,8 @@ export default function App() {
           >
             <Route path="/notifications" element={<Notifications />} />
           </Route>
+
+          <Route path="/reports/team" element={<ProtectedRoute permission="teamPerformance"><div className="crmContent"><h1>Team Performance</h1><p>Module under development</p></div></ProtectedRoute>} />
 
           <Route
             element={
@@ -205,6 +237,7 @@ export default function App() {
 
           <Route path="/trash" element={<TrashList />} />
           <Route path="/recycle-bin" element={<RecycleBinIntelligence />} />
+
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

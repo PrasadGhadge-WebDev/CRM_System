@@ -12,7 +12,8 @@ export default function SearchableSelect({
   icon = "filter",
   className = "",
   style = {},
-  error = false
+  error = false,
+  disabled = false
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -45,14 +46,19 @@ export default function SearchableSelect({
   const displayLabel = currentLabel ? (typeof currentLabel === 'object' ? currentLabel.label : currentLabel) : placeholder
 
   return (
-    <div className={`searchable-select-container ${className}`} ref={containerRef} style={style}>
+    <div className={`searchable-select-container ${className} ${disabled ? 'disabled' : ''}`} ref={containerRef} style={{ ...style, opacity: disabled ? 0.6 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
       <div 
         className={`searchable-select-trigger ${isOpen ? 'active' : ''} ${error ? 'error' : ''}`} 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '10px', height: '42px' }}
       >
-        <Icon name={icon} size={14} className="trigger-icon" />
-        <span className="trigger-text">{displayLabel}</span>
-        <Icon name="chevron-down" size={12} className={`chevron ${isOpen ? 'rotate' : ''}`} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '100%', borderRight: '1px solid var(--border)', color: 'var(--text-dimmed)' }}>
+          <Icon name={icon} size={16} />
+        </div>
+        <span className="trigger-text" style={{ paddingLeft: '12px', fontWeight: 500 }}>{displayLabel}</span>
+        <div style={{ paddingRight: '12px', color: 'var(--text-dimmed)' }}>
+          <Icon name="chevronDown" size={14} className={`chevron ${isOpen ? 'rotate' : ''}`} />
+        </div>
       </div>
 
       {isOpen && (
@@ -104,17 +110,13 @@ export default function SearchableSelect({
         }
 
         .searchable-select-trigger {
-          height: 42px;
-          padding: 0 16px;
-          background: var(--bg-card, white);
-          border: 1px solid var(--border);
-          border-radius: 12px;
+          padding: 0;
           display: flex;
           align-items: center;
-          gap: 10px;
           cursor: pointer;
           transition: all 0.2s;
           user-select: none;
+          overflow: hidden;
         }
 
         .searchable-select-trigger:hover {

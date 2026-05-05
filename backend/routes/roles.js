@@ -4,9 +4,11 @@ const { getRoles, createRole, updateRole, deleteRole } = require('../controllers
 const { protect, authorize } = require('../middleware/auth');
 
 router.use(protect);
-router.use(authorize('Admin', 'Manager')); // Only admins/managers manage roles
 
+// GET is allowed for all staff to populate icons/filters
 router.get('/', getRoles);
+
+// Management restricted
 router.post('/', authorize('Admin'), createRole);
 router.put('/:id', authorize('Admin'), updateRole);
 router.delete('/:id', authorize('Admin'), deleteRole);

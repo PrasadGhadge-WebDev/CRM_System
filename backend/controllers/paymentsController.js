@@ -30,6 +30,11 @@ exports.listPayments = asyncHandler(async (req, res) => {
     const myDeals = await Deal.find({ assigned_to: req.user.id, company_id: req.user.company_id }).select('_id');
     const myDealIds = myDeals.map(d => d._id);
     filter.deal_id = { $in: myDealIds };
+  } else if (req.user.role === 'HR') {
+    // HR generally sees all but maybe filter by specific criteria if needed
+    // For now, let's allow them to see but they can only filter bank transfers
+  } else if (req.user.role === 'Manager') {
+    // Managers see everything to oversee the team
   } else if (req.user.role === 'Customer') {
     // Only see their own payments
     filter.customer_id = req.user.id; 
@@ -52,7 +57,7 @@ exports.listPayments = asyncHandler(async (req, res) => {
       { payment_number: search },
       { status: search },
       { notes: search },
-      { reference_number: search },
+      { transaction_id: search },
       { payment_method: search }
     ];
   }
@@ -61,7 +66,7 @@ exports.listPayments = asyncHandler(async (req, res) => {
     { $match: filter },
     {
       $group: {
-        _id: '$payment_method',
+        _id: '$status',
         count: { $sum: 1 },
         totalAmount: { $sum: '$amount' }
       }
@@ -71,28 +76,52 @@ exports.listPayments = asyncHandler(async (req, res) => {
   const pageNum = Math.max(1, Number(page) || 1);
   const limitNum = Math.min(100, Math.max(1, Number(limit) || 20));
 
-  const [items, totalFiltered, methodStats] = await Promise.all([
+  const [items, totalFiltered, methodStats, statusStats] = await Promise.all([
     Payment.find(filter)
       .populate('customer_id', 'name')
       .populate('invoice_id', 'invoice_number')
+      .populate('approved_by', 'name')
       .sort({ created_at: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum),
     Payment.countDocuments(filter),
-    Payment.aggregate(summaryPipeline)
+    Payment.aggregate([
+      { $match: filter },
+      { $group: { _id: '$payment_method', count: { $sum: 1 }, totalAmount: { $sum: '$amount' } } }
+    ]),
+    Payment.aggregate([
+      { $match: filter },
+      { $group: { _id: '$status', count: { $sum: 1 }, totalAmount: { $sum: '$amount' } } }
+    ])
   ]);
 
   const summary = {
     total: totalFiltered,
     totalAmount: 0,
-    byMethod: {}
+    byMethod: {},
+    byStatus: {},
+    bankTransferVolume: 0
   };
+  
   methodStats.forEach(s => {
     if (s._id) {
       summary.byMethod[s._id] = s.count;
       summary.totalAmount += (s.totalAmount || 0);
     }
   });
+
+  statusStats.forEach(s => {
+    if (s._id) {
+      summary.byStatus[s._id] = s.count;
+    }
+  });
+
+  // Specifically for Admin/Manager: Bank Transfer Volume
+  const bankStats = await Payment.aggregate([
+    { $match: { ...filter, payment_method: 'Bank Transfer' } },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
+  summary.bankTransferVolume = bankStats[0]?.total || 0;
 
   res.ok({ items, total: totalFiltered, page: pageNum, limit: limitNum, summary });
 });
@@ -111,112 +140,114 @@ exports.createPayment = asyncHandler(async (req, res) => {
     payload.payment_number = await getNextPaymentNumber(req.user.company_id);
   }
 
-  // Rule 1: No Payment without Invoice
-  if (!payload.invoice_id && !payload.deal_id) {
-    return res.fail('Business Rule Violation: Payments must be linked to an Invoice.', 400);
-  }
-
-  // Auto-find or Auto-create invoice if deal_id is provided but invoice_id is not
-  if (payload.deal_id && !payload.invoice_id) {
-    const Invoice = require('../models/Invoice');
-    let invoice = await Invoice.findOne({ deal_id: payload.deal_id, company_id: req.user.company_id });
-    
-    if (!invoice) {
-      const { autoGenerateInvoice } = require('../utils/financeHelper');
-      const Deal = require('../models/Deal');
-      const deal = await Deal.findById(payload.deal_id);
-      if (deal) {
-        invoice = await autoGenerateInvoice(deal, req.user.id);
-      }
-    }
-    
-    if (!invoice) return res.fail('Failed to associate or generate an invoice for this deal.', 400);
-    payload.invoice_id = invoice._id;
-  }
-
-  // Final check for Invoice ID
-  if (!payload.invoice_id) return res.fail('Invoice ID is required for every payment.', 400);
-
-  const Invoice = require('../models/Invoice');
-  const invoice = await Invoice.findOne({ _id: payload.invoice_id, company_id: req.user.company_id });
-  if (!invoice) return res.fail('Invoice not found', 404);
-
-  // Determine Payment Status (New Flow: Pending -> Received -> Verified -> Completed)
-  // For initial creation, we can set it to 'Completed' if verified immediately or 'Received'
-  // But based on 4.3: Pending -> Received -> Verified -> Completed
-  // Usually a manual entry is 'Received' or 'Completed'
-  const remainingBefore = invoice.total_amount - (invoice.paid_amount || 0);
-  if (payload.amount >= remainingBefore) {
-    payload.status = 'Completed';
-  } else {
-    // Even if partial, the payment record itself can be 'Completed' or 'Received'
-    // But the user might want the payment status to reflect the deal status? 
-    // No, 4.3 says Payment Status Flow: Pending -> Received -> Verified -> Completed.
-    // I'll set it to 'Completed' for now if it's a successful entry.
+  // High-value check
+  if (payload.amount > 50000 && !payload.approved_by && req.user.role !== 'Admin') {
+    payload.status = 'Pending'; // Needs Manager approval
+  } else if (!payload.status) {
     payload.status = 'Completed';
   }
 
   const payment = await Payment.create(payload);
 
-  // Update Invoice (Rule 3 & 4)
-  invoice.paid_amount = (invoice.paid_amount || 0) + payload.amount;
-  
-  if (invoice.paid_amount >= invoice.total_amount) {
-    invoice.status = 'Paid';
-    invoice.paid_date = new Date();
-  } else if (invoice.paid_amount > 0) {
-    invoice.status = 'Partially Paid';
-    invoice.paid_date = null;
-  }
-  
-  await invoice.save();
+  // If linked to invoice, update it
+  if (payment.invoice_id && payment.status === 'Completed') {
+    const invoice = await Invoice.findOne({ _id: payment.invoice_id, company_id: req.user.company_id });
+    if (invoice) {
+      invoice.paid_amount = (invoice.paid_amount || 0) + payment.amount;
+      if (invoice.paid_amount >= invoice.total_amount) {
+        invoice.status = 'Paid';
+        invoice.paid_date = new Date();
+      } else {
+        invoice.status = 'Partially Paid';
+      }
+      await invoice.save();
 
-  // Reactivate Customer on Payment (Rule: Makes new purchase -> Reactivate to Active)
-  const Customer = require('../models/Customer');
-  await Customer.findByIdAndUpdate(invoice.customer_id, { status: 'Active' });
-
-  // Step 7: Update Deal to Completed if Invoice is fully Paid
-  if (invoice.status === 'Paid' && invoice.deal_id) {
-    const Deal = require('../models/Deal');
-    await Deal.findOneAndUpdate(
-      { _id: invoice.deal_id, company_id: req.user.company_id },
-      { status: 'Completed' }
-    );
-  }
-  
-  const { logActivity } = require('../utils/activityLogger');
-
-  // Log Invoice Status Change
-  await logActivity({
-    company_id: req.user.company_id,
-    created_by: req.user.id,
-    activity_type: 'Status Changed',
-    description: `Bill #${invoice.invoice_number} status updated to ${invoice.status} after payment.`,
-    related_to: invoice._id,
-    related_type: 'Invoice',
-    category: 'system',
-    color_code: 'blue'
-  });
-
-  // Log Payment Received
-  await logActivity({
-    company_id: req.user.company_id,
-    created_by: req.user.id,
-    activity_type: 'Payment Added',
-    description: `Received ${payload.status} payment of ₹${payment.amount} via ${payment.payment_method}. Bill #${invoice.invoice_number} is now ${invoice.status}.`,
-    related_to: payment._id,
-    related_type: 'Payment',
-    category: 'system',
-    color_code: 'green'
-  });
-
-  // Step 4 & 5: Sync Financials on Customer
-  if (payment.customer_id) {
-    const { syncCustomerFinancials } = require('../utils/financialsSync');
-    await syncCustomerFinancials(payment.customer_id, req.user.company_id, req.user.id);
+      // Log Invoice Update
+      const { logActivity } = require('../utils/activityLogger');
+      await logActivity({
+        company_id: req.user.company_id,
+        created_by: req.user.id,
+        activity_type: 'Payment Applied',
+        description: `Payment of ₹${payment.amount} applied to Invoice #${invoice.invoice_number}`,
+        related_to: invoice._id,
+        related_type: 'Invoice'
+      });
+    }
   }
 
   res.created(payment);
+});
+
+exports.updatePayment = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  
+  const payment = await Payment.findOne({ _id: id, company_id: req.user.company_id });
+  if (!payment) return res.fail('Payment not found', 404);
+
+  const oldStatus = payment.status;
+  const oldAmount = payment.amount;
+  const oldInvoiceId = payment.invoice_id;
+
+  // Apply updates
+  Object.assign(payment, updates);
+
+  // If status changed to Completed and wasn't before, update invoice
+  if (payment.status === 'Completed' && oldStatus !== 'Completed' && payment.invoice_id) {
+    const invoice = await Invoice.findOne({ _id: payment.invoice_id, company_id: req.user.company_id });
+    if (invoice) {
+      invoice.paid_amount = (invoice.paid_amount || 0) + payment.amount;
+      if (invoice.paid_amount >= invoice.total_amount) {
+        invoice.status = 'Paid';
+        invoice.paid_date = new Date();
+      } else {
+        invoice.status = 'Partially Paid';
+      }
+      await invoice.save();
+    }
+  }
+
+  // If invoice_id was linked (fixed UNLINKED BILL)
+  if (payment.invoice_id && !oldInvoiceId && payment.status === 'Completed') {
+     const invoice = await Invoice.findOne({ _id: payment.invoice_id, company_id: req.user.company_id });
+     if (invoice) {
+       invoice.paid_amount = (invoice.paid_amount || 0) + payment.amount;
+       await invoice.save();
+     }
+  }
+
+  await payment.save();
+  res.ok(payment);
+});
+
+exports.approvePayment = asyncHandler(async (req, res) => {
+  if (!['Admin', 'Manager'].includes(req.user.role)) {
+    return res.fail('Only Managers or Admins can approve payments', 403);
+  }
+
+  const payment = await Payment.findOne({ _id: req.params.id, company_id: req.user.company_id });
+  if (!payment) return res.fail('Payment not found', 404);
+
+  payment.approved_by = req.user.id;
+  payment.status = 'Completed'; // Auto-complete on approval
+  await payment.save();
+
+  // Update Invoice
+  if (payment.invoice_id) {
+    const invoice = await Invoice.findOne({ _id: payment.invoice_id, company_id: req.user.company_id });
+    if (invoice) {
+      invoice.paid_amount = (invoice.paid_amount || 0) + payment.amount;
+      if (invoice.paid_amount >= invoice.total_amount) {
+        invoice.status = 'Paid';
+        invoice.paid_date = new Date();
+      } else {
+        invoice.status = 'Partially Paid';
+      }
+      await invoice.save();
+    }
+  }
+
+  res.ok(payment, 'Payment approved successfully');
 });
 
 exports.getPayment = asyncHandler(async (req, res) => {
@@ -224,7 +255,8 @@ exports.getPayment = asyncHandler(async (req, res) => {
     .populate('customer_id', 'name email')
     .populate('invoice_id', 'invoice_number total_amount paid_amount')
     .populate('deal_id', 'name')
-    .populate('received_by', 'name');
+    .populate('received_by', 'name')
+    .populate('approved_by', 'name');
   if (!payment) return res.fail('Payment not found', 404);
   res.ok(payment);
 });
@@ -238,8 +270,8 @@ exports.deletePayment = asyncHandler(async (req, res) => {
   const payment = await Payment.findOne({ _id: req.params.id, company_id: req.user.company_id });
   if (!payment) return res.fail('Payment not found', 404);
 
-  // Revert invoice amount if needed
-  if (payment.invoice_id) {
+  // Revert invoice amount if it was completed
+  if (payment.invoice_id && payment.status === 'Completed') {
     const invoice = await Invoice.findOne({ _id: payment.invoice_id, company_id: req.user.company_id });
     if (invoice) {
       invoice.paid_amount = Math.max(0, (invoice.paid_amount || 0) - payment.amount);
@@ -260,19 +292,6 @@ exports.deletePayment = asyncHandler(async (req, res) => {
     const { syncCustomerFinancials } = require('../utils/financialsSync');
     await syncCustomerFinancials(customerId, req.user.company_id, req.user.id);
   }
-
-  // Rule 5: Activity Log - Payment Removed
-  const { logActivity } = require('../utils/activityLogger');
-  await logActivity({
-    company_id: req.user.company_id,
-    user_id: req.user.id,
-    type: 'Payment Removed',
-    description: `Payment record #${payment.payment_number} for ₹${payment.amount} was deleted.`,
-    related_to: payment._id,
-    related_type: 'Payment',
-    category: 'system',
-    color_code: 'red'
-  });
 
   res.ok(null, 'Payment moved to trash');
 });

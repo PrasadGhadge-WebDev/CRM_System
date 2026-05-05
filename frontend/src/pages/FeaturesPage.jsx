@@ -1,5 +1,5 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   FiUsers, FiTarget, FiBarChart2, FiShield, FiLayers, FiLock, FiZap
 } from 'react-icons/fi'
@@ -162,9 +162,9 @@ const FeaturesPage = () => {
             <button className="btn-primary-landing" onClick={handleDemoLogin}>
               Start Free Demo Now
             </button>
-            <a href="/contact" className="btn-primary-landing cta-secondary-btn">
+            <Link to="/contact" className="btn-primary-landing cta-secondary-btn">
               Contact Us
-            </a>
+            </Link>
           </div>
         </div>
       </section>

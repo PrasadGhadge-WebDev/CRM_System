@@ -35,7 +35,7 @@
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 24px;
   padding: var(--crm-padding-card);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--crm-radius-card);
 }
@@ -138,7 +138,7 @@
 /* Table Architecture */
 .crm-table-wrap {
   border-radius: var(--crm-radius-card);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
   overflow: hidden;
   flex: 1;
@@ -165,7 +165,7 @@
   color: var(--text-dimmed);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-surface);
   border-bottom: 2px solid var(--border-subtle);
   text-align: left;
   white-space: nowrap;
@@ -179,7 +179,7 @@
 }
 
 .crm-table-row:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-hover);
 }
 
 .crm-table-row.selected {
@@ -196,7 +196,7 @@
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-surface);
   color: var(--text-muted);
   border: 1px solid var(--border-subtle);
   white-space: nowrap;
@@ -303,7 +303,7 @@
 
 /* Glass / Secondary Variant */
 .crm-btn-premium.glass {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--bg-elevated-rgb), 0.7);
   backdrop-filter: blur(8px);
   color: var(--text-muted);
   border-color: var(--border-subtle);
@@ -424,7 +424,7 @@
   align-items: center;
   width: 100%;
   max-width: 500px;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(var(--bg-elevated-rgb), 0.82);
   backdrop-filter: blur(12px);
   border: 1.5px solid rgba(226, 232, 240, 0.8);
   border-radius: 100px;

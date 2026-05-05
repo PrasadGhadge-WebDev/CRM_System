@@ -158,7 +158,7 @@ export default function StatusDropdown({
           align-items: center;
           gap: 10px;
           padding: 8px 12px;
-          border-bottom: 1px solid #f1f5f9;
+          border-bottom: 1px solid var(--border-subtle);
           margin-bottom: 4px;
         }
 
@@ -172,7 +172,7 @@ export default function StatusDropdown({
           outline: none;
           font-size: 0.75rem;
           font-weight: 600;
-          color: #1e293b;
+          color: var(--text);
           width: 100%;
         }
 
@@ -189,8 +189,8 @@ export default function StatusDropdown({
           font-weight: 600;
         }
         .crm-status-pill-modern {
-          background: rgba(248, 250, 252, 0.9);
-          border: 1px solid rgba(226, 232, 240, 1);
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
           border-radius: 50px;
           padding: 4px 16px;
           display: flex;
@@ -198,7 +198,7 @@ export default function StatusDropdown({
           gap: 10px;
           font-size: 0.65rem;
           font-weight: 800;
-          color: #334155;
+          color: var(--text-dimmed);
           text-transform: uppercase;
           letter-spacing: 0.05em;
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -207,7 +207,7 @@ export default function StatusDropdown({
         }
 
         .crm-status-pill-modern:hover:not(:disabled) {
-          background: white;
+          background: var(--bg-card);
           border-color: var(--primary);
           transform: translateY(-1px);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -224,7 +224,7 @@ export default function StatusDropdown({
           top: calc(100% + 8px);
           left: 50%;
           transform: translateX(-50%);
-          background: white;
+          background: var(--bg-card);
           border: 1px solid var(--border-strong);
           border-radius: 16px;
           min-width: 180px;
@@ -249,13 +249,13 @@ export default function StatusDropdown({
           cursor: pointer;
           font-size: 0.75rem;
           font-weight: 700;
-          color: #475569;
+          color: var(--text);
           transition: all 0.2s;
           white-space: nowrap;
         }
 
         .status-dropdown-item:hover {
-          background: #f8fafc;
+          background: var(--bg-hover);
           color: var(--primary);
         }
 
