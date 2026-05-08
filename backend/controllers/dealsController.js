@@ -223,12 +223,12 @@ exports.updateDeal = asyncHandler(async (req, res) => {
   const oldDeal = await Deal.findOne({ _id: req.params.id, company_id: req.user.company_id });
   if (!oldDeal) return res.fail('Deal not found', 404);
 
-  // RBAC
-  const isManagement = ['Admin', 'Manager'].includes(req.user.role);
+  // RBAC: Allowed roles for update/assignment
+  const allowedRoles = ['Admin', 'Manager', 'Employee', 'Accountant'];
+  const isAllowedRole = allowedRoles.includes(req.user.role);
   const isOwner = String(oldDeal.assigned_to?._id || oldDeal.assigned_to) === req.user.id;
-  const isEmployee = req.user.role === 'Employee';
 
-  if (!isManagement && !(isEmployee && isOwner)) {
+  if (!isAllowedRole && !isOwner) {
     return res.fail('Unauthorized update', 403);
   }
 
@@ -252,21 +252,29 @@ exports.updateDeal = asyncHandler(async (req, res) => {
     }
   }
 
-  // Automate Close Date on Stage Change
-  if (updates.stage && updates.stage !== oldDeal.stage) {
-    if (updates.stage === 'Won' || updates.stage === 'Lost') {
+  // Automate Close Date on Stage/Status Change
+  if ((updates.stage && updates.stage !== oldDeal.stage) || (updates.status && updates.status !== oldDeal.status)) {
+    const isNowLost = updates.stage === 'Lost';
+    const isNowWon = updates.stage === 'Won';
+    const isNowClosed = updates.status === 'Closed';
+
+    if (isNowLost || isNowClosed) {
       updates.actual_close_date = new Date();
-      if (updates.stage === 'Lost' && !updates.lost_reason && !oldDeal.lost_reason) {
-        return res.fail('Lost reason required', 400);
+      if (isNowLost) {
+        updates.status = 'Closed';
+        if (!updates.lost_reason && !oldDeal.lost_reason) {
+          return res.fail('Lost reason required', 400);
+        }
       }
-      
-      // Auto-activate customer on Won
-      if (updates.stage === 'Won' && oldDeal.customer_id) {
-        const Customer = require('../models/Customer');
-        await Customer.findByIdAndUpdate(oldDeal.customer_id, { status: 'Active' });
-      }
-    } else {
-      updates.actual_close_date = null;
+    } else if (updates.stage && !['Won', 'Lost'].includes(updates.stage)) {
+       updates.status = 'Open';
+       updates.actual_close_date = null;
+    }
+
+    // Auto-activate customer on Won
+    if (isNowWon && oldDeal.customer_id) {
+      const Customer = require('../models/Customer');
+      await Customer.findByIdAndUpdate(oldDeal.customer_id, { status: 'Active' });
     }
   }
 

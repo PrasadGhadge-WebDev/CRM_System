@@ -206,6 +206,10 @@ export default function CustomerDetail() {
                 <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(customer.source)}</div>
               </div>
               <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>GST Number</label>
+                <div style={{ color: 'var(--text)', fontWeight: 600, letterSpacing: '0.02em' }}>{displayValue(customer.gst_number)}</div>
+              </div>
+              <div>
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Payment Status</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: customer.payment_status === 'Paid' ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>
                   <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: customer.payment_status === 'Paid' ? 'var(--success)' : 'var(--danger)' }} />

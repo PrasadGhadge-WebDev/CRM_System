@@ -54,9 +54,9 @@ async function performLeadConversion(leadId, companyId, userId, customerData = n
     company_name: lead.company || lead.company_name,
     source: lead.source || 'Lead Conversion',
     notes: lead.notes,
-    assigned_to: userId || lead.assignedTo,
+    assigned_to: lead.assignedTo || userId,
     assigned_to_model: lead.assignedToModel || 'User',
-    status: 'Active',
+    status: 'Prospect', // Initial status after lead conversion
     converted_from_lead_id: lead._id,
     last_interaction_date: new Date()
   };

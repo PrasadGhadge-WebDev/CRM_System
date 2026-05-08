@@ -7,7 +7,7 @@ import { Icon } from '../layouts/icons.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import SearchableSelect from '../modules/crm/components/SearchableSelect.jsx'
 
-export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
+export default function FollowupModal({ isOpen, onClose, lead, onSave, initialTab = 'form' }) {
   const { user } = useAuth()
   const [assignees, setAssignees] = useState([])
   const [form, setForm] = useState({
@@ -26,11 +26,13 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [activeTab, setActiveTab] = useState('form') // 'form' or 'history'
+  const [hPage, setHPage] = useState(1)
+  const hLimit = 5
 
   useEffect(() => {
     if (isOpen && lead) {
       setErrorMsg('')
-      setActiveTab('form')
+      setActiveTab(initialTab)
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
       const dateStr = tomorrow.toISOString().split('T')[0]
@@ -168,17 +170,12 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
   ]
 
   const modalContent = (
-    <div className="fu-modal-overlay-new" onClick={onClose}>
-      <div className="fu-modal-card-new animate-slide-up" onClick={(e) => e.stopPropagation()}>
-        <div className="fu-modal-header">
-          <div className="fu-header-left">
-            <div className="fu-header-icon-main">
-              <Icon name="calendar" size={20} />
-            </div>
-            <div>
-              <h2 className="fu-title">Follow-up: <span className="highlight">{lead.name}</span></h2>
-              <p className="fu-subtitle">{(lead.email || lead.phone || 'No contact info').toLowerCase()}</p>
-            </div>
+    <div className="crm-modal-portal-overlay" onClick={onClose}>
+      <div className="crm-modal-sheet animate-sheet-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '850px' }}>
+        <div className="crm-modal-sheet-header">
+          <div className="sheet-title-area">
+            <h2 className="sheet-title">Follow-up: <span style={{ color: 'var(--primary)' }}>{lead.name}</span></h2>
+            <p className="sheet-subtitle">{(lead.email || lead.phone || 'No contact info').toLowerCase()}</p>
           </div>
           <button className="fu-close-btn" onClick={onClose}>
             <Icon name="x" size={20} />
@@ -202,219 +199,246 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
           </button>
         </div>
 
-        <div className="fu-modal-body custom-scrollbar">
-          {activeTab === 'form' ? (
-            <form onSubmit={handleSubmit} className="fu-form-grid">
-              <div className="fu-section">
-                <h3 className="fu-section-title">Schedule Interaction</h3>
-                <div className="fu-input-row">
-                  <div className="fu-input-group">
-                    <label>Date *</label>
-                    <input
-                      type="date"
-                      value={form.followupDate}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setForm((prev) => ({ ...prev, followupDate: e.target.value }))}
-                      required
-                    />
+        <div className="crm-modal-sheet-body custom-scrollbar">
+          <div className="sheet-content-container">
+            {activeTab === 'form' ? (
+              <form onSubmit={handleSubmit} className="fu-form-grid">
+                <section className="form-sheet-section">
+                  <div className="form-sheet-section-header">
+                    <Icon name="calendar" />
+                    <span>Schedule Interaction</span>
                   </div>
-                  <div className="fu-input-group">
-                    <label>Time *</label>
-                    <input
-                      type="time"
-                      value={form.followupTime}
-                      onChange={(e) => setForm((prev) => ({ ...prev, followupTime: e.target.value }))}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="fu-input-row">
-                  <div className="fu-input-group">
-                    <label>Type *</label>
-                    <SearchableSelect
-                      value={form.followupType}
-                      onChange={(val) => setForm((prev) => ({ ...prev, followupType: val }))}
-                      options={['Call', 'Meeting', 'Email', 'WhatsApp']}
-                      icon="activity"
-                    />
-                  </div>
-                  <div className="fu-input-group">
-                    <label>Quick Dates</label>
-                    <div className="fu-quick-btns">
-                      <button type="button" onClick={() => setQuickDate('tomorrow')}>Tomorrow</button>
-                      <button type="button" onClick={() => setQuickDate('next-week')}>Next Week</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="fu-section">
-                <h3 className="fu-section-title">Assignment & Reminder</h3>
-                <div className="fu-input-row">
-                  <div className="fu-input-group">
-                    <label>Assign To *</label>
-                    <SearchableSelect
-                      value={form.assignedTo}
-                      onChange={(val) => setForm((prev) => ({ ...prev, assignedTo: val }))}
-                      options={assignees.map(m => ({ value: m.id || m._id, label: m.name || m.email }))}
-                      icon="user"
-                    />
-                  </div>
-                  <div className="fu-input-group">
-                    <label>Reminder</label>
-                    <div className="fu-reminder-toggle">
-                      <input 
-                        type="checkbox" 
-                        checked={form.sendReminder}
-                        onChange={e => setForm(f => ({ ...f, sendReminder: e.target.checked }))}
-                      />
-                      {form.sendReminder && (
-                        <SearchableSelect
-                          value={form.reminderOffset}
-                          onChange={val => setForm(f => ({ ...f, reminderOffset: val }))}
-                          options={[
-                            { value: '15m', label: '15m before' },
-                            { value: '30m', label: '30m before' },
-                            { value: '1h', label: '1h before' }
-                          ]}
-                          className="fu-mini-select"
+                  <div className="form-sheet-grid">
+                    <div className="sheet-field">
+                      <label>Date *</label>
+                      <div className="crm-input-group">
+                        <div className="input-icon-box"><Icon name="calendar" size={14} /></div>
+                        <input
+                          type="date"
+                          value={form.followupDate}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setForm((prev) => ({ ...prev, followupDate: e.target.value }))}
+                          required
                         />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="fu-section full-width">
-                <h3 className="fu-section-title">Interaction Outcome</h3>
-                <div className="fu-outcome-chips">
-                  {outcomeOptions.map(opt => (
-                    <button 
-                      key={opt.value}
-                      type="button"
-                      className={`fu-chip ${form.statusAfterCall === opt.value ? 'active' : ''}`}
-                      onClick={() => setForm(f => ({ ...f, statusAfterCall: opt.value }))}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="fu-section full-width">
-                <h3 className="fu-section-title">Activity Notes</h3>
-                <textarea 
-                  className="fu-textarea"
-                  value={form.note}
-                  onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
-                  placeholder="Summarize what happened during the contact..."
-                />
-              </div>
-
-              {errorMsg && <div className="fu-error-msg">{errorMsg}</div>}
-            </form>
-          ) : (
-            <div className="fu-history-list">
-              {lead.followupHistory && lead.followupHistory.length > 0 ? (
-                lead.followupHistory.slice().reverse().map((h, i) => (
-                  <div key={i} className="fu-history-item">
-                    <div className="fu-history-dot" />
-                    <div className="fu-history-content">
-                      <div className="fu-history-header">
-                        <span className="fu-h-type">{h.followupType}</span>
-                        <span className="fu-h-date">{new Date(h.date).toLocaleString()}</span>
                       </div>
-                      <div className="fu-h-outcome">Outcome: <strong>{h.statusAfterCall || 'None'}</strong></div>
-                      {h.note && <p className="fu-h-note">"{h.note}"</p>}
+                    </div>
+                    <div className="sheet-field">
+                      <label>Time *</label>
+                      <div className="crm-input-group">
+                        <div className="input-icon-box"><Icon name="clock" size={14} /></div>
+                        <input
+                          type="time"
+                          value={form.followupTime}
+                          onChange={(e) => setForm((prev) => ({ ...prev, followupTime: e.target.value }))}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sheet-field">
+                      <label>Type *</label>
+                      <SearchableSelect
+                        value={form.followupType}
+                        onChange={(val) => setForm((prev) => ({ ...prev, followupType: val }))}
+                        options={['Call', 'Meeting', 'Email', 'WhatsApp']}
+                        icon="activity"
+                      />
+                    </div>
+                    <div className="sheet-field">
+                      <label>Quick Selection</label>
+                      <div className="fu-quick-btns">
+                        <button type="button" className="fu-quick-chip" onClick={() => setQuickDate('tomorrow')}>
+                          <Icon name="calendar" size={12} />
+                          <span>Tomorrow</span>
+                        </button>
+                        <button type="button" className="fu-quick-chip" onClick={() => setQuickDate('next-week')}>
+                          <Icon name="calendar" size={12} />
+                          <span>Next Week</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="fu-empty-history">No follow-up history found.</div>
-              )}
-            </div>
-          )}
+                </section>
+
+                <section className="form-sheet-section">
+                  <div className="form-sheet-section-header">
+                    <Icon name="user" />
+                    <span>Assignment & Reminder</span>
+                  </div>
+                  <div className="form-sheet-grid">
+                    <div className="sheet-field">
+                      <label>Assign To *</label>
+                      <SearchableSelect
+                        value={form.assignedTo}
+                        onChange={(val) => setForm((prev) => ({ ...prev, assignedTo: val }))}
+                        options={assignees.map(m => ({ value: m.id || m._id, label: m.name || m.email }))}
+                        icon="user"
+                      />
+                    </div>
+                    <div className="sheet-field">
+                      <label>Reminder</label>
+                      <div className="fu-reminder-toggle">
+                        <input 
+                          type="checkbox" 
+                          checked={form.sendReminder}
+                          onChange={e => setForm(f => ({ ...f, sendReminder: e.target.checked }))}
+                        />
+                        {form.sendReminder && (
+                          <SearchableSelect
+                            value={form.reminderOffset}
+                            onChange={val => setForm(f => ({ ...f, reminderOffset: val }))}
+                            options={[
+                              { value: '15m', label: '15m before' },
+                              { value: '30m', label: '30m before' },
+                              { value: '1h', label: '1h before' }
+                            ]}
+                            className="fu-mini-select"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="form-sheet-section">
+                  <div className="form-sheet-section-header">
+                    <Icon name="activity" />
+                    <span>Interaction Outcome *</span>
+                  </div>
+                  <div className="form-sheet-grid">
+                    <div className="sheet-field full-width">
+                      <div className="crm-input-group">
+                        <div className="input-icon-box"><Icon name="check" size={14} /></div>
+                        <input
+                          type="text"
+                          list="outcome-list"
+                          className="fu-outcome-hybrid-input"
+                          value={form.statusAfterCall}
+                          onChange={(e) => setForm(f => ({ ...f, statusAfterCall: e.target.value }))}
+                          placeholder="Type custom outcome or select from list..."
+                          required
+                        />
+                        <datalist id="outcome-list">
+                          {outcomeOptions.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </datalist>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="form-sheet-section no-border">
+                  <div className="form-sheet-section-header">
+                    <Icon name="info" />
+                    <span>Activity Notes</span>
+                  </div>
+                  <div className="form-sheet-grid">
+                    <div className="sheet-field full-width">
+                      <div className="crm-input-group">
+                        <div className="input-icon-box" style={{ alignItems: 'flex-start', paddingTop: '12px' }}>
+                          <Icon name="edit" size={14} />
+                        </div>
+                        <textarea 
+                          style={{ minHeight: '120px' }}
+                          value={form.note}
+                          onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+                          placeholder="Summarize what happened during the contact..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {errorMsg && <div className="fu-error-msg" style={{ margin: '0 0 20px' }}>{errorMsg}</div>}
+              </form>
+            ) : (
+              <div className="fu-history-container">
+                <div className="fu-history-list">
+                  {lead.followupHistory && lead.followupHistory.length > 0 ? (
+                    (() => {
+                      const reversed = [...lead.followupHistory].reverse()
+                      const displayH = reversed.slice((hPage - 1) * hLimit, hPage * hLimit)
+                      const totalHPages = Math.ceil(reversed.length / hLimit)
+
+                      return (
+                        <>
+                          {displayH.map((h, i) => (
+                            <div key={i} className="fu-history-item">
+                              <div className="fu-history-icon-wrapper">
+                                <Icon name={h.followupType === 'Call' ? 'phone' : h.followupType === 'Meeting' ? 'user' : h.followupType === 'Email' ? 'mail' : 'message-square'} size={18} />
+                              </div>
+                              <div className="fu-history-content-card">
+                                <div className="fu-history-header">
+                                  <div className="fu-h-info">
+                                    <span className="fu-h-type">{h.followupType}</span>
+                                    <span className="fu-h-date">{new Date(h.date).toLocaleString()}</span>
+                                  </div>
+                                  <div className="fu-h-status-badge">{h.statusAfterCall || 'None'}</div>
+                                </div>
+                                <div className="fu-h-outcome">
+                                  <Icon name="check-circle" size={14} style={{ color: 'var(--success)' }} />
+                                  <span>Outcome: {h.statusAfterCall || 'None'}</span>
+                                </div>
+                                {h.note && (
+                                  <div className="fu-h-note-box">
+                                    <p className="fu-h-note">"{h.note}"</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+
+                          {totalHPages > 1 && (
+                            <div className="fu-h-pagination">
+                              <button 
+                                className="fu-h-pag-btn" 
+                                disabled={hPage === 1}
+                                onClick={() => setHPage(p => p - 1)}
+                              >
+                                <Icon name="chevron-left" size={14} />
+                              </button>
+                              <span className="fu-h-pag-info">Page {hPage} of {totalHPages}</span>
+                              <button 
+                                className="fu-h-pag-btn" 
+                                disabled={hPage === totalHPages}
+                                onClick={() => setHPage(p => p + 1)}
+                              >
+                                <Icon name="chevron-right" size={14} />
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()
+                  ) : (
+                    <div className="fu-empty-history">No follow-up history found.</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="fu-modal-footer">
-          <button className="fu-btn-secondary-new" onClick={onClose}>Cancel</button>
-          {activeTab === 'form' && (
-            <button className="fu-btn-primary-new" onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Saving...' : 'Save Follow-up'}
-            </button>
-          )}
+        <div className="crm-modal-sheet-footer">
+          <p className="footer-hint">Next interaction is automatically synced to calendar.</p>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <button className="crm-btn-premium glass" onClick={onClose}>Cancel</button>
+            {activeTab === 'form' && (
+              <button className="crm-btn-premium vibrant" onClick={handleSubmit} disabled={loading}>
+                {loading ? 'Saving...' : 'Save Follow-up'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
+
       <style>{`
-        .fu-modal-overlay-new {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(8px);
-          z-index: 10000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 20px;
-        }
-
-        .fu-modal-card-new {
-          background: var(--bg-card);
-          border: 1px solid var(--border);
-          border-radius: 24px;
-          width: 100%;
-          max-width: 800px;
-          max-height: 90vh;
-          display: flex;
-          flex-direction: column;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-          overflow: hidden;
-        }
-
-        .animate-slide-up { animation: fuSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes fuSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-        .fu-modal-header {
-          padding: 24px 32px;
-          border-bottom: 1px solid var(--border);
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .fu-header-left { display: flex; gap: 16px; align-items: center; }
-        .fu-header-icon-main {
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
-          background: var(--primary-soft);
-          color: var(--primary);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .fu-title { font-size: 1.25rem; font-weight: 800; color: var(--text); margin: 0; }
-        .fu-title .highlight { color: var(--primary); }
-        .fu-subtitle { font-size: 0.8rem; color: var(--text-dimmed); margin: 4px 0 0; }
-
-        .fu-close-btn {
-          background: transparent;
-          border: none;
-          color: var(--text-dimmed);
-          cursor: pointer;
-          transition: 0.2s;
-          padding: 8px;
-          border-radius: 50%;
-        }
-        .fu-close-btn:hover { background: var(--bg-surface); color: var(--text); }
-
         .fu-modal-tabs {
           display: flex;
-          padding: 0 32px;
-          background: var(--bg-surface);
+          padding: 0 40px;
+          background: var(--bg-card);
           border-bottom: 1px solid var(--border);
           gap: 24px;
         }
@@ -423,7 +447,7 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
           padding: 16px 4px;
           background: transparent;
           border: none;
-          border-bottom: 2px solid transparent;
+          border-bottom: 3px solid transparent;
           color: var(--text-dimmed);
           font-weight: 700;
           font-size: 0.85rem;
@@ -436,126 +460,230 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave }) {
         .fu-tab:hover { color: var(--text); }
         .fu-tab.active { border-color: var(--primary); color: var(--primary); }
 
-        .fu-modal-body {
-          padding: 32px;
-          overflow-y: auto;
+        .fu-quick-btns { display: flex; gap: 10px; padding-top: 4px; }
+        .fu-quick-chip {
           flex: 1;
-        }
-
-        .fu-form-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 32px;
-        }
-
-        .fu-section { display: flex; flex-direction: column; gap: 16px; }
-        .fu-section.full-width { grid-column: 1 / -1; }
-        .fu-section-title { font-size: 0.75rem; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.1em; margin: 0; }
-
-        .fu-input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .fu-input-group { display: flex; flex-direction: column; gap: 8px; }
-        .fu-input-group label { font-size: 0.8rem; font-weight: 700; color: var(--text); }
-
-        .fu-input-group input, .fu-textarea {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
           background: var(--bg-surface);
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 10px 16px;
-          color: var(--text);
-          font-size: 0.9rem;
-          outline: none;
-          transition: 0.2s;
-        }
-        .fu-input-group input:focus, .fu-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
-
-        .fu-quick-btns { display: flex; gap: 8px; }
-        .fu-quick-btns button {
-          flex: 1;
-          background: var(--bg-surface);
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          padding: 8px;
+          border: 1.5px solid var(--border);
+          border-radius: 10px;
+          padding: 10px;
           font-size: 0.75rem;
-          font-weight: 700;
-          color: var(--text);
+          font-weight: 800;
+          color: var(--text-dimmed);
           cursor: pointer;
-          transition: 0.2s;
+          transition: all 0.2s ease;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
-        .fu-quick-btns button:hover { border-color: var(--primary); color: var(--primary); }
+        .fu-quick-chip:hover { 
+          border-color: var(--primary); 
+          color: var(--primary); 
+          background: var(--primary-soft);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.1);
+        }
+        .fu-quick-chip:active { transform: translateY(0); }
 
         .fu-reminder-toggle { display: flex; align-items: center; gap: 12px; height: 42px; }
         .fu-mini-select { flex: 1; min-width: 0; }
 
-        .fu-outcome-chips { display: flex; flex-wrap: wrap; gap: 10px; }
-        .fu-chip {
-          padding: 8px 16px;
-          border-radius: 20px;
-          border: 1px solid var(--border);
-          background: var(--bg-surface);
-          color: var(--text-dimmed);
-          font-size: 0.8rem;
-          font-weight: 700;
-          cursor: pointer;
-          transition: 0.2s;
-        }
-        .fu-chip:hover { border-color: var(--text-dimmed); color: var(--text); }
-        .fu-chip.active { background: var(--primary); border-color: var(--primary); color: white; }
-
-        .fu-textarea { min-height: 100px; resize: none; width: 100%; }
-
-        .fu-history-list { display: flex; flex-direction: column; gap: 24px; position: relative; padding-left: 20px; }
-        .fu-history-list::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--border); }
-        .fu-history-item { position: relative; }
-        .fu-history-dot { position: absolute; left: -24px; top: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); border: 2px solid var(--bg-card); }
-        .fu-history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .fu-h-type { font-weight: 800; font-size: 0.85rem; color: var(--text); text-transform: uppercase; }
-        .fu-h-date { font-size: 0.75rem; color: var(--text-dimmed); }
-        .fu-h-outcome { font-size: 0.8rem; color: var(--text); margin-bottom: 4px; }
-        .fu-h-note { font-size: 0.85rem; color: var(--text-dimmed); font-style: italic; margin: 0; line-height: 1.5; }
-
-        .fu-modal-footer {
-          padding: 24px 32px;
-          border-top: 1px solid var(--border);
+        .fu-history-list {
           display: flex;
-          justify-content: flex-end;
-          gap: 12px;
-          background: var(--bg-surface);
+          flex-direction: column;
+          gap: 24px;
+          padding: 24px 8px;
+          position: relative;
         }
 
-        .fu-btn-secondary-new {
-          background: transparent;
-          border: 1px solid var(--border);
+        .fu-history-list::before {
+          content: '';
+          position: absolute;
+          left: 27px;
+          top: 0;
+          bottom: 0;
+          width: 2px;
+          background: linear-gradient(to bottom, var(--primary-soft), var(--border), transparent);
+          opacity: 0.5;
+        }
+
+        .fu-history-item {
+          display: flex;
+          gap: 20px;
+          position: relative;
+          z-index: 1;
+        }
+
+        .fu-history-icon-wrapper {
+          width: 40px;
+          height: 40px;
           border-radius: 12px;
-          padding: 10px 24px;
+          background: var(--bg-card);
+          border: 1px solid var(--border-strong);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          box-shadow: var(--shadow-sm);
+          color: var(--primary);
+          transition: all 0.3s;
+        }
+
+        .fu-history-item:hover .fu-history-icon-wrapper {
+          transform: scale(1.1);
+          border-color: var(--primary);
+          background: var(--primary-soft);
+          box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.15);
+        }
+
+        .fu-history-content-card {
+          flex: 1;
+          background: var(--bg-card);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 16px 20px;
+          box-shadow: var(--shadow-sm);
+          transition: all 0.3s;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .fu-history-content-card::after {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: var(--primary);
+          opacity: 0.6;
+        }
+
+        .fu-history-item:hover .fu-history-content-card {
+          transform: translateX(4px);
+          border-color: var(--primary-soft);
+          box-shadow: var(--shadow-md);
+        }
+
+        .fu-history-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 12px;
+        }
+
+        .fu-h-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .fu-h-type {
+          font-size: 0.75rem;
+          font-weight: 800;
+          color: var(--primary);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .fu-h-date {
+          font-size: 0.75rem;
+          color: var(--text-dimmed);
+          font-weight: 600;
+        }
+
+        .fu-h-status-badge {
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 0.7rem;
+          font-weight: 800;
+          background: var(--bg-surface);
+          border: 1px solid var(--border);
+          color: var(--text);
+          text-transform: uppercase;
+        }
+
+        .fu-h-outcome {
+          font-size: 0.85rem;
           color: var(--text);
           font-weight: 700;
-          font-size: 0.9rem;
+          margin-bottom: 8px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .fu-h-note-box {
+          background: var(--bg-surface);
+          border-radius: 10px;
+          padding: 12px;
+          border: 1px solid var(--border-strong);
+        }
+
+        .fu-h-note {
+          font-size: 0.85rem;
+          color: var(--text-dimmed);
+          line-height: 1.6;
+          margin: 0;
+          font-style: italic;
+        }
+
+        .fu-h-pagination {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          margin-top: 20px;
+          padding-top: 20px;
+          border-top: 1px solid var(--border);
+        }
+
+        .fu-h-pag-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--bg-surface);
+          border: 1px solid var(--border);
+          color: var(--text);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .fu-h-pag-btn:hover:not(:disabled) {
+          border-color: var(--primary);
+          color: var(--primary);
+          background: var(--primary-soft);
+        }
+
+        .fu-h-pag-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        .fu-h-pag-info {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: var(--text-dimmed);
+        }
+
+        .fu-close-btn {
+          background: transparent;
+          border: none;
+          color: var(--text-dimmed);
           cursor: pointer;
           transition: 0.2s;
+          padding: 8px;
+          border-radius: 50%;
         }
-        .fu-btn-secondary-new:hover { background: var(--bg-card); border-color: var(--text-dimmed); }
-
-        .fu-btn-primary-new {
-          background: var(--primary);
-          border: none;
-          border-radius: 12px;
-          padding: 10px 32px;
-          color: white;
-          font-weight: 700;
-          font-size: 0.9rem;
-          cursor: pointer;
-          transition: 0.3s;
-          box-shadow: 0 4px 12px var(--primary-soft);
-        }
-        .fu-btn-primary-new:hover { transform: translateY(-2px); box-shadow: 0 8px 20px var(--primary-soft); opacity: 0.9; }
-        .fu-btn-primary-new:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .fu-close-btn:hover { background: var(--bg-surface); color: var(--text); }
 
         .fu-error-msg { color: #ef4444; font-size: 0.8rem; font-weight: 600; text-align: center; }
-
-        @media (max-width: 600px) {
-          .fu-input-row { grid-template-columns: 1fr; }
-          .fu-modal-card-new { border-radius: 0; max-height: 100vh; }
-        }
       `}</style>
     </div>
   )

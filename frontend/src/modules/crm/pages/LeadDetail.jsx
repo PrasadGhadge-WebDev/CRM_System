@@ -11,6 +11,7 @@ import { confirmToast } from '../../../utils/confirmToast.jsx'
 import { useToastFeedback } from '../../../utils/useToastFeedback.js'
 import FollowupModal from '../../../components/FollowupModal.jsx'
 import LeadConversionModal from '../components/LeadConversionModal.jsx'
+import DealModal from '../components/DealModal.jsx'
 
 function displayValue(value, fallback = '—') {
   const text = String(value ?? '').trim()
@@ -73,6 +74,8 @@ export default function LeadDetail() {
   const [isFollowupOpen, setIsFollowupOpen] = useState(false)
   const [followupLead, setFollowupLead] = useState(null)
   const [isConversionOpen, setIsConversionOpen] = useState(false)
+  const [isDealModalOpen, setIsDealModalOpen] = useState(false)
+  const [convertedCustomerId, setConvertedCustomerId] = useState(null)
 
   useToastFeedback({ error })
 
@@ -162,15 +165,29 @@ export default function LeadDetail() {
 
   const nextFollowupLabel = lead?.nextFollowupDate ? formatShortDate(lead.nextFollowupDate, '—') : '—'
 
-  const openFollowup = () => {
+  const isAdminOrManager = currentUser?.role === 'Admin' || currentUser?.role === 'Manager'
+  const isEmployee = currentUser?.role === 'Employee'
+
+  const isAssignedToMe = String(lead?.assignedTo?.id || lead?.assignedTo?._id || '') === String(currentUser?.id || '')
+  const canFollowup = isAdminOrManager || (isEmployee && isAssignedToMe)
+
+  function onFollowup() {
     if (!lead) return
+    if (!canFollowup) return toast.error('You are not authorized to follow up on this lead')
     setFollowupLead(lead)
     setIsFollowupOpen(true)
   }
 
-  function onConvert() {
+  async function onConvert() {
     if (!lead) return
     if (!canEdit) return toast.error('You do not have permission to convert this lead')
+    
+    const confirmed = await confirmToast(`Convert ${lead.name} to a Customer?`, {
+      confirmLabel: 'Convert Now',
+      type: 'primary',
+    })
+    if (!confirmed) return
+    
     setIsConversionOpen(true)
   }
 
@@ -181,6 +198,33 @@ export default function LeadDetail() {
     } else {
       // Reload lead to show converted status
       leadsApi.get(id).then(setLead)
+    }
+  }
+
+  async function onConvertToDeal() {
+    if (!lead) return
+    if (lead.status === 'Converted') {
+      const custId = lead.convertedCustomerId?.id || lead.convertedCustomerId?._id || lead.convertedCustomerId
+      setConvertedCustomerId(custId)
+      setIsDealModalOpen(true)
+    } else {
+      const confirmed = await confirmToast(`Convert ${lead.name} to a Customer and create a Deal?`, {
+        confirmLabel: 'Convert & Create Deal',
+        type: 'primary',
+      })
+      if (!confirmed) return
+
+      try {
+        const res = await leadsApi.update(lead.id || lead._id, { status: 'Converted' })
+        // The backend might return the convertedCustomerId in different places depending on implementation
+        const rawId = res.convertedCustomerId || res.data?.convertedCustomerId
+        const custId = typeof rawId === 'object' ? (rawId.id || rawId._id) : rawId
+        setConvertedCustomerId(custId)
+        setIsDealModalOpen(true)
+        toast.success('Lead converted successfully!')
+      } catch (e) {
+        toast.error('Lead conversion failed')
+      }
     }
   }
 
@@ -225,14 +269,22 @@ export default function LeadDetail() {
           <span>Back to List</span>
         </Link>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="crm-btn-premium" onClick={openFollowup} style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
-            <Icon name="phone" />
-            <span>Add Activity</span>
-          </button>
+          {canFollowup && !isConverted && (
+            <button className="crm-btn-premium" onClick={onFollowup} style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+              <Icon name="phone" />
+              <span>Add Follow-up</span>
+            </button>
+          )}
+          {canEdit && !isConverted && (
+            <button className="crm-btn-premium" onClick={onConvertToDeal} style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+              <Icon name="activity" />
+              <span>Convert to Deal</span>
+            </button>
+          )}
           {canEdit && !isConverted && (
             <button className="crm-btn-premium" onClick={onConvert} style={{ background: 'var(--success)', color: '#ffffff', border: 'none', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
               <Icon name="check" />
-              <span>Convert</span>
+              <span>Convert To Customer</span>
             </button>
           )}
           {canEdit && (
@@ -264,7 +316,7 @@ export default function LeadDetail() {
               </div>
               {isConverted && (
                 <Link 
-                  to={`/customers/${lead.convertedCustomerId?._id || lead.convertedCustomerId?.id || lead.convertedCustomerId}`}
+                  to={`/customers/${lead.convertedCustomerId?.id || lead.convertedCustomerId?._id || lead.convertedCustomerId}`}
                   className="crm-status-pill-modern status-active"
                   style={{ textDecoration: 'none' }}
                 >
@@ -275,6 +327,7 @@ export default function LeadDetail() {
             </div>
 
             <div style={{ display: 'flex', gap: '20px', color: 'var(--text-dimmed)', fontSize: '0.9rem', flexWrap: 'wrap' }}>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Icon name="mail" size={14} />
                 <span>{lead.email || 'No email'}</span>
@@ -411,6 +464,17 @@ export default function LeadDetail() {
         lead={lead}
         onClose={() => setIsConversionOpen(false)}
         onConverted={handleConverted}
+      />
+
+      <DealModal 
+        isOpen={isDealModalOpen}
+        customerId={convertedCustomerId}
+        onClose={() => setIsDealModalOpen(false)}
+        onSave={(newDeal) => {
+          setIsDealModalOpen(false)
+          toast.success('Deal created and linked successfully')
+          navigate('/deals')
+        }}
       />
 
       <style>{`

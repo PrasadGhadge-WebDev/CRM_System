@@ -16,18 +16,25 @@ export const ROLE_GROUPS = {
 }
 
 export const NAV_ACCESS = {
-  dashboard: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.ACCOUNTANT, ROLES.HR],
+  dashboard: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.HR, ROLES.EMPLOYEE],
   users: [ROLES.ADMIN],
   roles: [],
-  employees: [ROLES.HR],
+  employees: [ROLES.ADMIN, ROLES.HR, ROLES.MANAGER],
   leads: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE],
-  deals: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE],
+  deals: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.ACCOUNTANT],
   customers: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.ACCOUNTANT],
-  activities: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE],
+  activities: [ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.HR],
   teamPerformance: [ROLES.ADMIN, ROLES.MANAGER],
   attendance: [ROLES.ADMIN, ROLES.HR],
   leaves: [ROLES.ADMIN, ROLES.HR],
   payroll: [ROLES.ADMIN, ROLES.HR],
+  hr: [ROLES.ADMIN, ROLES.HR],
+  recruitment: [ROLES.ADMIN, ROLES.HR],
+  onboarding: [ROLES.ADMIN, ROLES.HR],
+  performance: [ROLES.ADMIN, ROLES.HR],
+  training: [ROLES.ADMIN, ROLES.HR],
+  hrdocs: [ROLES.ADMIN, ROLES.HR],
+  exitmgmt: [ROLES.ADMIN, ROLES.HR],
   invoices: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT],
   payments: [ROLES.ADMIN, ROLES.ACCOUNTANT],
   expenses: [ROLES.ADMIN, ROLES.ACCOUNTANT],
@@ -36,8 +43,56 @@ export const NAV_ACCESS = {
   notifications: [ROLES.ADMIN],
   settings: [ROLES.ADMIN],
   trash: [ROLES.ADMIN, ROLES.MANAGER],
-  tasks: [ROLES.EMPLOYEE],
   profile: ROLE_GROUPS.allAuthenticated,
+}
+
+const PERMISSION_ALIASES = {
+  support: 'tickets',
+  contacts: 'customers',
+  manageusers: 'users',
+  accesssettings: 'settings',
+}
+
+function normalizePermissionToken(value) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '')
+}
+
+function expandPermissionKeys(permission) {
+  const raw = String(permission ?? '').trim()
+  if (!raw) return []
+
+  const normalized = normalizePermissionToken(raw)
+  const keys = new Set([normalized])
+
+  const parts = raw
+    .toLowerCase()
+    .split('.')
+    .map(part => normalizePermissionToken(part))
+    .filter(Boolean)
+
+  parts.forEach(part => keys.add(part))
+
+  if (parts.length >= 2) {
+    keys.add(`${parts[0]}.${parts[1]}`)
+  }
+
+  const words = raw
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .map(word => normalizePermissionToken(word))
+    .filter(Boolean)
+
+  words.forEach(word => keys.add(word))
+
+  if (words.length >= 2) {
+    keys.add(words[words.length - 1])
+    keys.add(words.slice(-2).join(''))
+  }
+
+  return [...keys].map(key => PERMISSION_ALIASES[key] || key)
 }
 
 export function hasRequiredRole(userRole, allowedRoles) {
@@ -47,26 +102,18 @@ export function hasRequiredRole(userRole, allowedRoles) {
 
 export function hasPermission(user, moduleKey) {
   if (!user) return false
-  const normalizedModuleKey = moduleKey.toLowerCase()
+  const normalizedModuleKey = normalizePermissionToken(moduleKey)
   
   // Check dynamic permissions from database if they exist
   if (user.permissions && Array.isArray(user.permissions)) {
-    if (user.permissions.includes(normalizedModuleKey)) return true
-    
-    // If user is Admin, we might want to still allow everything UNLESS we want to be strict.
-    // The user's request: "if Exits in system and not exsit in my lsit the remove"
-    // This implies strictness.
-    if (user.role === ROLES.ADMIN) {
-        // However, some core things like profile should always be accessible
-        if (['profile', 'dashboard'].includes(normalizedModuleKey)) return true
-        
-        // Check if the permission exists in the database list. 
-        // If the database list exists but doesn't have it, we return false.
-        return false
-    }
+    const grantedKeys = new Set(
+      user.permissions.flatMap(permission => expandPermissionKeys(permission))
+    )
+
+    if (grantedKeys.has(normalizedModuleKey)) return true
   }
 
-  // Fallback for Admins if no explicit database permissions are found
+  // Admins have full access to everything
   if (user.role === ROLES.ADMIN) return true
 
   // Check against NAV_ACCESS mapping for other roles or as fallback
@@ -77,4 +124,3 @@ export function hasPermission(user, moduleKey) {
 
   return false
 }
-

@@ -167,7 +167,7 @@ export default function Timeline({ relatedId, relatedType, defaultView = 'feed' 
       <div className="orchestrator-header">
         <div className="header-title-wrap">
           <Icon name="reports" />
-          <h3>Activity Hub</h3>
+          <h3>Follow-up Hub</h3>
         </div>
         <div className="header-actions-row">
           <div className="view-mode-toggle">
@@ -186,13 +186,6 @@ export default function Timeline({ relatedId, relatedType, defaultView = 'feed' 
              <button className={filter === 'call' ? 'active' : ''} onClick={() => setFilter('call')}>Calls</button>
              <button className={filter === 'status' ? 'active' : ''} onClick={() => setFilter('status')}>Changes</button>
           </div>
-          <button 
-            className={`btn-premium ${showActivityForm ? 'action-secondary' : 'action-vibrant'}`} 
-            onClick={() => setShowActivityForm(!showActivityForm)}
-          >
-            <Icon name={showActivityForm ? 'close' : 'plus'} />
-            <span>Log Activity</span>
-          </button>
         </div>
       </div>
 
@@ -260,10 +253,10 @@ export default function Timeline({ relatedId, relatedType, defaultView = 'feed' 
 
           <div className="form-footer-v2">
              <button type="button" className="btn-cancel" onClick={() => setShowActivityForm(false)}>Cancel</button>
-             <button className="btn-premium action-vibrant">
-               <Icon name="check" size={14} />
-               <span>Log Interaction</span>
-             </button>
+              <button className="btn-premium action-vibrant">
+                <Icon name="check" size={14} />
+                <span>Log Follow-up</span>
+              </button>
           </div>
         </form>
       )}

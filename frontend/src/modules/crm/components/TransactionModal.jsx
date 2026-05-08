@@ -87,8 +87,8 @@ export default function TransactionModal({ isOpen, onClose, invoice, deal, onSav
             <div className="form-field">
               <label>Payment Method</label>
               <select 
-                value={formData.payment_method} 
-                onChange={e => setFormData({ ...formData, payment_method: e.target.value })}
+                value={formData.payment_mode} 
+                onChange={e => setFormData({ ...formData, payment_mode: e.target.value })}
               >
                 <option value="Cash">Cash</option>
                 <option value="UPI">UPI</option>

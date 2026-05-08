@@ -30,6 +30,7 @@ export default function CustomersList() {
   const isAdminOrManager = isAdmin || isManager
 
   const canModify = isAdmin || isManager || isEmployee
+  const isAccountant = currentUser?.role === 'Accountant'
   const canDelete = isAdmin
   const canImportExport = isAdmin || isManager
   const canViewReports = isAdmin || isManager || (currentUser?.role === 'Accountant')
@@ -167,8 +168,21 @@ export default function CustomersList() {
     <div className="stack">
       <section className="crm-fullscreen-shell">
         <div className="users-page-header">
-          <h1 className="users-title">Customers Management</h1>
-          <p className="users-subtitle">Full database of active clients and business partners</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 className="users-title">Customers Management</h1>
+              <p className="users-subtitle">Full database of active clients and business partners</p>
+            </div>
+            {canModify && (
+              <button
+                className="btn-premium action-vibrant"
+                onClick={() => navigate('/customers/new')}
+              >
+                <Icon name="plus" size={16} />
+                <span>Add Customer</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="crm-stats-bar-compact overflow-x-auto pb-8">
@@ -258,35 +272,22 @@ export default function CustomersList() {
               </div>
             )}
 
-            <button
-              className="btn-premium-mini add-user-btn"
-              onClick={() => navigate('/customers/new')}
-            >
-              <Icon name="plus" size={16} />
-              <span>Add Customer</span>
-            </button>
 
             {(filters.q || filters.status || filters.assigned_to || filters.dateRangeType !== 'all') && (
               <button 
                 className="btn-premium-mini reset-btn"
                 onClick={() => {
                   setFilters({
-                    q: '',
-                    status: '',
-                    city: '',
-                    assigned_to: '',
-                    startDate: '',
-                    endDate: '',
-                    dateRangeType: 'all',
-                    sortField: 'created_at',
-                    sortOrder: 'desc',
-                    page: 1,
-                    limit: 20
+                    q: '', status: '', city: '', assigned_to: '',
+                    startDate: '', endDate: '', dateRangeType: 'all',
+                    sortField: 'created_at', sortOrder: 'desc',
+                    page: 1, limit: 20
                   })
                 }}
+                style={{ height: '42px', width: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                title="Reset Filters"
               >
-                <Icon name="refresh" size={14} className="reset-icon" />
-                <span>Reset Filters</span>
+                <Icon name="refresh" size={14} />
               </button>
             )}
           </div>
@@ -386,13 +387,15 @@ export default function CustomersList() {
                             </td>
                             <td className="text-right" onClick={stopRowNavigation}>
                               <div className="crm-action-group">
-                                <button
-                                  className="modern-action-btn"
-                                  onClick={() => navigate(`/customers/${id}/edit`)}
-                                  title="Edit Customer"
-                                >
-                                  <Icon name="edit" size={14} />
-                                </button>
+                                {canModify && (
+                                  <button
+                                    className="modern-action-btn"
+                                    onClick={() => navigate(`/customers/${id}/edit`)}
+                                    title="Edit Customer"
+                                  >
+                                    <Icon name="edit" size={14} />
+                                  </button>
+                                )}
                                 {canDelete && (
                                   <button
                                     className="modern-action-btn danger"

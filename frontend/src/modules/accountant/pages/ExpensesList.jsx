@@ -4,6 +4,7 @@ import { Icon } from '../../../layouts/icons'
 import { expensesApi } from '../../../services/expenses'
 import { formatCurrency } from '../../../utils/formatters'
 import { toast } from 'react-toastify'
+import { useAuth } from '../../../context/AuthContext'
 import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
 import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
 import '../../../styles/leadsList.css'
@@ -13,6 +14,7 @@ export default function ExpensesList() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
@@ -20,12 +22,14 @@ export default function ExpensesList() {
   const limit = 20
   const debouncedQ = useDebouncedValue(q, 500)
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'Admin'
 
   const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true)
       if (viewMode === 'list') {
-        const res = await expensesApi.list({ category, q: debouncedQ, page, limit })
+        const res = await expensesApi.list({ category, status: statusFilter, q: debouncedQ, page, limit })
         setExpenses(res.items || [])
         setTotal(res.total || 0)
       } else {
@@ -37,11 +41,21 @@ export default function ExpensesList() {
     } finally {
       setLoading(false)
     }
-  }, [category, debouncedQ, page, viewMode])
+  }, [category, statusFilter, debouncedQ, page, viewMode])
 
   useEffect(() => {
     fetchExpenses()
   }, [fetchExpenses])
+
+  const handleApprove = async (id) => {
+    try {
+      await expensesApi.update(id, { status: 'Approved', approved_by: user.id })
+      toast.success('Expense approved')
+      fetchExpenses()
+    } catch (err) {
+      toast.error('Approval failed')
+    }
+  }
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this expense?')) return
@@ -58,8 +72,19 @@ export default function ExpensesList() {
     <div className="stack leadsListPage crmContent">
       <section className="leadsFullscreenShell">
         <div className="users-page-header">
-          <h1 className="users-title">Expenses Management</h1>
-          <p className="users-subtitle">Track operational costs and categorize business spending</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 className="users-title">Expenses Management</h1>
+              <p className="users-subtitle">Track operational costs and categorize business spending</p>
+            </div>
+            <button
+              className="btn-premium action-vibrant"
+              onClick={() => navigate('/expenses/new')}
+            >
+              <Icon name="plus" size={16} />
+              <span>Add Expense</span>
+            </button>
+          </div>
         </div>
 
         <div className="crm-stats-bar-compact">
@@ -108,13 +133,15 @@ export default function ExpensesList() {
               </select>
             )}
 
-            <button
-              className="btn-premium-mini add-user-btn"
-              onClick={() => navigate('/expenses/new')}
-            >
-              <Icon name="plus" size={16} />
-              <span>Add Expense</span>
-            </button>
+            {viewMode === 'list' && (
+              <select className="crm-input filter-select" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>
+                <option value="">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            )}
+
 
             {(category) && (
               <button 
@@ -144,12 +171,13 @@ export default function ExpensesList() {
                     <>
                       <thead>
                         <tr>
-                          <th style={{ width: '140px' }}>DATE</th>
-                          <th style={{ width: '160px' }}>CATEGORY</th>
-                          <th style={{ minWidth: '220px' }}>NOTES</th>
-                          <th style={{ width: '140px' }}>TAX</th>
-                          <th style={{ width: '160px' }}>TOTAL AMOUNT</th>
-                          <th className="text-right" style={{ width: '100px' }}>ACTION</th>
+                          <th style={{ width: '120px' }}>DATE</th>
+                          <th style={{ width: '140px' }}>CATEGORY</th>
+                          <th style={{ minWidth: '180px' }}>NOTES</th>
+                          <th style={{ width: '120px' }}>STATUS</th>
+                          <th style={{ width: '120px' }}>TAX</th>
+                          <th style={{ width: '140px' }}>TOTAL AMOUNT</th>
+                          <th className="text-right" style={{ width: '120px' }}>ACTION</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -159,10 +187,18 @@ export default function ExpensesList() {
                               <td><span className="text-sm">{new Date(exp.date).toLocaleDateString()}</span></td>
                               <td><span className="status-pill-modern" style={{ '--pill-color': '#a855f7' }}>{exp.category}</span></td>
                               <td><span className="text-sm muted">{exp.note || 'General'}</span></td>
+                              <td>
+                                <span className={`status-pill-modern ${exp.status === 'Approved' ? 'success' : exp.status === 'Rejected' ? 'danger' : 'warning'}`}>
+                                  {exp.status || 'Pending'}
+                                </span>
+                              </td>
                               <td><span className="font-numeric text-danger">{formatCurrency(exp.tax_amount || 0)}</span></td>
                               <td><span className="font-numeric-bold text-danger">{formatCurrency(exp.amount)}</span></td>
                               <td className="text-right" onClick={e => e.stopPropagation()}>
                                 <div className="tableActions">
+                                  {isAdmin && exp.status !== 'Approved' && (
+                                    <button className="action-btn-mini success" title="Approve" onClick={() => handleApprove(exp._id)}><Icon name="check" size={14} /></button>
+                                  )}
                                   <button className="action-btn-mini" onClick={() => navigate(`/expenses/${exp._id}`)}><Icon name="edit" size={14} /></button>
                                   <button className="action-btn-mini danger" onClick={() => handleDelete(exp._id)}><Icon name="trash" size={14} /></button>
                                 </div>

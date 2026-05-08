@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Icon } from '../../../layouts/icons.jsx'
+import { FiBriefcase } from 'react-icons/fi'
 import { useAuth } from '../../../context/AuthContext'
 
-const STAGES = ['Prospecting', 'Qualification', 'Needs Analysis', 'Proposal', 'Negotiation', 'Won', 'Lost']
+const STAGES = ['New', 'Qualification', 'Proposal', 'Negotiation', 'Won', 'Lost']
 
 const STAGE_COLORS = {
-  'Prospecting': 'info',
+  'New': 'info',
   'Qualification': 'purple',
-  'Needs Analysis': 'blue',
   'Proposal': 'warning',
   'Negotiation': 'orange',
   'Won': 'success',
@@ -19,8 +19,7 @@ export default function DealsKanban({ deals = [], loading, onStatusChange }) {
   const { user } = useAuth()
   const [draggedId, setDraggedId] = useState(null)
   
-  const isAccountant = user?.role === 'Accountant'
-  const canMove = !isAccountant
+  const canMove = ['Admin', 'Manager', 'Employee'].includes(user?.role)
 
   const dealsByStage = STAGES.reduce((acc, stage) => {
     acc[stage] = deals.filter(d => d.stage === stage)
@@ -75,12 +74,12 @@ export default function DealsKanban({ deals = [], loading, onStatusChange }) {
 
             <div className="kanban-cards-stack">
               {dealsByStage[stage].map(deal => (
-                <div 
-                  key={deal.id} 
-                  className="kanban-card"
-                  draggable
-                  onDragStart={() => handleDragStart(deal.id)}
-                >
+                  <div 
+                    key={deal.id} 
+                    className={`kanban-card ${!canMove ? 'no-drag' : ''}`}
+                    draggable={canMove}
+                    onDragStart={() => handleDragStart(deal.id)}
+                  >
                   <div className="card-top">
                     <Link to={`/deals/${deal.id}`} className="card-title">
                       {deal.name}
@@ -94,6 +93,13 @@ export default function DealsKanban({ deals = [], loading, onStatusChange }) {
                     <Icon name="user" size={12} />
                     <span>{deal.customer_id?.name || 'Unknown Client'}</span>
                   </div>
+
+                  {deal.product_service && (
+                    <div className="card-product">
+                      <FiBriefcase size={12} />
+                      <span>{deal.product_service}</span>
+                    </div>
+                  )}
 
                   <div className="card-footer">
                     <div className="card-value">₹{(deal.value || 0).toLocaleString()}</div>
@@ -160,6 +166,9 @@ export default function DealsKanban({ deals = [], loading, onStatusChange }) {
         .card-meta { display: flex; align-items: center; gap: 10px; }
         .card-assignee { width: 24px; height: 24px; border-radius: 8px; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 900; }
         .card-probability { font-size: 0.7rem; font-weight: 800; color: var(--text-dimmed); }
+        
+        .card-product { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text); margin-bottom: 12px; font-weight: 600; opacity: 0.9; }
+        .card-product span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         .kanban-empty-slot { border: 2px dashed rgba(255,255,255,0.05); border-radius: 16px; height: 100px; display: flex; align-items: center; justify-content: center; color: var(--text-dimmed); font-size: 0.8rem; font-weight: 600; opacity: 0.5; }
         

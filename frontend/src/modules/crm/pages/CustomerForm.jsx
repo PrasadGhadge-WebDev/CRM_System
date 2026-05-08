@@ -36,6 +36,7 @@ const INITIAL_CUSTOMER = {
   industry: 'Technology',
   is_vip: false,
   status: 'Active',
+  gst_number: '',
 }
 
 export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) {
@@ -172,7 +173,7 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
     }
   }
 
-  if (loading) return <div className="p-40 text-center text-dimmed">Loading customer details...</div>
+  if (loading) return <div className="p-40 text-center text-dimmed">Loading...</div>
 
   const modalContent = (
     <div className="crm-modal-portal-overlay">
@@ -180,7 +181,7 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
         <div className="crm-modal-sheet-header">
           <div className="sheet-title-area">
             <h2 className="sheet-title">{isEdit ? 'Update Customer' : 'Add New Customer'}</h2>
-            <p className="sheet-subtitle">{isEdit ? `Editing record for ${model.name}` : 'Onboard a new institutional client'}</p>
+            <p className="sheet-subtitle">{isEdit ? `Editing record for ${model.name}` : 'Add a new customer to the system'}</p>
           </div>
         </div>
 
@@ -190,11 +191,11 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <FiUser />
-                <span>Core Identity</span>
+                <span>Customer Info</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field full-width">
-                  <label>Full Entity Name / Organization</label>
+                  <label>Customer Name</label>
                   <div className={`crm-input-group ${fieldErrors.name ? 'error' : ''}`}>
                     <div className="input-icon-box"><FiUser /></div>
                     <input 
@@ -210,7 +211,18 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
                   {fieldErrors.name && <span className="error-text">{fieldErrors.name}</span>}
                 </div>
                 <div className="sheet-field">
-                  <label>Primary Email</label>
+                  <label>GST Number</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiShield /></div>
+                    <input 
+                      value={model.gst_number} 
+                      onChange={e => setModel({ ...model, gst_number: e.target.value.toUpperCase() })} 
+                      placeholder="e.g. 22AAAAA0000A1Z5" 
+                    />
+                  </div>
+                </div>
+                <div className="sheet-field">
+                  <label>Email Address</label>
                   <div className={`crm-input-group ${fieldErrors.email ? 'error' : ''}`}>
                     <div className="input-icon-box"><FiMail /></div>
                     <input 
@@ -227,7 +239,7 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
                   {fieldErrors.email && <span className="error-text">{fieldErrors.email}</span>}
                 </div>
                 <div className="sheet-field">
-                  <label>Secure Phone</label>
+                  <label>Phone Number</label>
                   <div className={`crm-input-group ${fieldErrors.phone ? 'error' : ''}`}>
                     <div className="input-icon-box"><FiPhone /></div>
                     <input 
@@ -249,11 +261,11 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <FiBriefcase />
-                <span>Firmographic Details</span>
+                <span>Business Details</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
-                  <label>Business Sector</label>
+                  <label>Industry</label>
                   <div className="crm-input-group">
                     <div className="input-icon-box"><FiBox /></div>
                     <input 
@@ -264,7 +276,7 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
                   </div>
                 </div>
                 <div className="sheet-field full-width">
-                  <label>Registered Office Address</label>
+                  <label>Office Address</label>
                   <div className="crm-input-group">
                     <div className="input-icon-box"><FiMapPin /></div>
                     <input 
@@ -281,7 +293,7 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
                 <FiShield />
-                <span>Account Governance</span>
+                <span>Account Status</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
@@ -308,7 +320,7 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
                     }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.85rem', margin: 0, textTransform: 'none' }}>
                         <input type="checkbox" checked={model.is_vip} onChange={e => setModel({ ...model, is_vip: e.target.checked })} />
-                        <span>Elevate to VIP Account</span>
+                        <span>Mark as VIP Customer</span>
                       </label>
                     </div>
                   </div>
@@ -319,11 +331,11 @@ export default function CustomerForm({ mode, customerId, onSuccess, onCancel }) 
         </form>
 
         <div className="crm-modal-sheet-footer">
-          <p className="footer-hint">All fields are securely encrypted.</p>
+          <p className="footer-hint">Your data is safe and secure.</p>
           <div style={{ display: 'flex', gap: '16px' }}>
             <button className="crm-btn-premium glass" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
             <button className="crm-btn-premium vibrant" disabled={saving || checking} onClick={handleSubmit}>
-              {saving ? 'Processing...' : isEdit ? 'Save Changes' : 'Create Customer'}
+              {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Customer'}
             </button>
           </div>
         </div>

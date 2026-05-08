@@ -9,15 +9,14 @@ const paymentSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    payment_number: {
+      type: String,
+      index: true,
+    },
     customer_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Customer',
       required: true,
-      index: true,
-    },
-    deal_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Deal',
       index: true,
     },
     invoice_id: {
@@ -25,45 +24,49 @@ const paymentSchema = new mongoose.Schema(
       ref: 'Invoice',
       index: true,
     },
-    payment_number: {
-      type: String,
-      unique: true,
+    deal_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Deal',
       index: true,
     },
-    amount: {
+    total_amount: {
       type: Number,
       required: true,
+      default: 0
     },
-    payment_method: {
-      type: String,
-      enum: ['Cash', 'Card', 'Bank Transfer', 'Online', 'Cheque', 'UPI', 'Other'],
-      default: 'Cash',
+    paid_amount: {
+      type: Number,
+      required: true,
+      default: 0
     },
-    status: {
-      type: String,
-      enum: ['Pending', 'Received', 'Verified', 'Completed', 'Failed', 'Refunded'],
-      default: 'Pending',
-    },
-    cheque_number: {
-      type: String,
-      trim: true,
-    },
-    bank_name: {
-      type: String,
-      trim: true,
-    },
-    received_by: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
-    transaction_id: {
-      type: String,
-      trim: true,
+    pending_amount: {
+      type: Number,
+      default: 0
     },
     payment_date: {
       type: Date,
       default: Date.now,
       index: true,
+    },
+    payment_mode: {
+      type: String,
+      enum: ['UPI', 'Bank Transfer', 'Cash', 'Card', 'Cheque', 'Online', 'Other'],
+      default: 'UPI',
+    },
+    transaction_id: {
+      type: String,
+      trim: true,
+    },
+    status: {
+      type: String,
+      enum: ['Pending', 'Partial', 'Paid', 'Failed', 'Refunded'],
+      default: 'Pending',
+      index: true
+    },
+    collected_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true
     },
     notes: {
       type: String,
@@ -73,15 +76,34 @@ const paymentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
-    approved_by: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
   }
 );
+
+paymentSchema.pre('save', function(next) {
+  // Always update pending amount
+  this.pending_amount = Math.max(0, this.total_amount - this.paid_amount);
+  
+  // Only auto-update status if it's currently one of the flow-based statuses
+  // This prevents overwriting manual terminal states like 'Failed' or 'Refunded'
+  const flowStatuses = ['Pending', 'Partial', 'Paid'];
+  if (flowStatuses.includes(this.status)) {
+    if (this.paid_amount >= this.total_amount && this.total_amount > 0) {
+      this.status = 'Paid';
+    } else if (this.paid_amount > 0) {
+      this.status = 'Partial';
+    } else {
+      this.status = 'Pending';
+    }
+  }
+  
+  next();
+});
+
+
+paymentSchema.index({ company_id: 1, payment_number: 1 }, { unique: true });
 
 withIdTransform(paymentSchema);
 

@@ -6,9 +6,9 @@ const LeadSchema = new mongoose.Schema(
   {
     company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', index: true },
     leadId: { type: String, index: true }, // Format: LD-1001. Removed unique:true to use compound index below
-    firstName: { type: String, required: true, trim: true, index: true },
-    lastName: { type: String, required: true, trim: true, index: true },
-    name: { type: String, required: true, trim: true }, // Combined for display
+    firstName: { type: String, trim: true, index: true },
+    lastName: { type: String, trim: true, index: true },
+    name: { type: String, required: true, trim: true, index: true }, // Unified field for display and tracking
     email: { type: String, required: true, trim: true, lowercase: true, index: true },
     phone: { type: String, required: true, trim: true, index: true },
     alternate_phone: { type: String, trim: true },

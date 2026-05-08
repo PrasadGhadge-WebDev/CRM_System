@@ -46,7 +46,7 @@ function toDateInput(dateStr) {
 const today = new Date().toISOString().split('T')[0]
 
 const emptyUser = {
-  role: 'Employee',
+  role: '',
   name: '',
   email: '',
   username: '',
@@ -160,7 +160,7 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
       if (normalized && !emailRegex.test(normalized)) err = 'Invalid email address'
       else if (!normalized) err = 'Email is required'
     } else if (field === 'username') {
-      if (!normalized) err = 'Username is required'
+      if (!normalized) err = 'Email is required'
     } else if (field === 'password') {
       if (normalized && normalized.length < 6) err = 'Min 6 characters'
       // Also check if it matches confirmPassword if already entered
@@ -171,8 +171,9 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
       }
     } else if (field === 'confirmPassword') {
       if (normalized && normalized !== model.password) err = 'Passwords do not match'
+    } else if (field === 'role') {
+      if (!normalized) err = 'Role is required'
     }
-
     setFieldErrors(p => ({ ...p, [field]: err }))
   }
 
@@ -207,10 +208,11 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
     const errors = {
       name: !model.name.trim() ? 'Full name is required' : '',
       email: !model.email.trim() ? 'Email is required' : '',
-      username: !model.username.trim() ? 'Username is required' : '',
+      username: !model.username.trim() ? 'Email is required' : '',
       phone: !model.phone ? 'Phone is required' : model.phone.length !== 10 ? 'Phone must be 10 digits' : '',
       password: !isEdit && !model.password ? 'Password is required' : (model.password && model.password.length < 6 ? 'Password must be at least 6 characters' : ''),
       confirmPassword: model.password && model.password !== model.confirmPassword ? 'Passwords do not match' : '',
+      role: !model.role ? 'Role is required' : '',
     }
 
     const firstError = Object.values(errors).find(v => v)
@@ -330,13 +332,13 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
                 </div>
                 <div className="form-sheet-grid">
                   <div className="sheet-field full-width">
-                    <label>Username</label>
+                    <label>Email</label>
                     <div className={`crm-input-group ${fieldErrors.username ? 'error' : ''}`}>
-                      <div className="input-icon-box"><FiUser /></div>
+                      <div className="input-icon-box"><FiMail /></div>
                       <input
                         value={model.username}
                         onChange={e => handleChange('username', e.target.value)}
-                        placeholder="Enter username"
+                        placeholder="Enter email"
                         autoComplete="off"
                       />
                     </div>
@@ -371,9 +373,10 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
                 <div className="form-sheet-grid">
                   <div className="sheet-field">
                     <label>Role</label>
-                    <div className="crm-input-group">
+                    <div className={`crm-input-group ${fieldErrors.role ? 'error' : ''}`}>
                       <div className="input-icon-box"><FiShield /></div>
                       <select value={model.role} onChange={e => handleChange('role', e.target.value)}>
+                        <option value="">Select Role</option>
                         {visibleRoleChoices.map(role => (
                           <option key={role.id || role._id || role.name} value={role.name}>{role.name}</option>
                         ))}
@@ -384,6 +387,7 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
                         )}
                       </select>
                     </div>
+                    {fieldErrors.role && <span className="error-text">{fieldErrors.role}</span>}
                   </div>
                   <div className="sheet-field">
                     <label>Status</label>
@@ -436,14 +440,14 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
                       <input type="date" value={model.joining_date} onChange={e => handleChange('joining_date', e.target.value)} />
                     </div>
                   </div>
-                  {!isHR && (
+                  {isAdmin && (
                     <div className="sheet-field">
-                      <label>Manager</label>
+                      <label>Reporting Manager</label>
                       <div className="crm-input-group">
                         <div className="input-icon-box"><FiUser /></div>
                         <select value={model.manager_id} onChange={e => handleChange('manager_id', e.target.value)}>
-                          <option value="">None (Self)</option>
-                          {managers.map(m => <option key={m.id} value={m.id}>{m.name || m.username}</option>)}
+                          <option value="">None (Top Level)</option>
+                          {managers.map(m => <option key={m.id || m._id} value={m.id || m._id}>{m.name || m.username}</option>)}
                         </select>
                       </div>
                     </div>

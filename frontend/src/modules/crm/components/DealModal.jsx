@@ -5,24 +5,36 @@ import { customersApi } from '../../../services/customers.js'
 import { usersApi } from '../../../services/users.js'
 import { dealsApi } from '../../../services/deals.js'
 import { toast } from 'react-toastify'
+import SearchableSelect from './SearchableSelect.jsx'
+import RichTextEditor from '../../../components/RichTextEditor.jsx'
+import { useAuth } from '../../../context/AuthContext'
 
 import { 
   validateRequired, 
   validateNonNegativeNumber 
 } from '../../../utils/formValidation.js'
 
-const STAGES = ['Prospecting', 'Qualification', 'Needs Analysis', 'Proposal', 'Negotiation', 'Won', 'Lost']
+const STAGES = ['New', 'Qualification', 'Proposal', 'Negotiation', 'Won', 'Lost']
 
 export default function DealModal({ deal, isOpen, onClose, onSave, customerId }) {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     customer_id: customerId || '',
     value: 0,
+    currency: 'INR',
     stage: 'New',
+    status: 'Open',
     assigned_to: '',
     expected_close_date: '',
+    next_followup_date: '',
     description: '',
+    product_service: '',
+    quantity: 1,
+    price: 0,
+    discount_percent: 0,
+    notes: '',
     lost_reason: ''
   })
 
@@ -31,34 +43,77 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
   const [fieldErrors, setFieldErrors] = useState({})
 
   useEffect(() => {
-    if (isOpen) {
-      loadInitialData()
+    async function init() {
+      if (!isOpen) return
+      
+      setLoading(true)
       setFieldErrors({})
-      if (deal && deal.id) {
-        setFormData({
-          name: deal.name || '',
-          customer_id: deal.customer_id?.id || deal.customer_id?._id || deal.customer_id || customerId || '',
-          value: deal.value || 0,
-          stage: deal.stage || 'New',
-          assigned_to: deal.assigned_to?.id || deal.assigned_to?._id || deal.assigned_to || '',
-          expected_close_date: deal.expected_close_date ? new Date(deal.expected_close_date).toISOString().split('T')[0] : '',
-          description: deal.description || '',
-          lost_reason: deal.lost_reason || ''
-        })
-      } else {
-        setFormData({
-          name: '',
-          customer_id: customerId || '',
-          value: 0,
-          stage: 'New',
-          assigned_to: '',
-          expected_close_date: '',
-          description: '',
-          lost_reason: ''
-        })
+      await loadInitialData()
+
+      try {
+        let fullDeal = deal
+        // If we only have an ID, fetch the full record
+        if (deal?.id && !deal.name) {
+          fullDeal = await dealsApi.get(deal.id)
+        }
+
+        if (fullDeal && fullDeal.id) {
+          setFormData({
+            name: fullDeal.name || '',
+            customer_id: fullDeal.customer_id?.id || fullDeal.customer_id?._id || fullDeal.customer_id || customerId || '',
+            value: fullDeal.value || 0,
+            currency: fullDeal.currency || 'INR',
+            stage: fullDeal.stage || 'New',
+            status: fullDeal.status || 'Open',
+            assigned_to: fullDeal.assigned_to?.id || fullDeal.assigned_to?._id || fullDeal.assigned_to || '',
+            expected_close_date: fullDeal.expected_close_date ? new Date(fullDeal.expected_close_date).toISOString().split('T')[0] : '',
+            next_followup_date: fullDeal.next_followup_date ? new Date(fullDeal.next_followup_date).toISOString().split('T')[0] : '',
+            description: fullDeal.description || '',
+            product_service: fullDeal.product_service || '',
+            quantity: fullDeal.quantity || 1,
+            price: fullDeal.price || 0,
+            discount_percent: fullDeal.discount_percent || 0,
+            notes: fullDeal.notes || '',
+            lost_reason: fullDeal.lost_reason || ''
+          })
+        } else {
+          setFormData({
+            name: '',
+            customer_id: customerId || '',
+            value: 0,
+            currency: 'INR',
+            stage: 'New',
+            status: 'Open',
+            assigned_to: '',
+            expected_close_date: '',
+            next_followup_date: '',
+            description: '',
+            product_service: '',
+            quantity: 1,
+            price: 0,
+            discount_percent: 0,
+            notes: '',
+            lost_reason: ''
+          })
+        }
+      } catch (err) {
+        toast.error('Failed to load deal intelligence')
+      } finally {
+        setLoading(false)
       }
     }
+    init()
   }, [isOpen, deal, customerId])
+
+  // Auto-calculate Deal Value
+  useEffect(() => {
+    const baseValue = (formData.price || 0) * (formData.quantity || 1)
+    const discountAmount = baseValue * ((formData.discount_percent || 0) / 100)
+    const finalValue = Math.max(0, baseValue - discountAmount)
+    if (formData.value !== finalValue) {
+      setFormData(prev => ({ ...prev, value: finalValue }))
+    }
+  }, [formData.price, formData.quantity, formData.discount_percent])
 
   async function loadInitialData() {
     try {
@@ -67,7 +122,7 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
         usersApi.list({ limit: 'all' })
       ])
       setCustomers(cRes.items || cRes || [])
-      setEmployees(uRes.items || uRes || [])
+      setEmployees((uRes.items || uRes || []).filter(u => u.role !== 'HR'))
     } catch (err) {
       console.error('Failed to load selection data')
     }
@@ -131,7 +186,7 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
         <div className="crm-modal-sheet-header">
           <div className="sheet-title-area">
             <h2 className="sheet-title">{deal?.id ? 'Update Deal' : 'Add New Deal'}</h2>
-            <p className="sheet-subtitle">{deal?.id ? `Modifying transaction for ${formData.name}` : 'Configure a new revenue opportunity'}</p>
+            <p className="sheet-subtitle">{deal?.id ? `Updating deal for ${formData.name}` : 'Create a new deal'}</p>
           </div>
         </div>
 
@@ -141,11 +196,11 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <Icon name="deals" />
-                <span>Opportunity Configuration</span>
+                <span>Deal Information</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field full-width">
-                  <label>Opportunity Name</label>
+                  <label>Deal Name</label>
                   <input
                     className={`crm-input ${fieldErrors.name ? 'error' : ''}`}
                     autoFocus
@@ -161,23 +216,30 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                 </div>
                 <div className="sheet-field">
                   <label>Associated Customer</label>
-                  <select 
-                    className={`crm-input ${fieldErrors.customer_id ? 'error' : ''}`}
+                  <SearchableSelect
                     value={formData.customer_id}
-                    onChange={e => {
-                      setFormData({ ...formData, customer_id: e.target.value })
-                      if (fieldErrors.customer_id) setFieldErrors(prev => ({ ...prev, customer_id: '' }))
+                    onChange={val => {
+                      const selectedCust = customers.find(c => String(c.id || c._id) === String(val));
+                      const updates = { customer_id: val };
+                      
+                      // Auto-fill logic: Get owner from customer/lead
+                      if (selectedCust && selectedCust.assigned_to) {
+                        updates.assigned_to = selectedCust.assigned_to._id || selectedCust.assigned_to;
+                      }
+
+                      setFormData({ ...formData, ...updates });
+                      if (fieldErrors.customer_id) setFieldErrors(prev => ({ ...prev, customer_id: '' }));
                     }}
-                    required
+                    options={customers.map(c => ({ value: c.id || c._id, label: c.name }))}
+                    placeholder="Select Customer..."
+                    icon="user"
                     disabled={!!customerId}
-                  >
-                    <option value="">Select Customer...</option>
-                    {customers.map(c => <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>)}
-                  </select>
+                    error={!!fieldErrors.customer_id}
+                  />
                   {fieldErrors.customer_id && <span className="error-text">{fieldErrors.customer_id}</span>}
                 </div>
                 <div className="sheet-field">
-                  <label>Projected Value (₹)</label>
+                  <label>Amount (₹)</label>
                   <input
                     className={`crm-input ${fieldErrors.value ? 'error' : ''}`}
                     type="number"
@@ -197,42 +259,138 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <Icon name="settings" />
-                <span>Pipeline Metrics</span>
+                <span>Deal Status</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
-                  <label>Sales Stage</label>
-                  <select 
-                    className="crm-input"
+                  <label>Current Stage</label>
+                  <SearchableSelect
                     value={formData.stage}
-                    onChange={e => setFormData({ ...formData, stage: e.target.value })}
-                  >
-                    {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                    onChange={val => {
+                      const updates = { stage: val };
+                      if (val === 'Lost') {
+                        updates.status = 'Closed';
+                      } else if (val !== 'Won') {
+                        updates.status = 'Open';
+                      }
+                      setFormData({ ...formData, ...updates });
+                    }}
+                    options={STAGES.map(s => ({ value: s, label: s }))}
+                    icon="activity"
+                  />
                 </div>
                 <div className="sheet-field">
+                  <label>Deal Status</label>
+                  <SearchableSelect
+                    value={formData.status}
+                    onChange={val => setFormData({ ...formData, status: val })}
+                    options={[{ value: 'Open', label: 'Open' }, { value: 'Closed', label: 'Closed' }]}
+                    icon="flag"
+                  />
+                </div>
+                {formData.stage === 'Lost' && (
+                  <div className="sheet-field full-width">
+                    <label>Reason for Loss</label>
+                    <textarea
+                      className="crm-input"
+                      value={formData.lost_reason}
+                      onChange={e => setFormData({ ...formData, lost_reason: e.target.value })}
+                      placeholder="Why was the deal lost?"
+                      style={{ minHeight: '80px', padding: '12px', marginTop: '8px' }}
+                    />
+                  </div>
+                )}
+                <div className="sheet-field">
                   <label>Assigned Staff</label>
-                  <select 
-                    className={`crm-input ${fieldErrors.assigned_to ? 'error' : ''}`}
+                  <SearchableSelect
                     value={formData.assigned_to}
-                    onChange={e => {
-                      setFormData({ ...formData, assigned_to: e.target.value })
+                    onChange={val => {
+                      setFormData({ ...formData, assigned_to: val })
                       if (fieldErrors.assigned_to) setFieldErrors(prev => ({ ...prev, assigned_to: '' }))
                     }}
-                    required
-                  >
-                    <option value="">Select owner...</option>
-                    {employees.map(u => <option key={u.id || u._id} value={u.id || u._id}>{u.name}</option>)}
-                  </select>
+                    options={employees.map(u => ({ value: u.id || u._id, label: u.name }))}
+                    placeholder="Select owner..."
+                    icon="user"
+                    disabled={!['Admin', 'Manager', 'Employee', 'Accountant'].includes(user?.role)}
+                    error={!!fieldErrors.assigned_to}
+                  />
                   {fieldErrors.assigned_to && <span className="error-text">{fieldErrors.assigned_to}</span>}
                 </div>
                 <div className="sheet-field">
-                  <label>Target Closure Date</label>
+                  <label>Expected Closing Date</label>
                   <input 
                     className="crm-input"
                     type="date" 
                     value={formData.expected_close_date} 
                     onChange={e => setFormData({ ...formData, expected_close_date: e.target.value })} 
+                  />
+                </div>
+                <div className="sheet-field">
+                  <label>Next Follow-up Date</label>
+                  <input 
+                    className="crm-input"
+                    type="date" 
+                    value={formData.next_followup_date} 
+                    onChange={e => setFormData({ ...formData, next_followup_date: e.target.value })} 
+                  />
+                </div>
+                <div className="sheet-field">
+                  <label>Total Value (Calculated)</label>
+                  <input
+                    className="crm-input"
+                    type="number"
+                    value={formData.value}
+                    readOnly
+                    style={{ background: 'var(--bg-surface)', fontWeight: 700 }}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Product Info */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="briefcase" />
+                <span>Product / Service Details</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field full-width">
+                  <label>Product / Service Name</label>
+                  <input
+                    className="crm-input"
+                    value={formData.product_service}
+                    onChange={e => setFormData({ ...formData, product_service: e.target.value })}
+                    placeholder="What are we selling?"
+                  />
+                </div>
+                <div className="sheet-field">
+                  <label>Unit Price (₹)</label>
+                  <input
+                    className="crm-input"
+                    type="number"
+                    value={formData.price}
+                    onChange={e => setFormData({ ...formData, price: Number(e.target.value) })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="sheet-field">
+                  <label>Quantity</label>
+                  <input
+                    className="crm-input"
+                    type="number"
+                    value={formData.quantity}
+                    onChange={e => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                    placeholder="1"
+                  />
+                </div>
+                <div className="sheet-field">
+                  <label>Discount (%)</label>
+                  <input
+                    className="crm-input"
+                    type="number"
+                    value={formData.discount_percent}
+                    onChange={e => setFormData({ ...formData, discount_percent: Number(e.target.value) })}
+                    placeholder="0"
                   />
                 </div>
               </div>
@@ -242,7 +400,7 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
                 <Icon name="info" />
-                <span>Strategic Context</span>
+                <span>More Details</span>
               </div>
               <div className="form-sheet-grid">
                 {formData.stage === 'Lost' && (
@@ -263,13 +421,23 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                   </div>
                 )}
                 <div className="sheet-field full-width">
-                  <label>Internal Intelligence / Notes</label>
+                  <label>Description / Public Details</label>
+                  <div style={{ marginTop: '8px' }}>
+                    <RichTextEditor 
+                      value={formData.description}
+                      onChange={val => setFormData({ ...formData, description: val })}
+                      height="150px"
+                    />
+                  </div>
+                </div>
+                <div className="sheet-field full-width" style={{ marginTop: '24px' }}>
+                  <label>Internal Notes (Private)</label>
                   <textarea 
                     className="crm-input"
-                    style={{ minHeight: '120px' }}
-                    placeholder="Capture any critical information about this transaction..."
-                    value={formData.description}
-                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                    style={{ minHeight: '80px' }}
+                    placeholder="Internal details not visible to customers..."
+                    value={formData.notes}
+                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
                   />
                 </div>
               </div>

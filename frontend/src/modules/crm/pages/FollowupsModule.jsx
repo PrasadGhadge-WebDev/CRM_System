@@ -151,20 +151,14 @@ export default function FollowupsModule() {
             <button 
               className="btn-premium-mini reset-btn"
               onClick={() => {
-                setQ('')
-                setActType('')
-                setActStatus('')
-                setFuMode('')
-                setFuStatus('')
-                setDateRangeType('all')
-                setStartDate('')
-                setEndDate('')
-                setActPage(1)
-                setFuPage(1)
+                setQ(''); setActType(''); setActStatus('');
+                setFuMode(''); setFuStatus(''); setDateRangeType('all');
+                setStartDate(''); setEndDate(''); setActPage(1); setFuPage(1);
               }}
+              style={{ height: '42px', width: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              title="Reset Filters"
             >
-              <Icon name="refresh" size={14} className="reset-icon" />
-              <span>Reset Filters</span>
+              <Icon name="refresh" size={14} />
             </button>
           )}
         </div>

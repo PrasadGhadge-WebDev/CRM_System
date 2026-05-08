@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Company = require('../models/Company');
@@ -6,6 +7,8 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { ensureDefaultAdmin, getDefaultAdminEmail } = require('../utils/defaultAdmin');
 const { seedDemoData } = require('../utils/demoDataSeeder');
 const notifier = require('../utils/notifier');
+const DemoUser = require('../models/DemoUser');
+const SystemSettings = require('../models/SystemSettings');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\d{10}$/;
@@ -21,7 +24,7 @@ const ROLE_ALIASES = {
   employee: 'Employee',
 };
 
-async function seedDefaultRoles(companyId) {
+async function seedDefaultRoles(companyId, options = {}) {
   if (!companyId) return;
   const defaultRoles = [
     {
@@ -57,13 +60,14 @@ async function seedDefaultRoles(companyId) {
   ].map((role) => ({ ...role, company_id: companyId }));
 
   try {
-    await Role.insertMany(defaultRoles, { ordered: false });
+    await Role.insertMany(defaultRoles, { ordered: false, ...options });
   } catch (err) {
     if (err?.code !== 11000) {
       throw err;
     }
   }
 }
+
 
 function normalizeText(value) {
   return String(value ?? '').trim();
@@ -231,10 +235,36 @@ exports.register = asyncHandler(async (req, res, next) => {
   console.log('[Registration] Processed values:', JSON.stringify(values, null, 2));
 
   try {
-    const existingUser = await User.findOne({ email: values.email });
+    // Pre-checks for unique fields to avoid partial registration (company created but user failed)
+    const existingUser = await User.findOne({ 
+      $or: [
+        { email: values.email.toLowerCase() },
+        { phone: values.phone }
+      ]
+    });
+
     if (existingUser) {
-      return res.fail('Email already registered', 400);
+      if (existingUser.email === values.email.toLowerCase()) {
+        return res.fail('Email already registered. Please login or use another email.', 400);
+      }
+      if (existingUser.phone === values.phone) {
+        return res.fail('Phone number already registered. Please use another number.', 400);
+      }
     }
+
+    // 1. Create/Update Demo Entry (Temporary Tracking)
+    await DemoUser.findOneAndUpdate(
+      { email: values.email.toLowerCase() },
+      { 
+        name: values.name,
+        email: values.email.toLowerCase(),
+        phone: values.phone,
+        password: values.password, 
+        company_name: `${values.name}'s Workspace`,
+        role: values.role || 'Admin',
+      },
+      { upsert: true }
+    );
 
     const username = await resolveUniqueUsername(
       values.username,
@@ -245,61 +275,120 @@ exports.register = asyncHandler(async (req, res, next) => {
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + 5);
 
-    // 1. Create a new Company for the registrant
-    console.log('[Registration] Creating company...');
-    const company = await Company.create({
-      company_name: `${values.name}'s Workspace`,
-      email: values.email,
-      phone: values.phone,
-      status: 'active',
-    });
+    let company, user;
 
-    // 2. Create the User linked to this company
-    console.log('[Registration] Creating user linked to company:', company._id);
-    const user = await User.create({
-      username,
-      name: values.name,
-      email: values.email,
-      phone: values.phone,
-      role: values.role,
-      company_id: company._id,
-      status: 'active',
-      password: values.password,
-      is_trial: true,
-      is_demo: true,
-      trial_ends_at: trialEndsAt,
-    });
-
-    // 3. Create Default System Roles for the company
-    console.log('[Registration] Seeding default roles...');
-    await seedDefaultRoles(company._id);
-
-    // 4. Seed the workspace with Demo Entries
-    console.log('[Registration] Seeding demo data for company:', company._id);
-    await seedDemoData(company._id, user._id, 'User');
-
-    // 5. Notify System Admin with Instant Alert
     try {
-      console.log('[Registration] Sending instant admin alert...');
-      await notifier.sendInstantRegistrationAlert(user, company.company_name);
+      // 2. Create a new Company for the registrant
+      console.log('[Registration] Creating company...');
+      company = await Company.create({
+        company_name: `${values.name}'s Workspace`,
+        email: values.email,
+        phone: values.phone,
+        status: 'active',
+      });
 
-      const title = 'New Instant Demo Registration';
-      const message = `A new demo user ${user.name} (${user.email}) has registered and received auto-approval.`;
-      await notifier.notifyAdmin({ title, message });
-    } catch (notifErr) {
-      console.error('[Registration] Failed to send admin notifications:', notifErr);
+      // 3. Create the User linked to this company
+      console.log('[Registration] Creating user linked to company:', company._id);
+      user = await User.create({
+        username,
+        name: values.name,
+        email: values.email,
+        phone: values.phone,
+        role: values.role,
+        company_id: company._id,
+        status: 'active',
+        password: values.password,
+        is_trial: true,
+        is_demo: false,
+        is_profile_complete: true,
+        trial_ends_at: trialEndsAt,
+      });
+
+      // 4. Create Default System Roles for the company
+      console.log('[Registration] Seeding default roles...');
+      await seedDefaultRoles(company._id);
+
+      // 5. Seed the workspace with Demo Entries
+      console.log('[Registration] Seeding demo data for company:', company._id);
+      await seedDemoData(company._id, user._id, 'User');
+
+      // 6. Initialize System Settings for the company
+      console.log('[Registration] Initializing system settings...');
+      await SystemSettings.findOneAndUpdate(
+        { company_id: company._id },
+        {
+          company_id: company._id,
+          companyName: company.company_name,
+          defaultLeadStatus: 'New',
+          leadSources: [
+            { name: 'Google Ads', category: 'Paid' },
+            { name: 'Facebook', category: 'Paid' },
+            { name: 'Organic Search', category: 'Organic' },
+            { name: 'Referral', category: 'Referral' },
+            { name: 'Direct', category: 'Direct' }
+          ],
+          leadStatuses: [
+            { name: 'New', color: '#fbbf24', order: 0, type: 'lead', isDefault: true, isSystem: true },
+            { name: 'Contacted', color: '#3b82f6', order: 1, type: 'lead', isSystem: true },
+            { name: 'Qualified', color: '#8b5cf6', order: 2, type: 'lead', isSystem: true },
+            { name: 'Negotiation', color: '#fb923c', order: 3, type: 'lead', isSystem: true },
+            { name: 'Won', color: '#22c55e', order: 4, type: 'lead', isSystem: true },
+            { name: 'Lost', color: '#ef4444', order: 5, type: 'lead', isSystem: true }
+          ]
+        },
+        { upsert: true, new: true }
+      );
+
+      // --- POST-REGISTRATION (Non-blocking notifications) ---
+      try {
+        console.log('[Registration] Sending notifications...');
+        notifier.sendInstantRegistrationAlert(user, company.company_name).catch(() => {});
+        notifier.notifyAdmin({ 
+          title: 'New Instant Demo Registration', 
+          message: `A new demo user ${user.name} (${user.email}) has registered.` 
+        }).catch(() => {});
+        notifier.sendRegistrationWelcomeEmail(user, company.company_name).catch(() => {});
+      } catch (notifErr) {
+        console.error('[Registration] Notification error:', notifErr.message);
+      }
+
+      console.log('[Registration] Successfully registered and logging in:', user.email);
+      return sendTokenResponse(user, 201, res);
+
+    } catch (error) {
+      // MANUAL ROLLBACK: If any step fails, clean up the company and user
+      console.error('[Registration] Failed during process, performing manual cleanup...');
+      if (user && user._id) {
+        console.log('[Registration] Cleanup: Removing failed user entry');
+        await User.deleteOne({ _id: user._id }).catch(() => {});
+      }
+      if (company && company._id) {
+        console.log('[Registration] Cleanup: Removing failed company entry');
+        await Company.deleteOne({ _id: company._id }).catch(() => {});
+      }
+      
+      throw error;
     }
 
-    // 6. Return success with token (Log them in immediately)
-    console.log('[Registration] Auto-approved and logging in:', user.email);
-    return sendTokenResponse(user, 201, res);
+
   } catch (error) {
     console.error('[Registration] Critical error:', error);
     
     // Specific check for MongoDB duplicate key error (code 11000)
     if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern || {})[0] || 'field';
-      const message = `Duplicate entry for ${field}. Please use a different value.`;
+      let field = 'field';
+      if (error.keyPattern) {
+        // Handle compound indexes: if company_id is part of it, take the other field for better error message
+        const keys = Object.keys(error.keyPattern);
+        field = keys.length > 1 && keys[0] === 'company_id' ? keys[1] : keys[0];
+      } else if (error.message && error.message.includes('index:')) {
+        // Fallback for some mongo versions/drivers
+        const match = error.message.match(/index: (.+?)_1/);
+        if (match) field = match[1];
+      }
+      
+      const niceField = field.charAt(0).toUpperCase() + field.slice(1).replace('_', ' ');
+      const message = `${niceField} already registered. Please use a different value.`;
       return res.fail(message, 400, { duplicateField: field });
     }
 
@@ -308,7 +397,7 @@ exports.register = asyncHandler(async (req, res, next) => {
       const firstError = Object.values(error.errors)[0]?.message || error.message;
       return res.fail(firstError, 400, { validationErrors: error.errors });
     }
-    // Clean up if something failed?
+
     return res.fail(error.message || 'Server error during registration', 500, { 
       error: error.message,
       stack: error.stack 

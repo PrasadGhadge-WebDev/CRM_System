@@ -206,7 +206,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     description,
     priority: priority || 'medium',
     category,
-    status: 'new',
+    status: assigned_to ? 'assigned' : 'open',
     deadline: req.body.deadline || null,
     attachments: req.body.attachments || []
   };
@@ -221,7 +221,56 @@ exports.createTicket = asyncHandler(async (req, res) => {
     ticketData.assigned_to = assigned_to;
   }
 
-  const ticket = await SupportTicket.create(ticketData);
+  const ticket = new SupportTicket(ticketData);
+  ticket.history.push({
+    action: 'Created',
+    performed_by: req.user.id,
+    performed_by_name: req.user.name,
+    details: `Ticket initialized with status: ${ticketData.status}`
+  });
+
+  if (ticketData.assigned_to) {
+    ticket.history.push({
+      action: 'Assigned',
+      performed_by: req.user.id,
+      performed_by_name: req.user.name,
+      details: 'Initial assignment'
+    });
+  }
+
+  await ticket.save();
+
+  // Notifications
+  const { notifyRoleUsers, notifyUser } = require('../utils/notifier');
+  
+  // 1. Notify Admins and Managers of new ticket
+  await notifyRoleUsers({
+    company_id: req.user.company_id,
+    role: 'Admin',
+    title: 'New Support Ticket',
+    message: `A new ticket "${ticket.subject}" has been raised.`,
+    linked_entity_id: ticket._id,
+    linked_entity_type: 'SupportTicket'
+  });
+  await notifyRoleUsers({
+    company_id: req.user.company_id,
+    role: 'Manager',
+    title: 'New Support Ticket',
+    message: `A new ticket "${ticket.subject}" has been raised.`,
+    linked_entity_id: ticket._id,
+    linked_entity_type: 'SupportTicket'
+  });
+
+  // 2. Notify assigned agent if any
+  if (ticket.assigned_to) {
+    await notifyUser({
+      user_id: ticket.assigned_to,
+      title: 'Ticket Assigned',
+      message: `You have been assigned to ticket: ${ticket.subject}`,
+      linked_entity_id: ticket._id,
+      linked_entity_type: 'SupportTicket'
+    });
+  }
 
   const { logActivity } = require('../utils/activityLogger');
   await logActivity({
@@ -274,11 +323,55 @@ exports.updateTicket = asyncHandler(async (req, res) => {
     updateData.closed_at = null;
   }
 
-  const ticket = await SupportTicket.findOneAndUpdate(
-    { _id: req.params.id, company_id: req.user.company_id },
-    updateData,
-    { new: true, runValidators: true }
-  ).populate('customer_id', 'name email').populate('assigned_to', 'name email');
+  // Auto-status update for assignment
+  if (updateData.assigned_to && (!currentTicket.status || currentTicket.status === 'open')) {
+    updateData.status = 'assigned';
+  }
+
+  // History Logging Logic
+  if (updateData.status && updateData.status !== currentTicket.status) {
+    currentTicket.history.push({
+      action: 'Status Changed',
+      performed_by: req.user.id,
+      performed_by_name: req.user.name,
+      details: `Changed from ${currentTicket.status} to ${updateData.status}`
+    });
+  }
+
+  if (updateData.assigned_to && String(updateData.assigned_to) !== String(currentTicket.assigned_to)) {
+    currentTicket.history.push({
+      action: 'Assigned',
+      performed_by: req.user.id,
+      performed_by_name: req.user.name,
+      details: 'Ticket re-assigned'
+    });
+  }
+
+  if (updateData.priority && updateData.priority !== currentTicket.priority) {
+    currentTicket.history.push({
+      action: 'Priority Updated',
+      performed_by: req.user.id,
+      performed_by_name: req.user.name,
+      details: `Changed from ${currentTicket.priority} to ${updateData.priority}`
+    });
+  }
+
+  Object.assign(currentTicket, updateData);
+  const ticket = await currentTicket.save();
+  await ticket.populate('customer_id', 'name email');
+  await ticket.populate('assigned_to', 'name email');
+
+  // Notify new assignee if changed
+  if (updateData.assigned_to && String(updateData.assigned_to) !== String(currentTicket.assigned_to)) {
+    const { notifyUser } = require('../utils/notifier');
+    await notifyUser({
+      user_id: updateData.assigned_to,
+      title: 'Ticket Assigned',
+      message: `You have been assigned to ticket: ${ticket.subject}`,
+      linked_entity_id: ticket._id,
+      linked_entity_type: 'SupportTicket'
+    });
+  }
 
   res.ok(ticket, 'Ticket updated successfully');
 });
@@ -293,8 +386,8 @@ exports.replyToTicket = asyncHandler(async (req, res) => {
     const ticket = await SupportTicket.findOne({ _id: req.params.id, company_id: req.user.company_id });
     if (!ticket) return res.fail('Ticket not found', 404);
 
-    // Auto-update status to in-progress if an Employee/Admin replies to a new ticket
-    if (ticket.status === 'new' && req.user.role !== 'Customer') {
+    // Auto-update status to in-progress if an Employee/Admin replies to an open/assigned ticket
+    if ((ticket.status === 'open' || ticket.status === 'assigned') && req.user.role !== 'Customer') {
         ticket.status = 'in-progress';
     }
 

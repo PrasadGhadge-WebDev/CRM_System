@@ -16,20 +16,25 @@ export default function InvoiceDetail() {
   const navigate = useNavigate()
   const [invoice, setInvoice] = useState(null)
   const [payments, setPayments] = useState([])
+  const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
 
   const canEdit = ['Admin', 'Accountant'].includes(user?.role)
+  const isAdmin = user?.role === 'Admin'
+  const isManager = user?.role === 'Manager'
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [invData, payData] = await Promise.all([
+        const [invData, payData, usersData] = await Promise.all([
           invoicesApi.get(id),
-          paymentsApi.list({ invoice_id: id, limit: 100 })
+          paymentsApi.list({ invoice_id: id, limit: 100 }),
+          api.get('/api/users?limit=200')
         ])
         setInvoice(invData)
         setPayments(payData.items || [])
+        setUsers((usersData.items || []).filter(u => u.role !== 'HR'))
       } catch (err) {
         toast.error('Failed to load bill details')
         navigate('/invoices')
@@ -199,40 +204,59 @@ export default function InvoiceDetail() {
 
         {/* Snapshot Table Card */}
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Bill Snapshot</h3>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Follow-up & Assignment</h3>
+            {(isAdmin || isManager) && (
+              <span className="text-xs muted font-bold" style={{ background: 'var(--primary-soft)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '4px' }}>
+                MANAGER CONTROL
+              </span>
+            )}
           </div>
-          <div style={{ padding: '0' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>📅</span> Bill Date
+          <div style={{ padding: '20px 24px' }}>
+            <div className="stack gap-4">
+              <div className="sheet-field">
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: '8px' }}>Assign To (Collection Agent)</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select 
+                    className="crm-input" 
+                    value={invoice.assigned_to?._id || invoice.assigned_to || ''} 
+                    onChange={async (e) => {
+                      const val = e.target.value;
+                      try {
+                        await invoicesApi.update(id, { assigned_to: val });
+                        setInvoice({ ...invoice, assigned_to: val });
+                        toast.success('Assignment updated');
+                      } catch (err) { toast.error('Failed to update assignment'); }
+                    }}
+                    disabled={!isAdmin && !isManager}
+                  >
+                    <option value="">Unassigned</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                    ))}
+                  </select>
                 </div>
-                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{new Date(invoice.invoice_date).toLocaleDateString()}</div>
               </div>
-              <div style={{ padding: '20px 24px' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>⚠️</span> Due Date
-                </div>
-                <div style={{ fontWeight: 600, color: remaining > 0 ? 'var(--danger)' : 'var(--text)' }}>{new Date(invoice.due_date).toLocaleDateString()}</div>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>👤</span> Client Name
-                </div>
-                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{invoice.customer_info?.name || 'N/A'}</div>
-              </div>
-              <div style={{ padding: '20px 24px' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>⚙️</span> Associated Deal
-                </div>
-                <div style={{ fontWeight: 600, color: 'var(--primary)' }}>
-                   {invoice.deal_id ? (
-                      <Link to={`/deals/${invoice.deal_id.id || invoice.deal_id}`} style={{ color: 'var(--primary)' }}>{invoice.deal_id.name || 'View Deal'}</Link>
-                   ) : 'No Deal'}
-                </div>
+
+              <div className="sheet-field">
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: '8px' }}>Next Follow-up Date</label>
+                <input 
+                  type="date" 
+                  className="crm-input" 
+                  value={invoice.next_follow_up ? new Date(invoice.next_follow_up).toISOString().split('T')[0] : ''} 
+                  onChange={async (e) => {
+                    const val = e.target.value;
+                    try {
+                      await invoicesApi.update(id, { next_follow_up: val });
+                      setInvoice({ ...invoice, next_follow_up: val });
+                      toast.success('Follow-up date set');
+                    } catch (err) { toast.error('Failed to update follow-up'); }
+                  }}
+                  disabled={!isAdmin && !isManager}
+                />
+                {invoice.next_follow_up && new Date(invoice.next_follow_up) < new Date() && (
+                  <div className="text-xs font-bold" style={{ color: 'var(--danger)', marginTop: '4px' }}>⚠️ Follow-up Overdue</div>
+                )}
               </div>
             </div>
           </div>

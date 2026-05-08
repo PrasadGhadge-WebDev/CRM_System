@@ -22,7 +22,6 @@ const invoiceSchema = new mongoose.Schema(
     },
     invoice_number: {
       type: String,
-      unique: true,
       required: true,
       index: true,
     },
@@ -106,6 +105,13 @@ const invoiceSchema = new mongoose.Schema(
       email: String,
       address: String,
     },
+    assigned_to: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    next_follow_up: {
+      type: Date,
+    },
     created_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -115,6 +121,8 @@ const invoiceSchema = new mongoose.Schema(
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
   }
 );
+
+invoiceSchema.index({ company_id: 1, invoice_number: 1 }, { unique: true });
 
 withIdTransform(invoiceSchema);
 

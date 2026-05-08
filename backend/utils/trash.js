@@ -52,6 +52,11 @@ async function moveDocumentToTrash({ entityType, document, deletedBy, data: expl
   if (!document) return null;
 
   const data = explicitData || (typeof document.toObject === 'function' ? document.toObject() : { ...document });
+  const entityId = document._id ? String(document._id) : (data._id ? String(data._id) : (data.id ? String(data.id) : null));
+  
+  if (entityId && entityId !== 'undefined') {
+    data._id = entityId;
+  }
   delete data.id;
 
   await TrashEntry.findOneAndUpdate(

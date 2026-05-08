@@ -46,6 +46,17 @@ export default function PasswordInput({
         .password-input-wrap {
           position: relative;
         }
+        
+        /* Hide native browser password reveal icons (Edge, Chrome, etc.) */
+        .password-input-wrap input::-ms-reveal,
+        .password-input-wrap input::-ms-clear {
+          display: none !important;
+        }
+        
+        .password-input-wrap input::-webkit-credentials-store-password-eye {
+          display: none !important;
+        }
+
         .password-toggle-btn {
           background: none;
           border: none;

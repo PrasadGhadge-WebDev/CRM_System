@@ -141,36 +141,47 @@ exports.sendLeadAssignmentNotification = async ({ lead, assignee_id, assignee_mo
 
       emailQueue.add({
         to: user.email,
-        subject: `[Lead Alert] ${lead.name} assigned to you`,
-        text: `Hello ${user.name},\n\nA new lead has been assigned to you.\n\nLead Details:\n- Name: ${lead.name}\n- Phone: ${lead.phone || 'N/A'}\n- Source: ${lead.source || 'N/A'}\n- Current Status: ${lead.status || 'New'}\n- Assigned By: ${assigner_name || 'Admin'}\n\nRecommended Action Steps:\n${stepsListText}\n\nPlease log in to the CRM: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/leads/${lead._id}`,
+        subject: `🚨 [CRM] New Lead: ${lead.name} assigned to you`,
+        text: `Hello ${user.name},\n\nA new lead has been assigned to you by ${assigner_name || 'Admin'}.\n\nLead Details:\n- Name: ${lead.name}\n- Email: ${lead.email || 'N/A'}\n- Phone: ${lead.phone || 'N/A'}\n- Company: ${lead.company || 'N/A'}\n- Source: ${lead.source || 'N/A'}\n- Status: ${lead.status || 'New'}\n\nNotes:\n${lead.notes || 'No initial notes provided.'}\n\nRecommended Action Steps:\n${stepsListText}\n\nView Lead: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/leads/${lead._id}`,
         html: `
-          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-            <div style="background: linear-gradient(135deg, #2563eb, #1e40af); color: #fff; padding: 30px; text-align: center;">
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <div style="background: linear-gradient(135deg, #4f46e5, #3730a3); color: #fff; padding: 30px; text-align: center;">
+              <div style="font-size: 32px; margin-bottom: 10px;">👤</div>
               <h2 style="margin: 0; font-size: 24px;">New Lead Assigned</h2>
-              <p style="margin-top: 10px; opacity: 0.9;">High-priority prospect requires your attention</p>
+              <p style="margin-top: 10px; opacity: 0.9;">A high-potential prospect is waiting for you</p>
             </div>
             
             <div style="padding: 30px; background: #fff;">
               <p>Hello <b>${user.name}</b>,</p>
-              <p>You have been assigned as the primary officer for a new lead. Please review the details below:</p>
+              <p>An administrator has assigned a new lead to your pipeline. Here are the prospect's details:</p>
               
-              <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border-left: 4px solid #2563eb; margin: 20px 0;">
-                <p style="margin: 0 0 10px 0; font-weight: bold; color: #1e40af; text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em;">Prospect Details</p>
+              <div style="background: #f8fafc; padding: 25px; border-radius: 12px; border-left: 5px solid #4f46e5; margin: 20px 0;">
+                <p style="margin: 0 0 15px 0; font-weight: bold; color: #3730a3; text-transform: uppercase; font-size: 12px; letter-spacing: 0.1em;">Prospect Intelligence</p>
                 <table style="width: 100%; border-collapse: collapse;">
-                  <tr><td style="padding: 4px 0; color: #64748b; width: 100px;">Name:</td><td><b>${lead.name}</b></td></tr>
-                  <tr><td style="padding: 4px 0; color: #64748b;">Phone:</td><td>${lead.phone || 'N/A'}</td></tr>
-                  <tr><td style="padding: 4px 0; color: #64748b;">Source:</td><td><span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 11px;">${lead.source || 'N/A'}</span></td></tr>
-                  <tr><td style="padding: 4px 0; color: #64748b;">Status:</td><td><b>${lead.status || 'New'}</b></td></tr>
+                  <tr><td style="padding: 6px 0; color: #64748b; width: 110px;">Full Name:</td><td><b>${lead.name}</b></td></tr>
+                  <tr><td style="padding: 6px 0; color: #64748b;">Email:</td><td><a href="mailto:${lead.email}" style="color: #4f46e5; text-decoration: none;">${lead.email || 'N/A'}</a></td></tr>
+                  <tr><td style="padding: 6px 0; color: #64748b;">Phone:</td><td><a href="tel:${lead.phone}" style="color: #4f46e5; text-decoration: none;">${lead.phone || 'N/A'}</a></td></tr>
+                  <tr><td style="padding: 6px 0; color: #64748b;">Company:</td><td><b>${lead.company || 'N/A'}</b></td></tr>
+                  <tr><td style="padding: 6px 0; color: #64748b;">Source:</td><td><span style="background: #e0e7ff; color: #3730a3; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: bold;">${lead.source || 'N/A'}</span></td></tr>
                 </table>
               </div>
 
+              ${lead.notes ? `
+                <div style="margin-bottom: 25px;">
+                  <p style="margin: 0 0 10px 0; font-weight: bold; color: #4b5563;">Strategic Notes:</p>
+                  <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 15px; border-radius: 8px; font-size: 14px; color: #92400e; font-style: italic;">
+                    "${lead.notes}"
+                  </div>
+                </div>
+              ` : ''}
+
               <div style="margin-top: 25px;">
-                <p style="margin: 0 0 15px 0; font-weight: bold; color: #1e40af;">Recommended Action Steps:</p>
+                <p style="margin: 0 0 15px 0; font-weight: bold; color: #4f46e5;">Your Action Plan:</p>
                 <ul style="padding-left: 0; list-style: none;">
                   ${steps.map((s, i) => `
                     <li style="margin-bottom: 12px; display: flex; align-items: flex-start;">
-                      <span style="background: #2563eb; color: #fff; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-right: 12px; flex-shrink: 0; margin-top: 2px;">${i+1}</span>
-                      <span>${s}</span>
+                      <span style="background: #4f46e5; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-right: 12px; flex-shrink: 0; margin-top: 2px;">${i+1}</span>
+                      <span style="font-size: 14px;">${s}</span>
                     </li>
                   `).join('')}
                 </ul>
@@ -178,14 +189,15 @@ exports.sendLeadAssignmentNotification = async ({ lead, assignee_id, assignee_mo
 
               <div style="text-align: center; margin-top: 40px;">
                 <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/leads/${lead._id}" 
-                   style="display: inline-block; background: #2563eb; color: #fff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
-                   View Lead in CRM
+                   style="display: inline-block; background: #4f46e5; color: #fff; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: bold; box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);">
+                   Open Lead Workspace
                 </a>
               </div>
             </div>
 
-            <div style="background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6;">
-              This is an automated operational alert. Do not reply to this email.
+            <div style="background: #f9fafb; padding: 20px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #f3f4f6;">
+              This is an automated performance alert from CRM System.<br/>
+              Assigned by: ${assigner_name || 'System Administrator'}
             </div>
           </div>
         `,
@@ -201,7 +213,7 @@ exports.sendLeadAssignmentNotification = async ({ lead, assignee_id, assignee_mo
  * User Welcome Email with Password Reset Link
  */
 exports.sendWelcomeEmailWithResetLink = async (userEmail, userName, resetToken, role, frontendUrl) => {
-  const title = 'Welcome to CEM System - Account Created';
+  const title = 'Welcome to CRM System - Account Created';
   const resetUrl = `${frontendUrl || 'http://localhost:5173'}/reset-password/${resetToken}`;
 
   const roleSteps = {
@@ -218,12 +230,12 @@ exports.sendWelcomeEmailWithResetLink = async (userEmail, userName, resetToken, 
     emailQueue.add({
       to: userEmail,
       subject: title,
-      text: `Hello ${userName},\n\nAn administrator has added you to CEM System as a ${role}.\n\nPlease click the link below to set your password and activate your account:\n${resetUrl}\n\nNote: This link will expire in 60 minutes.\n\nNext Steps:\n1. Set your password\n2. Complete your profile\n3. Start using ${roleSpecificSteps}\n\nBest regards,\nCEM System Admin`,
+      text: `Hello ${userName},\n\nAn administrator has added you to CRM System as a ${role}.\n\nPlease click the link below to set your password and activate your account:\n${resetUrl}\n\nNote: This link will expire in 60 minutes.\n\nNext Steps:\n1. Set your password\n2. Complete your profile\n3. Start using ${roleSpecificSteps}\n\nBest regards,\nCRM System Admin`,
       html: `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
           <div style="background: linear-gradient(135deg, #3b82f6, #1e40af); color: #fff; padding: 30px; text-align: center;">
             <div style="font-size: 40px; margin-bottom: 10px;">👋</div>
-            <h2 style="margin: 0; font-size: 24px;">Welcome to CEM System</h2>
+            <h2 style="margin: 0; font-size: 24px;">Welcome to CRM System</h2>
             <p style="margin-top: 10px; opacity: 0.9;">You are now part of our team</p>
           </div>
           
@@ -264,8 +276,8 @@ exports.sendWelcomeEmailWithResetLink = async (userEmail, userName, resetToken, 
 /**
  * User Creation Notification (Email + In-App)
  */
-exports.sendUserCreationEmail = async (userEmail, userName, tempPassword, role, frontendUrl) => {
-  const title = 'Your CEM System Account is Ready';
+exports.sendUserCreationEmail = async (userEmail, userName, tempPassword, role, frontendUrl, username) => {
+  const title = 'Your CRM System Account is Ready';
   const loginUrl = `${frontendUrl || 'http://localhost:5173'}/login`;
 
   const roleSteps = {
@@ -282,12 +294,12 @@ exports.sendUserCreationEmail = async (userEmail, userName, tempPassword, role, 
     emailQueue.add({
       to: userEmail,
       subject: title,
-      text: `Hello ${userName},\n\nAn administrator has added you to CEM System as a ${role}.\n\nYour Login Credentials:\n📧 Email: ${userEmail}\n🔑 Temporary Password: ${tempPassword}\n\nNext Steps:\n1. Log in: ${loginUrl}\n2. Change your password\n3. Complete your profile\n4. Access ${roleSpecificSteps}\n\nBest regards,\nCEM System Admin`,
+      text: `Hello ${userName},\n\nAn administrator has added you to CRM System as a ${role}.\n\nYour Login Credentials:\n👤 Username: ${username || userEmail}\n📧 Email: ${userEmail}\n🔑 Password: ${tempPassword}\n\nNext Steps:\n1. Log in: ${loginUrl}\n2. Change your password\n3. Complete your profile\n4. Access ${roleSpecificSteps}\n\nBest regards,\nCRM System Admin`,
       html: `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
           <div style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 30px; text-align: center;">
             <div style="font-size: 40px; margin-bottom: 10px;">🎉</div>
-            <h2 style="margin: 0; font-size: 24px;">Welcome to CEM System</h2>
+            <h2 style="margin: 0; font-size: 24px;">Welcome to CRM System</h2>
             <p style="margin-top: 10px; opacity: 0.9;">Your account has been successfully created</p>
           </div>
           
@@ -298,45 +310,43 @@ exports.sendUserCreationEmail = async (userEmail, userName, tempPassword, role, 
             <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px dashed #10b981; margin: 20px 0;">
               <p style="margin: 0 0 10px 0; font-weight: bold; color: #059669; text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em;">Your Login Credentials</p>
               <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="padding: 6px 0; color: #64748b; width: 140px;">Email:</td><td><b>${userEmail}</b></td></tr>
-                <tr><td style="padding: 6px 0; color: #64748b;">Temp Password:</td><td><code style="background: #fff; padding: 2px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: bold; color: #b91c1c;">${tempPassword}</code></td></tr>
-                <tr><td style="padding: 6px 0; color: #64748b;">Role:</td><td><span style="background: #dcfce7; color: #065f46; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">${role}</span></td></tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-size: 14px; width: 100px;">Username:</td>
+                  <td style="padding: 8px 0; font-family: monospace; font-weight: bold; font-size: 15px;">${username || '-'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-size: 14px; width: 100px;">Email:</td>
+                  <td style="padding: 8px 0; font-family: monospace; font-weight: bold; font-size: 15px;">${userEmail}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Password:</td>
+                  <td style="padding: 8px 0; font-family: monospace; font-weight: bold; font-size: 15px; color: #059669;">${tempPassword}</td>
+                </tr>
               </table>
             </div>
 
-            <div style="margin-top: 25px;">
-              <p style="margin: 0 0 15px 0; font-weight: bold; color: #059669;">Next Steps:</p>
-              <ul style="padding-left: 0; list-style: none;">
-                <li style="margin-bottom: 12px; display: flex; align-items: flex-start;">
-                  <span style="background: #10b981; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-right: 12px; flex-shrink: 0; margin-top: 2px;">1</span>
-                  <span>Click the button below to log in.</span>
-                </li>
-                <li style="margin-bottom: 12px; display: flex; align-items: flex-start;">
-                  <span style="background: #10b981; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-right: 12px; flex-shrink: 0; margin-top: 2px;">2</span>
-                  <span><b>Important:</b> For security reasons, please change your password immediately after logging in.</span>
-                </li>
-                <li style="margin-bottom: 12px; display: flex; align-items: flex-start;">
-                  <span style="background: #10b981; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-right: 12px; flex-shrink: 0; margin-top: 2px;">3</span>
-                  <span>Complete your personal profile (Phone, Address, etc.).</span>
-                </li>
-                <li style="margin-bottom: 12px; display: flex; align-items: flex-start;">
-                  <span style="background: #10b981; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-right: 12px; flex-shrink: 0; margin-top: 2px;">4</span>
-                  <span>Access <b>${roleSpecificSteps}</b> based on your assigned role.</span>
-                </li>
-              </ul>
-            </div>
-
-            <div style="text-align: center; margin-top: 40px;">
+            <div style="text-align: center; margin: 30px 0;">
               <a href="${loginUrl}" 
-                 style="display: inline-block; background: #10b981; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);">
-                 Click Here to Log In
+                 style="display: inline-block; background: #10b981; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
+                 Login to your Workspace
               </a>
             </div>
+
+            <div style="background: #fdf2f2; padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444; margin-bottom: 25px;">
+              <p style="margin: 0; font-size: 13px; color: #991b1b;">
+                <b>Security Note:</b> Please change your password immediately after your first login to keep your account secure.
+              </p>
+            </div>
+
+            <p style="margin-bottom: 5px;">As a <b>${role}</b>, you can manage:</p>
+            <ul style="margin-top: 0; padding-left: 20px; font-size: 14px; color: #475569;">
+              <li>${roleSpecificSteps}</li>
+              <li>Your personal profile and notification settings.</li>
+            </ul>
           </div>
 
           <div style="background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6;">
-            This is an automated email. Please do not reply.<br/>
-            &copy; ${new Date().getFullYear()} CEM System Admin Team.
+            &copy; ${new Date().getFullYear()} CRM System Admin Team.
           </div>
         </div>
       `
@@ -359,7 +369,7 @@ exports.notifyAdmin = async ({ title, message, data = {} }) => {
   console.log('--------------------------');
 
   try {
-    await Promise.all(adminEmails.map(email => sendEmail({
+    adminEmails.forEach(email => emailQueue.add({
       to: email,
       subject: `[CRM ALERT] ${title}`,
       text: message,
@@ -372,9 +382,9 @@ exports.notifyAdmin = async ({ title, message, data = {} }) => {
           <p style="font-size: 0.9rem; color: #666;">Check your CRM dashboard for more details.</p>
         </div>
       `,
-    })));
+    }));
   } catch (err) {
-    console.error('Failed to send admin email:', err.message);
+    console.error('Failed to queue admin email:', err.message);
   }
 
   const hasTwilio = process.env.TWILIO_SID && process.env.TWILIO_TOKEN;
@@ -404,7 +414,7 @@ exports.sendAdminRegistrationEmail = async (user, approvalToken) => {
   const adminEmails = process.env.CONTACT_EMAIL ? [process.env.CONTACT_EMAIL, 'prasadghadge748@gmail.com'] : ['prasadghadge2212@gmail.com', 'prasadghadge748@gmail.com'];
   const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/users`;
 
-  await Promise.all(adminEmails.map(email => sendEmail({
+  adminEmails.forEach(email => emailQueue.add({
     to: email,
     subject: `[CRM] New Demo User Registration Request`,
     text: `A new demo user ${user.name} (${user.email}) has registered.\nReview in dashboard: ${dashboardUrl}`,
@@ -426,7 +436,7 @@ exports.sendAdminRegistrationEmail = async (user, approvalToken) => {
         </div>
       </div>
     `,
-  })));
+  }));
 };
 
 exports.sendInstantRegistrationAlert = async (user, companyName) => {
@@ -434,7 +444,7 @@ exports.sendInstantRegistrationAlert = async (user, companyName) => {
   const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`;
   const timestamp = new Date().toLocaleString();
 
-  await Promise.all(adminEmails.map(email => sendEmail({
+  adminEmails.forEach(email => emailQueue.add({
     to: email,
     subject: `🚀 [CRM] Instant Demo Access: ${user.name}`,
     text: `A new demo user has registered and gained instant access.\n\n` +
@@ -472,12 +482,12 @@ exports.sendInstantRegistrationAlert = async (user, companyName) => {
         </div>
       </div>
     `,
-  })));
+  }));
 };
 
 exports.sendUserApprovalEmail = async (user) => {
   const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`;
-  await sendEmail({
+  emailQueue.add({
     to: user.email,
     subject: 'Welcome to Our CRM System',
     text: `Hello ${user.name},\nYour account has been approved. Log in here: ${loginUrl}`,
@@ -491,8 +501,48 @@ exports.sendUserApprovalEmail = async (user) => {
   });
 };
 
+exports.sendRegistrationWelcomeEmail = async (user, companyName) => {
+  const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`;
+  
+  try {
+    emailQueue.add({
+      to: user.email,
+      subject: 'Welcome to CRM System - Demo Access Granted',
+      text: `Hello ${user.name},\n\nThank you for registering for a demo of CRM System.\n\nYour workspace "${companyName}" is now ready.\n\nYou can log in here: ${loginUrl}\n\nBest regards,\nCRM System Team`,
+      html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #6366f1, #4338ca); color: #fff; padding: 30px; text-align: center;">
+            <h2 style="margin: 0; font-size: 24px;">Welcome to CRM System</h2>
+            <p style="margin-top: 10px; opacity: 0.9;">Your demo workspace is ready</p>
+          </div>
+          
+          <div style="padding: 30px; background: #fff;">
+            <p>Hello <b>${user.name}</b>,</p>
+            <p>Thank you for registering. Your workspace <b>${companyName}</b> has been successfully created and seeded with sample data to help you get started.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${loginUrl}" 
+                 style="display: inline-block; background: #6366f1; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                 Launch Your Workspace
+              </a>
+            </div>
+
+            <p style="font-size: 14px; color: #64748b;">If you have any questions, feel free to reply to this email.</p>
+          </div>
+
+          <div style="background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6;">
+            &copy; ${new Date().getFullYear()} CRM System Team
+          </div>
+        </div>
+      `
+    });
+  } catch (err) {
+    console.error('Registration welcome email failed:', err.message);
+  }
+};
+
 exports.sendUserRejectionEmail = async (user) => {
-  await sendEmail({
+  emailQueue.add({
     to: user.email,
     subject: 'Registration Request Update',
     text: `Hello ${user.name},\nUnfortunately, your registration request was rejected.`,

@@ -384,27 +384,28 @@
 .back-btn-modern {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 20px;
-  border-radius: 12px;
-  background: var(--primary-soft);
-  border: 1px solid var(--border-strong);
-  color: var(--primary);
+  gap: 10px;
+  padding: 10px 24px;
+  border-radius: 14px;
+  background: rgba(79, 70, 229, 0.08);
+  border: 2px solid #4f46e5;
+  color: #4f46e5;
   font-weight: 800;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
   text-decoration: none;
+  cursor: pointer;
 }
 
 .back-btn-modern:hover {
-  background: var(--primary);
-  color: white !important;
-  border-color: var(--primary);
-  transform: translateX(-5px);
-  box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);
+  background: #4f46e5;
+  color: #ffffff !important;
+  border-color: #4f46e5;
+  transform: translateX(-6px);
+  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
 }
 
 @media (max-width: 1024px) {
@@ -493,3 +494,77 @@
     max-width: 100%;
   }
 }
+
+.crm-action-btn-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--bg-elevated-rgb), 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.crm-action-btn-circle:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--primary);
+  border-color: var(--primary);
+  transform: scale(1.1);
+}
+
+/* More Actions Dropdown */
+
+.crm-more-actions-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.crm-dropdown-content {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: white;
+  min-width: 180px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  z-index: 100;
+  padding: 8px;
+  margin-top: 8px;
+}
+
+.crm-more-actions-dropdown:hover .crm-dropdown-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.crm-dropdown-content button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.crm-dropdown-content button:hover {
+  background: var(--bg-hover);
+  color: var(--primary);
+  transform: translateX(4px);
+}
+

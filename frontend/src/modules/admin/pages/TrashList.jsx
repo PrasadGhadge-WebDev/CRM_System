@@ -117,13 +117,12 @@ export default function TrashList() {
               <button 
                 className="btn-premium-mini reset-btn"
                 onClick={() => {
-                  setDateRangeType('all')
-                  setStartDate('')
-                  setEndDate('')
+                  setDateRangeType('all'); setStartDate(''); setEndDate('');
                 }}
+                style={{ height: '42px', width: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                title="Reset Filters"
               >
-                <Icon name="refresh" size={14} className="reset-icon" />
-                <span>Reset Filters</span>
+                <Icon name="refresh" size={14} />
               </button>
             )}
           </div>

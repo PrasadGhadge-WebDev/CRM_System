@@ -227,8 +227,23 @@ export default function UsersList() {
     <div className="stack">
       <section className="crm-fullscreen-shell">
         <div className="users-page-header">
-          <h1 className="users-title">Users Management</h1>
-          <p className="users-subtitle">Overview of team access and identity control</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 className="users-title">Users Management</h1>
+              <p className="users-subtitle">Overview of team access and identity control</p>
+            </div>
+            <button
+              className="btn-premium action-vibrant"
+              onClick={() => {
+                const next = new URLSearchParams(searchParams)
+                next.set('add', 'true')
+                setSearchParams(next)
+              }}
+            >
+              <Icon name="plus" size={16} />
+              <span>Add User</span>
+            </button>
+          </div>
         </div>
 
         <div className="crm-stats-bar-compact overflow-x-auto pb-8">
@@ -296,30 +311,18 @@ export default function UsersList() {
               <option value="pending">Pending</option>
             </select>
 
-            <button
-              className="btn-premium-mini add-user-btn"
-              onClick={() => {
-                const next = new URLSearchParams(searchParams)
-                next.set('add', 'true')
-                setSearchParams(next)
-              }}
-            >
-              <Icon name="plus" size={16} />
-              <span>Add User</span>
-            </button>
 
             {(q || role || status) && (
               <button 
                 className="btn-premium-mini reset-btn"
                 onClick={() => {
-                  setQ('')
-                  setRole('')
-                  setStatus('')
-                  setPage(1)
+                  setQ(''); setRole(''); setStatus('');
+                  setPage(1);
                 }}
+                style={{ height: '42px', width: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                title="Reset Filters"
               >
-                <Icon name="refresh" size={14} className="reset-icon" />
-                <span>Reset Filters</span>
+                <Icon name="refresh" size={14} />
               </button>
             )}
 

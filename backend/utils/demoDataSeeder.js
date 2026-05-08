@@ -10,7 +10,7 @@ const Order = require('../models/Order');
 const SupportTicket = require('../models/SupportTicket');
 const Notification = require('../models/Notification');
 
-const seedDemoData = async (companyId, userId, userModel = 'User') => {
+const seedDemoData = async (companyId, userId, userModel = 'User', options = {}) => {
   if (!userId) {
     console.error('[Seeder] Error: userId is required for seeding.');
     return;
@@ -110,8 +110,8 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
     const createdLeads = [];
     for (const lead of leadsData) {
       try {
-        const created = await Lead.create(lead);
-        createdLeads.push(created);
+        const created = await Lead.create([lead], options);
+        createdLeads.push(created[0]);
       } catch (err) {
         console.error('Lead seeding failed for:', lead.email, 'Error:', err.message);
         throw err;
@@ -173,7 +173,10 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
         assigned_to_model: targetUserModel,
       },
     ];
-    const createdCustomers = await Customer.insertMany(customersData);
+    const createdCustomers = [];
+    for (const customer of customersData) {
+      createdCustomers.push(await Customer.create([customer], options).then(res => res[0]));
+    }
 
     // 3. Create Sample Deals
     const dealsData = [
@@ -218,7 +221,10 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
         assigned_to_model: targetUserModel,
       },
     ];
-    const createdDeals = await Deal.insertMany(dealsData);
+    const createdDeals = [];
+    for (const deal of dealsData) {
+      createdDeals.push(await Deal.create([deal], options).then(res => res[0]));
+    }
 
     // 4. Create Sample Products
     const productsData = [
@@ -253,7 +259,10 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
         status: 'active',
       },
     ];
-    const createdProducts = await Product.insertMany(productsData);
+    const createdProducts = [];
+    for (const product of productsData) {
+      createdProducts.push(await Product.create([product], options).then(res => res[0]));
+    }
 
     // 5. Create Sample Orders
     const ordersData = [
@@ -283,7 +292,10 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
         notes: 'Awaiting finance approval.',
       },
     ];
-    const createdOrders = await Order.insertMany(ordersData);
+    const createdOrders = [];
+    for (const order of ordersData) {
+      createdOrders.push(await Order.create([order], options).then(res => res[0]));
+    }
 
     // 6. Create Sample Support Tickets
     const supportTicketsData = [
@@ -310,7 +322,9 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
         category: 'Billing',
       },
     ];
-    await SupportTicket.insertMany(supportTicketsData);
+    for (const ticket of supportTicketsData) {
+      await SupportTicket.create([ticket], options);
+    }
 
     // 7. Create Sample Activities
     const activitiesData = [
@@ -358,7 +372,9 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
         due_date: new Date(Date.now() + 3 * 86400000),
       },
     ];
-    await Activity.insertMany(activitiesData);
+    for (const activity of activitiesData) {
+      await Activity.create([activity], options);
+    }
 
     // 8. Create Sample Notes
     const notesData = [
@@ -387,7 +403,9 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
         created_by_model: targetUserModel,
       },
     ];
-    await Note.insertMany(notesData);
+    for (const note of notesData) {
+      await Note.create([note], options);
+    }
 
     const leadNotesData = [
       {
@@ -412,7 +430,9 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
         note: 'Prospect is interested in patient reminders and dashboard analytics.',
       },
     ];
-    await LeadNote.insertMany(leadNotesData);
+    for (const leadNote of leadNotesData) {
+      await LeadNote.create([leadNote], options);
+    }
 
     // 9. Create Sample Notifications
     const notificationsData = [
@@ -450,7 +470,9 @@ const seedDemoData = async (companyId, userId, userModel = 'User') => {
         linked_entity_type: 'Customer',
       },
     ];
-    await Notification.insertMany(notificationsData);
+    for (const notification of notificationsData) {
+      await Notification.create([notification], options);
+    }
 
     console.log(`Demo data successfully seeded for company ${companyId}`);
   } catch (error) {

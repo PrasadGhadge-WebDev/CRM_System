@@ -33,6 +33,7 @@ export default function SupportList() {
   const [error, setError] = useState('')
   const [summary, setSummary] = useState({ total: 0, byStatus: {} })
   const [agents, setAgents] = useState([])
+  const [selectedItems, setSelectedItems] = useState([])
 
   const [filters, setFilters] = useState({
     q: searchParams.get('q') || '',
@@ -44,6 +45,7 @@ export default function SupportList() {
     sortField: searchParams.get('sortField') || 'created_at',
     sortOrder: searchParams.get('sortOrder') || 'desc',
     limit: Math.min(100, Math.max(1, Number(searchParams.get('limit')) || 20)),
+    page: Number(searchParams.get('page')) || 1,
     startDate: searchParams.get('startDate') || '',
     endDate: searchParams.get('endDate') || '',
     assigned_to: searchParams.get('assigned_to') || '',
@@ -134,37 +136,109 @@ export default function SupportList() {
     }
   }
 
-  async function onUpdateStatus(id, newStatus) {
+  const handleAssign = async (id, agentId) => {
+    if (!id || !agentId) return
     try {
-      await supportApi.update(id, { status: newStatus })
-      toast.success(`Status updated to ${newStatus}`)
-      setItems(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item))
+      await supportApi.update(id, { assigned_to: agentId })
+      toast.success('Agent assigned successfully')
+      loadTickets()
     } catch (err) {
-      toast.error(err.message || 'Update failed')
+      toast.error('Failed to assign agent')
     }
   }
 
-  const handleFilterChange = (newFilters) => {
-    setFilters(prev => ({ ...prev, ...newFilters, page: 1 }))
+  const onUpdateStatus = async (id, newStatus) => {
+    try {
+      await supportApi.update(id, { status: newStatus })
+      toast.success(`Ticket status updated to ${newStatus}`)
+      loadTickets()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update status')
+    }
   }
 
-  const resetFilters = () => {
-    setFilters({
-      q: '',
-      status: '',
-      priority: '',
-      category: (isAccountant ? 'Billing' : ''),
-      is_escalated: false,
-      customer_is_vip: '',
-      sortField: 'created_at',
-      sortOrder: 'desc',
-      page: 1,
-      limit: 20,
-      startDate: '',
-      endDate: '',
-      assigned_to: '',
-      dateRangeType: 'all'
+  const onUpdatePriority = async (id, newPriority) => {
+    try {
+      await supportApi.update(id, { priority: newPriority })
+      toast.success(`Ticket priority updated to ${newPriority}`)
+      loadTickets()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update priority')
+    }
+  }
+
+  const formatTicketDate = (date) => {
+    if (!date) return '—'
+    return new Date(date).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric'
     })
+  }
+
+  const formatRelativeTime = (date) => {
+    if (!date) return '—'
+    const now = new Date()
+    const past = new Date(date)
+    const diffMs = now - past
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays}d ago`
+    return formatTicketDate(date)
+  }
+
+  const getOverdueText = (deadline, status) => {
+    if (!deadline || status === 'resolved' || status === 'closed') return null
+    const now = new Date()
+    const dl = new Date(deadline)
+    if (now < dl) return null
+    
+    const diffMs = now - dl
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffHours / 24)
+    
+    if (diffDays > 0) return `Overdue by ${diffDays}d`
+    return `Overdue by ${diffHours}h`
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedItems.length === items.length) {
+      setSelectedItems([])
+    } else {
+      setSelectedItems(items.map(t => t.id || t._id))
+    }
+  }
+
+  const toggleSelectItem = (e, id) => {
+    e.stopPropagation()
+    setSelectedItems(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    )
+  }
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedItems.length} tickets?`)) return
+    try {
+      await Promise.all(selectedItems.map(id => supportApi.remove(id)))
+      toast.success('Selected tickets deleted')
+      setSelectedItems([])
+      loadTickets()
+    } catch { toast.error('Failed to delete some tickets') }
+  }
+
+  const handleBulkStatus = async (status) => {
+    try {
+      await Promise.all(selectedItems.map(id => supportApi.update(id, { status })))
+      toast.success('Statuses updated')
+      setSelectedItems([])
+      loadTickets()
+    } catch { toast.error('Bulk update failed') }
   }
 
   return (
@@ -205,8 +279,10 @@ export default function SupportList() {
 
             <select className="crm-input filter-select" value={filters.status} onChange={(e) => handleFilterChange({ status: e.target.value })}>
               <option value="">All Statuses</option>
-              <option value="new">New</option>
+              <option value="open">Open</option>
+              <option value="assigned">Assigned</option>
               <option value="in-progress">In-Progress</option>
+              <option value="waiting">Waiting</option>
               <option value="resolved">Resolved</option>
               <option value="closed">Closed</option>
             </select>
@@ -215,7 +291,7 @@ export default function SupportList() {
               <select className="crm-input filter-select" value={filters.assigned_to} onChange={(e) => handleFilterChange({ assigned_to: e.target.value })}>
                 <option value="">All Agents</option>
                 {agents.filter(a => a.role !== 'Customer').map(a => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
+                  <option key={a.id || a._id} value={a.id || a._id}>{a.name}</option>
                 ))}
               </select>
             )}
@@ -265,20 +341,22 @@ export default function SupportList() {
               <button 
                 className="btn-premium-mini reset-btn" 
                 onClick={resetFilters}
+                style={{ height: '42px', width: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                 title="Reset all filters"
               >
-                <Icon name="refresh" size={14} className="reset-icon" />
-                <span>Reset Filters</span>
+                <Icon name="refresh" size={14} />
               </button>
             )}
 
-            <button
-              className="btn-premium-mini add-user-btn"
-              onClick={() => navigate('/tickets/new')}
-            >
-              <Icon name="plus" size={16} />
-              <span>Add Ticket</span>
-            </button>
+            {user?.role !== 'HR' && (
+              <button
+                className="btn-premium-mini add-user-btn"
+                onClick={() => navigate('/tickets/new')}
+              >
+                <Icon name="plus" size={16} />
+                <span>Add Ticket</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -288,153 +366,203 @@ export default function SupportList() {
           <LottieLoader message="Synchronizing support tickets..." />
         ) : (
           <>
+            {selectedItems.length > 0 && (
+              <div className="bulk-actions-bar animate-fade-in shadow-soft">
+                <div className="bulk-count">
+                  <span className="count-badge">{selectedItems.length}</span>
+                  <span>Tickets Selected</span>
+                </div>
+                <div className="bulk-ops">
+                  <select className="bulk-select" onChange={(e) => handleBulkStatus(e.target.value)}>
+                    <option value="">Update Status...</option>
+                    <option value="open">Open</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                  <button className="bulk-btn danger" onClick={handleBulkDelete}>
+                    <Icon name="trash" size={14} />
+                    <span>Delete</span>
+                  </button>
+                  <button className="bulk-btn secondary" onClick={() => setSelectedItems([])}>Cancel</button>
+                </div>
+              </div>
+            )}
+
             {items.length === 0 ? (
-              <LottieEmpty 
-                message="No tickets found" 
-                description="Your search criteria didn't match any support tickets. Try broader keywords or clearing filters." 
-              />
+              <div className="empty-state-card shadow-soft">
+                <LottieEmpty 
+                  message="No Tickets Found" 
+                  description="Your search criteria didn't match any support tickets. Try broader keywords or clearing filters." 
+                />
+                {!isCustomer && (
+                  <button className="btn-premium add-user-btn" onClick={() => navigate('/tickets/new')} style={{ marginTop: '20px' }}>
+                    <Icon name="plus" size={18} />
+                    <span>Raise New Ticket</span>
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                 <div className="crm-table-scroll">
                   <table className="crm-table">
                     <thead style={{ background: 'var(--bg-surface)' }}>
                       <tr>
-                        <th style={{ color: 'var(--text-dimmed)' }}>TICKET</th>
+                        <th style={{ width: '40px' }}>
+                          <input type="checkbox" checked={selectedItems.length === items.length && items.length > 0} onChange={toggleSelectAll} />
+                        </th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>TICKET ID</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>SUBJECT</th>
-                        <th style={{ color: 'var(--text-dimmed)' }}>CATEGORY</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>CUSTOMER</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>PRIORITY</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>STATUS</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>ASSIGNED TO</th>
-                        <th style={{ color: 'var(--text-dimmed)' }}>CREATED</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>DEADLINE</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>CREATED</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>UPDATED</th>
                         <th className="text-right" style={{ color: 'var(--text-dimmed)' }}>ACTIONS</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {items.map((t) => (
+                      {items.map((t) => {
+                        const overdueText = getOverdueText(t.deadline, t.status)
+                        return (
                         <tr 
-                          key={t.id}
-                          className={`crm-table-row ${t.is_escalated ? 'row-escalated' : ''}`}
-                          onClick={() => navigate(`/tickets/${t.id}`)}
+                          key={t.id || t._id}
+                          className={`crm-table-row ${overdueText ? 'row-overdue' : ''} ${selectedItems.includes(t.id || t._id) ? 'row-selected' : ''}`}
+                          onClick={() => navigate(`/tickets/${t.id || t._id}`)}
+                          style={{ cursor: 'pointer' }}
                         >
+                          <td onClick={stopRowNavigation}>
+                            <input 
+                              type="checkbox" 
+                              checked={selectedItems.includes(t.id || t._id)} 
+                              onChange={(e) => toggleSelectItem(e, t.id || t._id)} 
+                            />
+                          </td>
                           <td>
-                            <span style={{ fontWeight: 600, color: 'var(--text)' }}>
-                              {t.ticket_id}
+                            <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.85rem' }}>
+                              {String(t.ticket_id).startsWith('TCK') ? t.ticket_id : `TCK-${t.ticket_id}`}
                             </span>
                           </td>
                           <td>
-                            <div className="flex items-center gap-12">
-                              <div className="support-info">
-                                <div className="support-subject" style={{ fontWeight: 800, color: 'var(--text)' }}>
-                                  {t.subject}
-                                  {t.is_sla_breached && <span className="sla-tag-mini">SLA BREACH</span>}
-                                </div>
-                                {t.attachments?.length > 0 && (
-                                  <div className="support-meta" style={{ marginTop: '4px' }}>
-                                    <span className="attachment-indicator" title={`${t.attachments.length} attachments`}>
-                                      <Icon name="paperclip" size={10} />
-                                      <span style={{ fontSize: '0.7rem', marginLeft: '2px' }}>{t.attachments.length}</span>
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
+                            <div className="support-subject-group">
+                              <Link 
+                                to={`/tickets/${t.id || t._id}`} 
+                                className="support-subject-link"
+                                title={t.subject}
+                              >
+                                {t.subject}
+                              </Link>
+                              {overdueText && (
+                                <span className="sla-tag-overdue">
+                                  <Icon name="clock" size={10} />
+                                  {overdueText}
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td>
-                            <span className="crm-status-pill info" style={{ fontSize: '0.75rem' }}>{t.category || 'General'}</span>
+                            <div className="customer-info-compact">
+                              <div className="customer-name-mini">{t.customer_id?.name || 'Unknown'}</div>
+                              <div className="customer-type-mini">{t.customer_id?.customer_type || 'Individual'}</div>
+                            </div>
                           </td>
-                           {!isCustomer && (
-                            <td>
-                              <div className="customer-info">
-                                <div className="customer-name" style={{ fontWeight: 700, fontSize: '0.85rem' }}>
-                                  {t.customer_id?.name || 'Unknown'}
-                                </div>
-                                <div className="customer-meta" style={{ fontSize: '0.7rem', color: 'var(--text-dimmed)' }}>
-                                  {t.customer_id?.company_name || 'Individual'}
-                                </div>
-                              </div>
-                            </td>
-                           )}
-
-                           {!isAccountant && (
-                            <td>
-                              <span className={`priority-badge-modern ${t.priority?.toLowerCase()}`}>
-                                {t.priority?.toUpperCase() || 'MEDIUM'}
-                              </span>
-                            </td>
-                           )}
+                          <td onClick={stopRowNavigation}>
+                            <StatusDropdown 
+                              status={t.priority || 'medium'} 
+                              options={[
+                                { name: 'high', color: '#dc2626' },
+                                { name: 'medium', color: '#d97706' },
+                                { name: 'low', color: '#059669' }
+                              ]} 
+                              onChange={(newPriority) => onUpdatePriority(t.id || t._id, newPriority)}
+                              disabled={!canManage}
+                              bypassRules={true}
+                              className="priority-dropdown-mini"
+                            />
+                          </td>
 
                           <td onClick={stopRowNavigation}>
                             <StatusDropdown 
                               status={t.status} 
                               options={[
-                                { name: 'new', color: '#3b82f6' },
+                                { name: 'open', color: '#3b82f6' },
+                                { name: 'assigned', color: '#8b5cf6' },
                                 { name: 'in-progress', color: '#f59e0b' },
+                                { name: 'waiting', color: '#ec4899' },
                                 { name: 'resolved', color: '#10b981' },
                                 { name: 'closed', color: '#64748b' }
                               ]} 
-                              onChange={(newStatus) => onUpdateStatus(t.id, newStatus)}
+                              onChange={(newStatus) => onUpdateStatus(t.id || t._id, newStatus)}
                               disabled={!canManage}
                             />
                           </td>
 
-                          {!isCustomer && !isAccountant && (
-                            <td>
-                              <div className="agent-select-container">
-                                {isManager ? (
-                                  <select 
-                                    className="agent-inline-select"
-                                    value={t.assigned_to?._id || ''}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onChange={(e) => handleAssign(t._id, e.target.value)}
-                                  >
-                                    <option value="">Unassigned</option>
-                                    {agents.map(a => (
-                                      <option key={a._id} value={a._id}>{a.name}</option>
-                                    ))}
-                                  </select>
-                                ) : (
-                                  <div className="agent-name-static">
-                                    {t.assigned_to?.name || 'Not Assigned'}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          )}
-
                           <td>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
-                                {new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              </span>
-                              <span style={{ fontSize: '11px', color: 'var(--text-dimmed)', marginTop: '2px' }}>
-                                {new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
+                            <div className="agent-avatar-group" title={`${t.assigned_to?.name || 'Unassigned'} - ${t.assigned_to?.role || 'Agent'}`}>
+                              <div className="agent-avatar-circle">
+                                {t.assigned_to?.name?.charAt(0) || <Icon name="user" size={12} />}
+                              </div>
+                              <div className="agent-info-stack">
+                                <span className="agent-name-text">{t.assigned_to?.name?.split(' ')[0] || 'Unassigned'}</span>
+                                <span className="agent-role-text">{t.assigned_to?.role || 'Agent'}</span>
+                              </div>
                             </div>
                           </td>
 
                           <td>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <span style={{ fontSize: '13px', fontWeight: 600, color: new Date(t.deadline) < new Date() ? 'var(--danger)' : 'var(--text)' }}>
-                                {t.deadline ? new Date(t.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Deadline'}
-                              </span>
-                              {t.deadline && (
-                                <span style={{ fontSize: '11px', color: 'var(--text-dimmed)', marginTop: '2px' }}>
-                                  {new Date(t.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              )}
+                            <div className={`deadline-text ${overdueText ? 'text-danger' : ''}`}>
+                              {t.deadline ? formatTicketDate(t.deadline) : '—'}
+                            </div>
+                          </td>
+
+                          <td>
+                            <div className="time-stack" title={formatTicketDate(t.created_at)}>
+                              <span className="time-relative">{formatRelativeTime(t.created_at)}</span>
+                            </div>
+                          </td>
+
+                          <td>
+                            <div className="time-stack" title={formatTicketDate(t.updated_at)}>
+                              <span className="time-relative dimmed">{formatRelativeTime(t.updated_at)}</span>
                             </div>
                           </td>
 
                           <td className="text-right" onClick={(e) => e.stopPropagation()}>
-                             <div className="crm-action-group">
-                               <button className="crm-action-btn" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }} onClick={() => navigate(`/tickets/${t.id}/edit`)}><Icon name="edit" /></button>
-                               {isAdmin && <button className="crm-action-btn danger" onClick={(e) => handleDelete(e, t.id)}><Icon name="trash" /></button>}
+                             <div className="crm-action-group-compact">
+                               <button 
+                                 className="modern-action-btn-mini" 
+                                 onClick={() => navigate(`/tickets/${t.id || t._id}/edit`)}
+                                 title="Edit Ticket Details"
+                               >
+                                 <Icon name="edit" size={12} />
+                               </button>
+                               
+                               {(isAdmin || isManager) && t.status !== 'closed' && (
+                                 <button 
+                                   className="modern-action-btn-mini success" 
+                                   onClick={() => onUpdateStatus(t.id || t._id, 'closed')}
+                                   title="Verify & Resolve Ticket"
+                                 >
+                                   <Icon name="check" size={12} />
+                                 </button>
+                               )}
+
+                               {isAdmin && (
+                                 <button 
+                                   className="modern-action-btn-mini danger" 
+                                   onClick={(e) => handleDelete(e, t.id || t._id)}
+                                   title="Permanently Delete"
+                                 >
+                                   <Icon name="trash" size={12} />
+                                 </button>
+                               )}
                              </div>
                           </td>
                         </tr>
-                      ))}
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -443,13 +571,18 @@ export default function SupportList() {
           </>
         )}
 
-        <Pagination 
-          page={filters.page} 
-          limit={filters.limit} 
-          total={total} 
-          onPageChange={(p) => setFilters(prev => ({ ...prev, page: p }))} 
-          onLimitChange={(l) => setFilters(prev => ({ ...prev, limit: l, page: 1 }))}
-        />
+        <div className="pagination-wrapper animate-fade-in shadow-soft">
+          <div className="pagination-info">
+            Showing <span className="highlight">{items.length > 0 ? (filters.page - 1) * filters.limit + 1 : 0}</span> to <span className="highlight">{Math.min(filters.page * filters.limit, total)}</span> of <span className="highlight">{total}</span> tickets
+          </div>
+          <Pagination 
+            page={filters.page} 
+            limit={filters.limit} 
+            total={total} 
+            onPageChange={(p) => setFilters(prev => ({ ...prev, page: p }))} 
+            onLimitChange={(l) => setFilters(prev => ({ ...prev, limit: l, page: 1 }))}
+          />
+        </div>
       </section>
 
 
@@ -492,6 +625,12 @@ export default function SupportList() {
          .crm-table th { padding: 12px 16px !important; border-bottom: 2px solid var(--border-strong) !important; color: var(--text-dimmed) !important; font-weight: 800 !important; font-size: 0.7rem !important; }
          .crm-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--border-strong) !important; vertical-align: middle; }
          
+         .crm-action-group { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+         .modern-action-btn { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: var(--bg-surface); border: 1px solid var(--border-strong); color: var(--text); cursor: pointer; transition: all 0.2s; padding: 0; }
+         .modern-action-btn:hover { background: var(--bg-hover); border-color: var(--primary); color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+         .modern-action-btn.success:hover { border-color: var(--success); color: var(--success); }
+         .modern-action-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+
          .support-avatar { position: relative; width: 38px; height: 38px; border-radius: 10px; background: var(--bg-surface); border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--primary); }
          .sla-breach-pulse { border-color: var(--danger); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); animation: sla-pulse 2s infinite; }
          @keyframes sla-pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
@@ -500,6 +639,50 @@ export default function SupportList() {
          .support-subject { display: flex; align-items: center; gap: 4px; }
          .attachment-indicator { margin-left: 8px; color: var(--text-dimmed); display: inline-flex; align-items: center; background: var(--bg-surface); border: 1px solid var(--border-strong); padding: 2px 4px; border-radius: 4px; }
          
+         .crm-table tr:hover { background: var(--bg-hover) !important; }
+         .row-overdue { background: rgba(239, 68, 68, 0.03) !important; }
+         .row-overdue:hover { background: rgba(239, 68, 68, 0.06) !important; }
+         .row-selected { background: var(--primary-soft) !important; }
+
+         .support-subject-group { display: flex; flex-direction: column; gap: 4px; }
+         .support-subject-link { color: var(--text); font-weight: 700; text-decoration: none; font-size: 0.85rem; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; transition: color 0.2s; }
+         .support-subject-link:hover { color: var(--primary); text-decoration: underline; }
+         
+         .sla-tag-overdue { background: var(--danger-soft); color: var(--danger); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; width: fit-content; }
+         
+         .customer-info-compact { display: flex; flex-direction: column; }
+         .customer-name-mini { font-weight: 700; font-size: 0.85rem; color: var(--text); }
+         .customer-type-mini { font-size: 0.7rem; color: var(--text-dimmed); font-weight: 600; }
+
+         .agent-avatar-group { display: flex; align-items: center; gap: 10px; }
+         .agent-avatar-circle { width: 28px; height: 28px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; border: 1px solid var(--primary-border); }
+         .agent-info-stack { display: flex; flex-direction: column; line-height: 1.2; }
+         .agent-name-text { font-size: 0.8rem; font-weight: 700; color: var(--text); }
+         .agent-role-text { font-size: 0.65rem; color: var(--text-dimmed); font-weight: 600; }
+
+         .time-stack { display: flex; flex-direction: column; }
+         .time-relative { font-size: 0.8rem; font-weight: 700; color: var(--text); }
+         .time-relative.dimmed { color: var(--text-dimmed); }
+
+         .bulk-actions-bar { position: sticky; top: 0; z-index: 100; background: var(--bg-card); border: 1px solid var(--primary-border); border-radius: 12px; padding: 12px 20px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 20px rgba(var(--primary-rgb), 0.1); }
+         .bulk-count { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 0.9rem; }
+         .count-badge { background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; }
+         .bulk-ops { display: flex; align-items: center; gap: 12px; }
+         .bulk-select { background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 6px 12px; font-size: 0.8rem; font-weight: 600; outline: none; }
+         .bulk-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: none; transition: all 0.2s; }
+         .bulk-btn.danger { background: var(--danger); color: white; }
+         .bulk-btn.secondary { background: var(--bg-surface); border: 1px solid var(--border-strong); color: var(--text); }
+
+         .empty-state-card { background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 20px; padding: 60px 40px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+
+         .modern-action-btn-mini { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: var(--bg-surface); border: 1px solid var(--border-strong); color: var(--text); cursor: pointer; transition: all 0.2s; }
+         .modern-action-btn-mini:hover { background: var(--bg-hover); border-color: var(--primary); color: var(--primary); }
+         .modern-action-btn-mini.success:hover { border-color: var(--success); color: var(--success); }
+         .modern-action-btn-mini.danger:hover { border-color: var(--danger); color: var(--danger); }
+         .crm-action-group-compact { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+
+         .text-danger { color: var(--danger) !important; font-weight: 800; }
+
          @media (max-width: 1000px) {
             .crm-stats-bar-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
             .stat-pill-mini { min-width: 0; padding: 10px; }

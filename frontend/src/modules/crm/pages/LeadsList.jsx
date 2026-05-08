@@ -20,8 +20,7 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal.jsx'
 import SearchableSelect from '../components/SearchableSelect.jsx'
 import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
 import LostReasonModal from '../components/LostReasonModal.jsx'
-import LeadNotesModal from '../components/LeadNotesModal.jsx'
-import LeadTimelineModal from '../components/LeadTimelineModal.jsx'
+
 import { notesApi } from '../../../services/notes.js'
 
 function stopRowNavigation(event) {
@@ -32,9 +31,9 @@ export default function LeadsList() {
   const [isLostModalOpen, setIsLostModalOpen] = useState(false)
   const [lostTargetId, setLostTargetId] = useState(null)
 
-  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
-  const [isTimelineOpen, setIsTimelineOpen] = useState(false)
-  const [noteTarget, setNoteTarget] = useState(null)
+  const [followupLead, setFollowupLead] = useState(null)
+  const [isFollowupOpen, setIsFollowupOpen] = useState(false)
+  const [followupInitialTab, setFollowupInitialTab] = useState('form')
 
   const navigate = useNavigate()
   const { user: currentUser } = useAuth()
@@ -73,8 +72,6 @@ export default function LeadsList() {
   const [summary, setSummary] = useState({ total: 0, byStatus: {} })
   const [selectedLeads, setSelectedLeads] = useState([])
 
-  const [isFollowupOpen, setIsFollowupOpen] = useState(false)
-  const [followupLead, setFollowupLead] = useState(null)
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false)
   const [noteLead, setNoteLead] = useState(null)
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
@@ -85,6 +82,32 @@ export default function LeadsList() {
 
   useToastFeedback({ error })
   const debouncedQ = useDebouncedValue(q, 250)
+
+  // Sync Modal with URL for refresh persistence
+  useEffect(() => {
+    const lId = searchParams.get('leadId')
+    const action = searchParams.get('action')
+
+    if (lId && (action === 'history' || action === 'followup')) {
+      // Find lead in current items or fetch if not found
+      const lead = items.find(i => (i.id === lId || i._id === lId))
+      if (lead) {
+        setFollowupLead(lead)
+        setFollowupInitialTab(action === 'history' ? 'history' : 'form')
+        setIsFollowupOpen(true)
+      } else if (!loading && items.length > 0) {
+        // If items are loaded but lead not found, clear params
+        setSearchParams(prev => {
+          prev.delete('leadId')
+          prev.delete('action')
+          return prev
+        }, { replace: true })
+      }
+    } else {
+      setIsFollowupOpen(false)
+      setFollowupLead(null)
+    }
+  }, [searchParams, items, loading])
 
   useEffect(() => {
     statusesApi
@@ -115,8 +138,15 @@ export default function LeadsList() {
     if (followupDate.trim()) next.set('followupDate', followupDate.trim())
     if (page > 1) next.set('page', String(page))
     if (String(limit) !== '20') next.set('limit', String(limit))
+    
+    // Preserve modal state if present
+    const lId = searchParams.get('leadId')
+    const act = searchParams.get('action')
+    if (lId) next.set('leadId', lId)
+    if (act) next.set('action', act)
+    
     return next
-  }, [debouncedQ, status, assignedTo, followupDate, page, limit])
+  }, [debouncedQ, status, source, dateRange, assignedTo, followupDate, page, limit, searchParams])
 
   useEffect(() => {
     if (desiredParams.toString() !== searchParams.toString()) {
@@ -169,6 +199,7 @@ export default function LeadsList() {
         ...(followupDate.trim() ? { followupDate: followupDate.trim() } : null),
         page,
         limit,
+        sort: '-created_at',
       })
       .then((res) => {
         if (canceled) return
@@ -253,8 +284,19 @@ export default function LeadsList() {
   }
 
   const openFollowup = (lead) => {
-    setFollowupLead(lead)
-    setIsFollowupOpen(true)
+    setSearchParams(prev => {
+      prev.set('leadId', lead.id || lead._id)
+      prev.set('action', 'followup')
+      return prev
+    })
+  }
+
+  const openTimeline = (lead) => {
+    setSearchParams(prev => {
+      prev.set('leadId', lead.id || lead._id)
+      prev.set('action', 'history')
+      return prev
+    })
   }
 
   const handleFollowupSaved = (updatedLead) => {
@@ -308,34 +350,6 @@ export default function LeadsList() {
     }
   }
 
-  const openNotes = (lead) => {
-    setNoteTarget(lead)
-    setIsNotesModalOpen(true)
-  }
-
-  const openTimeline = (lead) => {
-    setNoteTarget(lead)
-    setIsTimelineOpen(true)
-  }
-
-  async function handleSaveNote(formData) {
-    try {
-      await notesApi.create({
-        related_to: noteTarget.id || noteTarget._id,
-        related_type: 'Lead',
-        type: formData.type,
-        subject: formData.subject,
-        note: formData.description,
-        followup_required: formData.followupRequired,
-        followup_date: formData.followupDate || undefined
-      })
-      toast.success('Activity logged successfully')
-      setIsNotesModalOpen(false)
-    } catch (err) {
-      toast.error(err.message || 'Failed to save note')
-    }
-  }
-
   async function onConvertToCustomer(id) {
     const lead = items.find(x => (x.id === id || x._id === id))
     if (!lead) return
@@ -354,7 +368,6 @@ export default function LeadsList() {
     if (!confirmed) return
 
     try {
-      toast.info('Converting lead...')
       const res = await leadsApi.update(id, { status: 'Converted' })
       toast.success('Lead converted successfully!')
       
@@ -405,8 +418,19 @@ export default function LeadsList() {
     <div className="stack">
       <section className="crm-fullscreen-shell">
         <div className="users-page-header">
-          <h1 className="users-title">Leads Management</h1>
-          <p className="users-subtitle">Track and optimize incoming customer opportunities</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 className="users-title">Leads Management</h1>
+              <p className="users-subtitle">Track and optimize incoming customer opportunities</p>
+            </div>
+            <button
+              className="btn-premium action-vibrant"
+              onClick={() => navigate('/leads/new')}
+            >
+              <Icon name="plus" size={16} />
+              <span>Add Lead</span>
+            </button>
+          </div>
         </div>
 
         <div className="crm-stats-bar-compact overflow-x-auto pb-8">
@@ -514,32 +538,8 @@ export default function LeadsList() {
               </button>
             )}
 
-            <button
-              className="btn-premium-mini add-user-btn"
-              onClick={() => navigate('/leads/new')}
-            >
-              <Icon name="plus" size={16} />
-              <span>Add Lead</span>
-            </button>
 
-            {(q || status || source || dateRange !== 'all' || assignedTo || followupDate) && (
-              <button 
-                className="btn-premium-mini reset-btn"
-                onClick={() => {
-                  setQ('')
-                  setStatus('')
-                  setSource('')
-                  setDateRange('all')
-                  setCustomDates({ start: '', end: '' })
-                  setAssignedTo('')
-                  setFollowupDate('')
-                  setPage(1)
-                }}
-              >
-                <Icon name="refresh" size={14} className="reset-icon" />
-                <span>Reset Filters</span>
-              </button>
-            )}
+
           </div>
         </div>
 
@@ -632,15 +632,16 @@ export default function LeadsList() {
                             </td>
 
                             <td>
-                              <StatusDropdown 
-                                status={lead.status} 
-                                options={statusOptions.length > 0 
-                                  ? statusOptions.map(s => ({ name: s.label, color: s.color }))
-                                  : Object.keys(summary.byStatus).map(name => ({ name, color: 'var(--primary)' }))
-                                } 
-                                onChange={(newStatus) => onUpdateStatus(id, newStatus)}
-                                disabled={!isAdminOrManager}
-                              />
+                                <StatusDropdown 
+                                  status={lead.status} 
+                                  options={statusOptions.length > 0 
+                                    ? statusOptions.map(s => ({ name: s.label, color: s.color }))
+                                    : Object.keys(summary.byStatus).map(name => ({ name, color: 'var(--primary)' }))
+                                  } 
+                                  onChange={(newStatus) => onUpdateStatus(id, newStatus)}
+                                  bypassRules={isAdmin}
+                                  disabled={lead.status === 'Converted'}
+                                />
                             </td>
 
                             <td>
@@ -650,22 +651,26 @@ export default function LeadsList() {
                             </td>
                             <td className="text-right" onClick={stopRowNavigation}>
                               <div className="crm-action-group">
-                                <button
-                                  className="modern-action-btn"
-                                  onClick={() => navigate(`/leads/${id}/edit`)}
-                                  title="Edit Lead"
-                                >
-                                  <Icon name="edit" size={14} />
-                                </button>
-                                
-                                {isAdmin && (
-                                  <button
-                                    className="modern-action-btn danger"
-                                    onClick={() => onDelete(id)}
-                                    title="Delete Lead"
-                                  >
-                                    <Icon name="trash" size={14} />
-                                  </button>
+                                {true && (
+                                  <>
+                                    <button
+                                      className="modern-action-btn"
+                                      onClick={() => navigate(`/leads/${id}/edit`)}
+                                      title="Edit Lead"
+                                    >
+                                      <Icon name="edit" size={14} />
+                                    </button>
+                                    
+                                    {isAdmin && lead.status !== 'Converted' && (
+                                      <button
+                                        className="modern-action-btn danger"
+                                        onClick={() => onDelete(id)}
+                                        title="Delete Lead"
+                                      >
+                                        <Icon name="trash" size={14} />
+                                      </button>
+                                    )}
+                                  </>
                                 )}
 
                                 <details className="crm-actions-overflow">
@@ -673,31 +678,44 @@ export default function LeadsList() {
                                     <Icon name="more-vertical" size={14} />
                                   </summary>
                                   <div className="overflow-menu-content shadow-soft">
-                                    <button className="overflow-item" onClick={() => openNotes(lead)}>
-                                      <Icon name="notes" size={14} />
-                                      <span>Add Activity Note</span>
-                                    </button>
-                                    <button className="overflow-item" onClick={() => openFollowup(lead)}>
-                                      <Icon name="calendar" size={14} />
-                                      <span>Schedule Follow up</span>
-                                    </button>
+                                    {(isAdminOrManager || (isEmployee && String(lead.assignedTo?.id || lead.assignedTo?._id) === String(currentUser?.id))) && true && (
+                                      <>
+
+                                        <button className="overflow-item" onClick={() => openFollowup(lead)}>
+                                          <Icon name="calendar" size={14} />
+                                          <span>Schedule Follow up</span>
+                                        </button>
+                                      </>
+                                    )}
+
                                     <button className="overflow-item" onClick={() => openTimeline(lead)}>
                                       <Icon name="activity" size={14} />
-                                      <span>View History</span>
+                                      <span>History</span>
                                     </button>
+
                                     {lead.status === 'Converted' ? (
                                       <button 
                                         className="overflow-item primary"
-                                        onClick={() => navigate(`/customers/${lead.convertedCustomerId?.id || lead.convertedCustomerId}`)}
+                                        onClick={() => {
+                                          const rawId = lead.convertedCustomerId;
+                                          const custId = typeof rawId === 'object' ? (rawId.id || rawId._id) : rawId;
+                                          navigate(`/customers/${custId}`);
+                                        }}
                                       >
                                         <Icon name="user" size={14} />
                                         <span>Go to Customer Profile</span>
                                       </button>
                                     ) : (
-                                      <button className="overflow-item" onClick={() => onConvertToCustomer(id)}>
-                                        <Icon name="refresh" size={14} />
-                                        <span>Convert to Customer</span>
-                                      </button>
+                                      <>
+                                        <button className="overflow-item" onClick={() => onConvertToCustomer(id)}>
+                                          <Icon name="refresh" size={14} />
+                                          <span>Convert to Customer</span>
+                                        </button>
+                                        <button className="overflow-item" onClick={() => onConvertToDeal(lead)}>
+                                          <Icon name="activity" size={14} />
+                                          <span>Convert to Deal</span>
+                                        </button>
+                                      </>
                                     )}
                                   </div>
                                 </details>
@@ -738,32 +756,18 @@ export default function LeadsList() {
           onClose={() => setIsLostModalOpen(false)}
           onConfirm={handleLostConfirm}
         />
-
-        <LeadNotesModal
-          isOpen={isNotesModalOpen}
-          onClose={() => setIsNotesModalOpen(false)}
-          onSave={handleSaveNote}
-          leadName={noteTarget?.name}
-        />
-
-        <LeadTimelineModal
-          isOpen={isTimelineOpen}
-          onClose={() => setIsTimelineOpen(false)}
-          leadId={noteTarget?.id || noteTarget?._id}
-          leadName={noteTarget?.name}
-          onAddActivity={() => {
-            setIsTimelineOpen(false)
-            setIsNotesModalOpen(true)
-          }}
-        />
       </section>
 
       <FollowupModal
         isOpen={isFollowupOpen}
         lead={followupLead}
+        initialTab={followupInitialTab}
         onClose={() => {
-          setIsFollowupOpen(false)
-          setFollowupLead(null)
+          setSearchParams(prev => {
+            prev.delete('leadId')
+            prev.delete('action')
+            return prev
+          })
         }}
         onSave={handleFollowupSaved}
       />

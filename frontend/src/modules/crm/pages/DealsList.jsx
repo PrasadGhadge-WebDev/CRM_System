@@ -17,9 +17,8 @@ import DealModal from '../components/DealModal.jsx'
 import StatusDropdown from '../components/StatusDropdown.jsx'
 
 const STAGE_OPTIONS = [
-  { name: 'Prospecting', color: '#6366f1' },
+  { name: 'New', color: '#6366f1' },
   { name: 'Qualification', color: '#3b82f6' },
-  { name: 'Needs Analysis', color: '#8b5cf6' },
   { name: 'Proposal', color: '#f59e0b' },
   { name: 'Negotiation', color: '#f97316' },
   { name: 'Won', color: '#10b981' },
@@ -46,7 +45,10 @@ export default function DealsList() {
 
   const isManagement = currentUser?.role === 'Admin' || currentUser?.role === 'Manager'
   const isEmployee = currentUser?.role === 'Employee'
-  const canCreate = isManagement || isEmployee
+  const isAccountant = currentUser?.role === 'Accountant'
+  const canCreate = (isManagement || isEmployee) && !isAccountant
+  const canAssign = isManagement || isEmployee
+  const canDelete = currentUser?.role === 'Admin'
 
   const qParam = searchParams.get('q') || ''
   const stageParam = searchParams.get('stage') || ''
@@ -80,7 +82,8 @@ export default function DealsList() {
 
   useEffect(() => {
     usersApi.list({ limit: 'all' }).then(res => {
-      setEmployees(res.items || res || [])
+      const allUsers = res.items || res || []
+      setEmployees(allUsers.filter(u => u.role !== 'HR'))
     }).catch(() => {})
   }, [])
 
@@ -178,8 +181,24 @@ export default function DealsList() {
   }, [loadDeals])
 
   async function onUpdateStage(id, newStage) {
+    // If Admin sets to Lost, we must show the form to collect the reason
+    if (newStage === 'Lost') {
+      const deal = items.find(d => d.id === id) || { id };
+      handleOpenEditModal(deal);
+      toast.info('Please provide a reason for the lost deal');
+      return;
+    }
+
     try {
-      await dealsApi.update(id, { stage: newStage })
+      const updates = { stage: newStage };
+      // Auto-close if Lost; Won stays Open until paid
+      if (newStage === 'Lost') {
+        updates.status = 'Closed';
+      } else if (newStage !== 'Won') {
+        updates.status = 'Open';
+      }
+
+      await dealsApi.update(id, updates)
       toast.success(`Stage updated to ${newStage}`)
       loadDeals()
     } catch (err) {
@@ -255,20 +274,24 @@ export default function DealsList() {
     <div className="stack">
       <section className="crm-fullscreen-shell">
         <div className="users-page-header">
-          <h1 className="users-title">Deals Management</h1>
-          <p className="users-subtitle">Monitor your sales opportunities and team performance</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 className="users-title">Deals Management</h1>
+              <p className="users-subtitle">Monitor your sales opportunities and team performance</p>
+            </div>
+            {canCreate && (
+              <button className="btn-premium action-vibrant" onClick={handleOpenCreateModal}>
+                <Icon name="plus" size={16} />
+                <span>New Deal</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="crm-stats-bar-compact overflow-x-auto pb-8">
           <div className="stat-pill-mini clickable" onClick={() => setStage('')} style={{ borderBottom: stage === '' ? '2px solid var(--primary)' : '' }}>
             <span className="stat-pill-label">ALL DEALS</span>
             <span className="stat-pill-value total">{summary.total}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">PIPELINE VALUE</span>
-            <span className="stat-pill-value" style={{ color: 'var(--primary)' }}>
-              {formatCurrency(summary.totalValue)}
-            </span>
           </div>
           {Object.entries(summary.byStage).map(([name, count]) => (
             <div 
@@ -281,6 +304,12 @@ export default function DealsList() {
               <span className="stat-pill-value">{count}</span>
             </div>
           ))}
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">PIPELINE VALUE</span>
+            <span className="stat-pill-value" style={{ color: 'var(--primary)' }}>
+              {formatCurrency(summary.totalValue)}
+            </span>
+          </div>
         </div>
 
         <div className="unified-action-bar">
@@ -305,8 +334,8 @@ export default function DealsList() {
             <SearchableSelect
               value={assignedTo}
               onChange={(val) => { setAssignedTo(val); setPage(1); }}
-              options={[{ value: '', label: 'All Owners' }, ...employees.map(emp => ({ value: emp.id, label: emp.name }))]}
-              placeholder="All Owners"
+              options={[{ value: '', label: 'All Assigned To' }, ...employees.map(emp => ({ value: emp.id, label: emp.name }))]}
+              placeholder="All Assigned To"
               icon="user"
             />
 
@@ -360,27 +389,19 @@ export default function DealsList() {
               </button>
             </div>
 
-            {canCreate && (
-              <button className="add-user-btn" onClick={handleOpenCreateModal}>
-                <Icon name="plus" size={16} />
-                <span>New Deal</span>
-              </button>
-            )}
 
             {(q || stage || assignedTo || dateRange !== 'all') && (
               <button 
                 className="btn-premium-mini reset-btn"
                 onClick={() => {
-                  setQ('')
-                  setStage('')
-                  setAssignedTo('')
-                  setDateRange('all')
-                  setCustomDates({ start: '', end: '' })
-                  setPage(1)
+                  setQ(''); setStage(''); setAssignedTo('');
+                  setDateRange('all'); setCustomDates({ start: '', end: '' });
+                  setPage(1);
                 }}
+                style={{ height: '42px', width: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                title="Reset Filters"
               >
-                <Icon name="refresh" size={14} className="reset-icon" />
-                <span>Reset Filters</span>
+                <Icon name="refresh" size={14} />
               </button>
             )}
           </div>
@@ -412,7 +433,7 @@ export default function DealsList() {
                               <th style={{ minWidth: '160px' }}>Customer</th>
                               <th style={{ minWidth: '120px' }} className="text-right">Value</th>
                               <th style={{ minWidth: '130px' }} className="text-center">Stage</th>
-                              <th style={{ minWidth: '120px' }}>Owner</th>
+                              <th style={{ minWidth: '120px' }}>Assigned To</th>
                               <th style={{ minWidth: '130px' }}>Last Updated</th>
                               <th style={{ minWidth: '80px' }} className="text-right">Actions</th>
                             </tr>
@@ -448,7 +469,8 @@ export default function DealsList() {
                                     status={item.stage} 
                                     options={STAGE_OPTIONS} 
                                     onChange={(newStage) => onUpdateStage(item.id, newStage)}
-                                    disabled={!isManagement}
+                                    disabled={!canAssign}
+                                    bypassRules={true}
                                   />
                                 </td>
                                 <td style={{ padding: '12px 16px' }}>
@@ -472,20 +494,24 @@ export default function DealsList() {
                                 </td>
                                 <td className="text-right" style={{ padding: '12px 16px' }} onClick={stopRowNavigation}>
                                   <div className="crm-action-group" style={{ justifyContent: 'flex-end' }}>
-                                    <button
-                                      className="modern-action-btn"
-                                      onClick={() => handleOpenEditModal(item)}
-                                      title="Edit"
-                                    >
-                                      <Icon name="edit" size={16} />
-                                    </button>
-                                    <button
-                                      className="modern-action-btn danger"
-                                      onClick={() => handleDeleteDeal(item)}
-                                      title="Delete"
-                                    >
-                                      <Icon name="trash" size={16} />
-                                    </button>
+                                    {canCreate && (
+                                      <button
+                                        className="modern-action-btn"
+                                        onClick={() => handleOpenEditModal(item)}
+                                        title="Edit"
+                                      >
+                                        <Icon name="edit" size={16} />
+                                      </button>
+                                    )}
+                                    {canDelete && (
+                                      <button
+                                        className="modern-action-btn danger"
+                                        onClick={() => handleDeleteDeal(item)}
+                                        title="Delete"
+                                      >
+                                        <Icon name="trash" size={16} />
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -510,7 +536,7 @@ export default function DealsList() {
                               status={item.stage} 
                               options={STAGE_OPTIONS} 
                               onChange={(newStage) => onUpdateStage(item.id, newStage)}
-                              disabled={!isManagement}
+                              disabled={!canAssign}
                             />
                           </div>
                           <div className="card-body">
@@ -519,7 +545,7 @@ export default function DealsList() {
                               <span className="stat-value">₹{item.value?.toLocaleString('en-IN') || '0'}</span>
                             </div>
                             <div className="card-stat">
-                              <span className="stat-label">Owner</span>
+                              <span className="stat-label">Assigned To</span>
                               <div className="stat-value" style={{ fontSize: '0.8rem', fontWeight: 700, textAlign: 'right' }}>
                                 {item.assigned_to?.name || 'Unassigned'}
                                 {item.assigned_to?.phone && <div style={{ fontSize: '0.7rem', opacity: 0.7, fontWeight: 500 }}>{item.assigned_to.phone}</div>}

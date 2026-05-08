@@ -69,6 +69,7 @@ exports.listInvoices = asyncHandler(async (req, res) => {
   const [items, totalFiltered, statusStats] = await Promise.all([
     Invoice.find(filter)
       .populate('customer_id', 'name email phone')
+      .populate('deal_id', 'name')
       .sort({ created_at: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum),

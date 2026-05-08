@@ -31,10 +31,32 @@ const userSchema = new mongoose.Schema(
     date_of_birth: {
       type: Date,
     },
+    gender: {
+      type: String,
+      trim: true,
+    },
+    address: {
+      type: String,
+      trim: true,
+    },
     basic_salary: {
       type: Number,
       default: 0,
     },
+    allowances: {
+      type: Number,
+      default: 0,
+    },
+    deductions: {
+      type: Number,
+      default: 0,
+    },
+    documents: [{
+      name: String,
+      url: String,
+      doc_type: String,
+      uploaded_at: { type: Date, default: Date.now }
+    }],
     manager_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

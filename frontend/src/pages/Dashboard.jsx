@@ -40,6 +40,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   
+  useEffect(() => {
+    if (user?.role === 'HR') {
+      navigate('/hr/dashboard')
+    }
+  }, [user, navigate])
+
   useToastFeedback({ error })
 
   const fetchMetrics = useCallback(() => {
@@ -162,8 +168,8 @@ export default function Dashboard() {
                 <option>This Year</option>
              </select>
           </div>
-          <div style={{ width: '100%', height: '240px' }}>
-             <ResponsiveContainer width="100%" height="100%">
+          <div style={{ width: '100%', height: '240px', minHeight: '240px' }}>
+             <ResponsiveContainer width="100%" height={240} minHeight={240}>
                 <AreaChart data={revenueTrend}>
                   <defs>
                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
@@ -192,8 +198,8 @@ export default function Dashboard() {
                 <option>This Year</option>
              </select>
           </div>
-          <div style={{ width: '100%', height: '240px' }}>
-             <ResponsiveContainer width="100%" height="100%">
+          <div style={{ width: '100%', height: '240px', minHeight: '240px' }}>
+             <ResponsiveContainer width="100%" height={240} minHeight={240}>
                 <BarChart data={conversionData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} dy={10} />
@@ -205,6 +211,7 @@ export default function Dashboard() {
                 </BarChart>
              </ResponsiveContainer>
           </div>
+
         </div>
       </div>
 

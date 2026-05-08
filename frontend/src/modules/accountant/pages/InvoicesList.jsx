@@ -101,8 +101,19 @@ export default function InvoicesList() {
     <div className="stack">
       <section className="crm-fullscreen-shell">
         <div className="users-page-header">
-          <h1 className="users-title">Invoices Management</h1>
-          <p className="users-subtitle">Track and manage customer billing and payment statuses</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 className="users-title">Invoices Management</h1>
+              <p className="users-subtitle">Track and manage customer billing and payment statuses</p>
+            </div>
+            <button
+              className="btn-premium action-vibrant"
+              onClick={() => navigate('/invoices/new')}
+            >
+              <Icon name="plus" size={16} />
+              <span>Add Invoice</span>
+            </button>
+          </div>
         </div>
 
         <div className="crm-stats-bar-compact overflow-x-auto pb-8">
@@ -110,17 +121,21 @@ export default function InvoicesList() {
             <span className="stat-pill-label">ALL INVOICES</span>
             <span className="stat-pill-value total">{summary.total}</span>
           </div>
-          {Object.entries(summary.byStatus).map(([name, count]) => (
-            <div 
-              key={name} 
-              className="stat-pill-mini clickable" 
-              onClick={() => { setStatus(name); setPage(1); }}
-              style={{ borderBottom: status === name ? '2px solid var(--primary)' : '' }}
-            >
-              <span className="stat-pill-label">{name.toUpperCase()}</span>
-              <span className="stat-pill-value">{count}</span>
-            </div>
-          ))}
+          
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">TOTAL BILLED</span>
+            <span className="stat-pill-value active">{formatCurrency(invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0))}</span>
+          </div>
+
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">OUTSTANDING</span>
+            <span className="stat-pill-value inactive">{formatCurrency(invoices.reduce((sum, inv) => sum + (Math.max(0, inv.total_amount - (inv.paid_amount || 0))), 0))}</span>
+          </div>
+
+          <div className="stat-pill-mini">
+            <span className="stat-pill-label">PAID / COLLECTED</span>
+            <span className="stat-pill-value active" style={{ color: 'var(--success)' }}>{formatCurrency(invoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0))}</span>
+          </div>
         </div>
 
         <div className="unified-action-bar">
@@ -171,28 +186,18 @@ export default function InvoicesList() {
               </div>
             )}
 
-            <button
-              className="btn-premium-mini add-user-btn"
-              onClick={() => navigate('/invoices/new')}
-            >
-              <Icon name="plus" size={16} />
-              <span>Add Invoice</span>
-            </button>
 
             {(q || status || dateRangeType !== 'all') && (
               <button 
                 className="btn-premium-mini reset-btn"
                 onClick={() => {
-                  setQ('')
-                  setStatus('')
-                  setStartDate('')
-                  setEndDate('')
-                  setDateRangeType('all')
-                  setPage(1)
+                  setQ(''); setStatus(''); setStartDate('');
+                  setEndDate(''); setDateRangeType('all'); setPage(1);
                 }}
+                style={{ height: '42px', width: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                title="Reset Filters"
               >
-                <Icon name="refresh" size={14} className="reset-icon" />
-                <span>Reset Filters</span>
+                <Icon name="refresh" size={14} />
               </button>
             )}
           </div>
@@ -210,58 +215,99 @@ export default function InvoicesList() {
                 <table className="crm-table">
                   <thead style={{ background: 'var(--bg-surface)' }}>
                     <tr>
-                      <th style={{ width: '140px', color: 'var(--text-dimmed)' }}>INVOICE #</th>
-                      <th style={{ width: '140px', color: 'var(--text-dimmed)' }}>DATE</th>
-                      <th style={{ minWidth: '220px', color: 'var(--text-dimmed)' }}>CUSTOMER NAME</th>
-                      <th style={{ width: '160px', color: 'var(--text-dimmed)' }}>TOTAL AMOUNT</th>
-                      <th style={{ width: '130px', color: 'var(--text-dimmed)' }}>STATUS</th>
-                      {(canEdit || canDelete) && <th className="text-right" style={{ width: '120px', color: 'var(--text-dimmed)' }}>ACTION</th>}
+                      <th style={{ width: '120px', color: 'var(--text-dimmed)' }}>INVOICE #</th>
+                      <th style={{ minWidth: '180px', color: 'var(--text-dimmed)' }}>CUSTOMER</th>
+                      <th style={{ minWidth: '150px', color: 'var(--text-dimmed)' }}>DEAL</th>
+                      <th style={{ width: '110px', color: 'var(--text-dimmed)' }}>TOTAL</th>
+                      <th style={{ width: '110px', color: 'var(--text-dimmed)' }}>PAID</th>
+                      <th style={{ width: '110px', color: 'var(--text-dimmed)' }}>PENDING</th>
+                      <th style={{ width: '120px', color: 'var(--text-dimmed)' }}>STATUS</th>
+                      <th style={{ width: '120px', color: 'var(--text-dimmed)' }}>DATE</th>
+                      <th className="text-right" style={{ width: '150px', color: 'var(--text-dimmed)' }}>ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {invoices.length ? (
-                      invoices.map(inv => (
-                        <tr key={inv.id} className="crm-table-row" onClick={() => navigate(`/invoices/${inv.id}`)}>
-                          <td><span className="font-numeric" style={{ color: 'var(--primary)', fontWeight: 800 }}>#{inv.invoice_number}</span></td>
-                          <td><span className="text-sm" style={{ color: 'var(--text-muted)' }}>{new Date(inv.invoice_date).toLocaleDateString()}</span></td>
-                          <td>
-                            <div className="stack gap-2">
-                              <span className="font-bold" style={{ color: 'var(--text)' }}>{inv.customer_id?.name || 'Customer'}</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span className="text-xs muted uppercase">{inv.customer_id?.company || 'Personal'}</span>
-                                {inv.deal_id && (
-                                  <span className="text-xs" style={{ color: 'var(--primary)', fontWeight: 700 }}>
-                                    • {inv.deal_id.name}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td><span className="font-numeric" style={{ color: 'var(--primary)', fontWeight: 800 }}>{formatCurrency(inv.total_amount)}</span></td>
-                          <td onClick={stopRowNavigation}>
-                            <StatusDropdown 
-                              status={inv.status} 
-                              options={[
-                                { name: 'Unpaid', color: '#f59e0b' },
-                                { name: 'Partially Paid', color: '#3b82f6' },
-                                { name: 'Paid', color: '#10b981' },
-                                { name: 'Overdue', color: '#ef4444' },
-                                { name: 'Cancelled', color: '#64748b' }
-                              ]} 
-                              onChange={(newStatus) => onUpdateStatus(inv.id, newStatus)}
-                              disabled={!canEdit}
-                            />
-                          </td>
-                          {(canEdit || canDelete) && (
-                            <td className="text-right" onClick={e => e.stopPropagation()}>
-                              <div className="crm-action-group">
-                                {canEdit && <button className="crm-action-btn" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }} onClick={() => navigate(`/invoices/${inv.id}`)}><Icon name="edit" size={14} /></button>}
-                                {canDelete && <button className="crm-action-btn danger" onClick={() => handleDelete(inv.id)}><Icon name="trash" size={14} /></button>}
+                      invoices.map(inv => {
+                        const remaining = Math.max(0, inv.total_amount - (inv.paid_amount || 0));
+                        const isOverdue = inv.status !== 'Paid' && new Date(inv.due_date) < new Date();
+                        
+                        return (
+                          <tr 
+                            key={inv.id} 
+                            className={`crm-table-row ${isOverdue ? 'overdue-row' : ''}`} 
+                            onClick={() => navigate(`/invoices/${inv.id}`)}
+                          >
+                            <td>
+                              <div className="stack">
+                                <span className="font-numeric" style={{ color: 'var(--primary)', fontWeight: 800 }}>#{inv.invoice_number}</span>
+                                {isOverdue && <span className="overdue-label">🔥 OVERDUE</span>}
                               </div>
                             </td>
-                          )}
-                        </tr>
-                      ))
+                            <td>
+                              <div className="stack">
+                                <span className="font-bold" style={{ color: 'var(--text)' }}>{inv.customer_id?.name || 'Customer'}</span>
+                                <span className="text-xs muted uppercase">{inv.customer_id?.company || 'Personal'}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="text-sm font-medium" style={{ color: 'var(--text-dimmed)' }}>{inv.deal_id?.name || '—'}</span>
+                            </td>
+                            <td><span className="font-numeric" style={{ color: 'var(--text)', fontWeight: 700 }}>{formatCurrency(inv.total_amount)}</span></td>
+                            <td><span className="font-numeric" style={{ color: 'var(--success)', fontWeight: 700 }}>{formatCurrency(inv.paid_amount || 0)}</span></td>
+                            <td>
+                              <div className="stack">
+                                <span className="font-numeric" style={{ color: remaining > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 800 }}>
+                                  {formatCurrency(remaining)}
+                                </span>
+                                {remaining > 0 && inv.status !== 'Paid' && <span className="due-badge">DUE</span>}
+                              </div>
+                            </td>
+                            <td onClick={stopRowNavigation}>
+                              <StatusDropdown 
+                                status={inv.status} 
+                                options={[
+                                  { name: 'Unpaid', color: '#ef4444' },
+                                  { name: 'Partially Paid', color: '#f59e0b' },
+                                  { name: 'Paid', color: '#10b981' },
+                                  { name: 'Overdue', color: '#7f1d1d' },
+                                  { name: 'Cancelled', color: '#64748b' }
+                                ]} 
+                                onChange={(newStatus) => onUpdateStatus(inv.id, newStatus)}
+                                disabled={!canEdit}
+                              />
+                            </td>
+                            <td><span className="text-xs muted font-numeric">{new Date(inv.invoice_date).toLocaleDateString()}</span></td>
+                            <td className="text-right" onClick={stopRowNavigation}>
+                              <div className="crm-action-group" style={{ justifyContent: 'flex-end', gap: '8px' }}>
+                                {inv.status !== 'Paid' && (
+                                  <button 
+                                    className="crm-action-btn glass-btn" 
+                                    title="Receive Payment" 
+                                    onClick={() => navigate(`/payments/new?customer_id=${inv.customer_id?.id || inv.customer_id?._id || inv.customer_id}&invoice_id=${inv.id || inv._id}`)}
+                                    style={{ color: 'var(--success)', borderColor: 'var(--success)' }}
+                                  >
+                                    <Icon name="dollar-sign" size={14} />
+                                  </button>
+                                )}
+                                <button className="crm-action-btn glass-btn" title="View & Print Bill" onClick={() => navigate(`/invoices/${inv.id}`)}>
+                                  <Icon name="download" size={14} />
+                                </button>
+                                {canEdit && (
+                                  <button className="crm-action-btn glass-btn" title="Edit Bill" onClick={() => navigate(`/invoices/${inv.id}/edit`)}>
+                                    <Icon name="edit" size={14} />
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <button className="crm-action-btn danger-btn" title="Delete" onClick={() => handleDelete(inv.id)}>
+                                    <Icon name="trash" size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
                         <td colSpan="6">
@@ -317,6 +363,69 @@ export default function InvoicesList() {
 
          .crm-table th { padding: 12px 16px !important; border-bottom: 2px solid var(--border-strong) !important; color: var(--text-dimmed) !important; font-weight: 800 !important; font-size: 0.7rem !important; }
          .crm-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--border-strong) !important; }
+
+         .overdue-row { background: rgba(239, 68, 68, 0.03) !important; }
+         .overdue-row:hover { background: rgba(239, 68, 68, 0.06) !important; }
+         
+         .overdue-label { 
+           font-size: 0.6rem; 
+           font-weight: 900; 
+           color: #ef4444; 
+           background: rgba(239, 68, 68, 0.1); 
+           padding: 1px 6px; 
+           border-radius: 4px; 
+           width: fit-content;
+           margin-top: 2px;
+         }
+
+         .due-badge {
+           font-size: 0.6rem;
+           font-weight: 900;
+           color: #f59e0b;
+           background: rgba(245, 158, 11, 0.1);
+           padding: 1px 6px;
+           border-radius: 4px;
+           width: fit-content;
+           margin-top: 2px;
+         }
+
+         .glass-btn {
+           background: var(--bg-surface) !important;
+           border: 1px solid var(--border-strong) !important;
+           color: var(--text-dimmed) !important;
+           border-radius: 8px !important;
+           width: 32px !important;
+           height: 32px !important;
+           display: flex !important;
+           align-items: center !important;
+           justify-content: center !important;
+           transition: all 0.2s !important;
+         }
+         .glass-btn:hover {
+           border-color: var(--primary) !important;
+           color: var(--primary) !important;
+           transform: translateY(-2px);
+           box-shadow: var(--shadow-sm);
+         }
+
+         .danger-btn {
+           background: rgba(239, 68, 68, 0.1) !important;
+           border: 1px solid rgba(239, 68, 68, 0.2) !important;
+           color: #ef4444 !important;
+           border-radius: 8px !important;
+           width: 32px !important;
+           height: 32px !important;
+           display: flex !important;
+           align-items: center !important;
+           justify-content: center !important;
+           transition: all 0.2s !important;
+         }
+         .danger-btn:hover {
+           background: #ef4444 !important;
+           color: white !important;
+           transform: translateY(-2px);
+           box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+         }
          
          @media (max-width: 1000px) {
             .crm-stats-bar-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

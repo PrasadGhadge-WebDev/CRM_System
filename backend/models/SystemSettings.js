@@ -2,14 +2,14 @@ const mongoose = require('mongoose');
 
 const SystemSettingsSchema = new mongoose.Schema(
   {
-    company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', unique: true, index: true },
+    company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', index: true },
     companyName: { type: String, default: 'My CRM' },
     defaultCurrency: { type: String, default: 'INR' },
     dateFormat: { type: String, default: 'DD/MM/YYYY' },
     timezone: { type: String, default: 'Asia/Kolkata' },
     itemsPerPage: { type: Number, default: 10 },
     enableEmailNotifications: { type: Boolean, default: true },
-    defaultLeadStatus: { type: String, default: 'NEW' },
+    defaultLeadStatus: { type: String, default: 'New' },
 
     leadSources: [
       {

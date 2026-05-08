@@ -64,8 +64,9 @@ async function getNextLeadId(companyId) {
 
 function validateLead(payload) {
   const errors = [];
-  if (!payload.firstName && !payload.first_name) errors.push('First name is required');
-  if (!payload.lastName && !payload.last_name) errors.push('Last name is required');
+  if (!payload.name && !payload.fullName && !payload.first_name && !payload.firstName) {
+    errors.push('Full name is required');
+  }
   
   if (!payload.email) {
     errors.push('Email is required');
@@ -244,12 +245,12 @@ exports.listLeads = asyncHandler(async (req, res, next) => {
         }
       }
     },
-    // Final Sort Logic
+    // Final Sort Logic: Prioritize recently created leads
     {
       $sort: {
-        urgencyScore: 1, // Bucket 1-4
-        nextFollowupDate: 1, // Within bucket, earliest first
-        updated_at: -1 // Finally recent changes
+        created_at: -1, 
+        urgencyScore: 1, 
+        nextFollowupDate: 1 
       }
     },
     { $skip: (pageNum - 1) * limitNum },
@@ -421,9 +422,22 @@ exports.createLead = asyncHandler(async (req, res, next) => {
     payload.createdBy = req.user.id;
     payload.createdByModel = getAuthUserModelName(req);
 
-    payload.firstName = String(payload.firstName || payload.first_name || '').trim();
-    payload.lastName = String(payload.lastName || payload.last_name || '').trim();
-    payload.name = `${payload.firstName} ${payload.lastName}`.trim() || payload.name;
+    const rawName = String(payload.name || payload.fullName || '').trim();
+    const fName = String(payload.firstName || payload.first_name || '').trim();
+    const lName = String(payload.lastName || payload.last_name || '').trim();
+    
+    if (rawName) {
+      payload.name = rawName;
+      if (!fName) {
+        const parts = rawName.split(/\s+/);
+        payload.firstName = parts[0] || '';
+        payload.lastName = parts.slice(1).join(' ') || '';
+      }
+    } else if (fName || lName) {
+      payload.firstName = fName;
+      payload.lastName = lName;
+      payload.name = `${fName} ${lName}`.trim();
+    }
     payload.company = payload.company || payload.company_name || '';
     payload.alternate_phone = String(payload.alternate_phone || '').replace(/\D/g, '');
     payload.interested_product = payload.interested_product || '';
@@ -594,11 +608,18 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
 
     const { status } = payload;
 
-    // 1. Role-based security for Employees
+    // 1. Fetch current lead state and verify existence
+    const oldLead = await Lead.findOne({ _id: cleanId, company_id: cleanCompanyId });
+    if (!oldLead) return res.fail('Lead not found', 404);
+
+    // Safeguard: Converted leads cannot be moved back to active pipeline
+    if (oldLead.status === 'Converted' && payload.status && payload.status !== 'Converted') {
+      return res.fail('Leads in "Converted" status are archived and cannot be moved back to the active pipeline', 400);
+    }
+
+    // Role-based security for Employees
     if (req.user?.role === 'Employee') {
-      const lead = await Lead.findOne({ _id: cleanId, company_id: cleanCompanyId }).select('assignedTo');
-      if (!lead) return res.fail('Lead not found', 404);
-      if (!lead.assignedTo || String(lead.assignedTo) !== String(req.user.id)) {
+      if (!oldLead.assignedTo || String(oldLead.assignedTo) !== String(req.user.id)) {
         return res.fail('You can only update leads assigned to you', 403);
       }
 
@@ -682,8 +703,7 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       }
     }
 
-    const oldLead = await Lead.findOne({ _id: cleanId, company_id: req.user.company_id });
-    if (!oldLead) return res.fail('Lead not found', 404);
+    // Lead already fetched as oldLead at top
 
     // Normalize name if first/last name changed
     if (payload.firstName || payload.lastName) {
@@ -796,6 +816,11 @@ exports.updateLeadStatus = asyncHandler(async (req, res, next) => {
 
   if (status === oldLead.status) {
     return res.ok(oldLead, 'Status is already set to ' + status);
+  }
+
+  // Safeguard: Converted leads cannot be moved back to active pipeline
+  if (oldLead.status === 'Converted' && status !== 'Converted') {
+    return res.fail('Leads in "Converted" status are archived and cannot be moved back to the active pipeline', 400);
   }
 
   // Handle conversion if status is changed to Converted

@@ -3,6 +3,7 @@ const { withIdTransform } = require('../utils/mongooseTransforms');
 
 const CustomerTypeSchema = new mongoose.Schema(
   {
+    company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', index: true },
     label: {
       type: String,
       required: true,
@@ -11,7 +12,6 @@ const CustomerTypeSchema = new mongoose.Schema(
     value: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
       lowercase: true,
     },

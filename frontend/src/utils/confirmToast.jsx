@@ -26,7 +26,7 @@ export function confirmToast(message, options = {}) {
       ({ closeToast }) => (
         <div className="premium-confirm-toast">
           <div className="confirm-header">
-            <div className={`confirm-icon-box ${type}`}>
+            <div className={`confirm-icon-box ${type === 'primary' ? 'default' : type}`}>
               <Icon name={type === 'danger' ? 'trash' : 'alert'} size={20} />
             </div>
             <div className="confirm-content">
@@ -49,7 +49,7 @@ export function confirmToast(message, options = {}) {
               {cancelLabel}
             </button>
             <button
-              className={`confirm-btn action ${type}`}
+              className={`confirm-btn action ${type === 'primary' ? 'default' : type}`}
               type="button"
               onClick={() => {
                 finish(true)

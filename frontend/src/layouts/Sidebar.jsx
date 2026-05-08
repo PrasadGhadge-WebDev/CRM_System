@@ -42,6 +42,21 @@ export default function Sidebar({ isOpen, onClose }) {
   useEffect(() => {
     const fetchDynamics = async () => {
       try {
+        const { rolesApi } = await import('../services/roles.js')
+        
+        if (user?.role === 'HR') {
+           const rolesRes = await rolesApi.list().catch(() => [])
+           setDynamicMenu({
+             users: [
+               { title: 'Active', path: '/users?status=active', icon: 'check', statusColor: '#22c55e' },
+               { title: 'Inactive', path: '/users?status=inactive', icon: 'close', statusColor: '#ef4444' },
+               { type: 'header', title: 'ROLE FILTERS' },
+               ...rolesRes.map(r => ({ title: r.name, path: `/users?role=${r.name}`, icon: 'user' }))
+             ]
+           })
+           return
+        }
+
         const { leadsApi } = await import('../services/leads.js')
         const { dealsApi } = await import('../services/deals.js')
         const { customersApi } = await import('../services/customers.js')
@@ -49,15 +64,24 @@ export default function Sidebar({ isOpen, onClose }) {
         const { invoicesApi } = await import('../services/invoices.js')
         const { paymentsApi } = await import('../services/payments.js')
 
-        const [leadsRes, dealsRes, customersRes, supportRes, invoicesRes, paymentsRes, rolesRes] = await Promise.all([
-          leadsApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })),
-          dealsApi.list({ limit: 1 }).catch(() => ({ summary: { byStage: {} } })),
-          customersApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })),
-          supportApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })),
-          invoicesApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })),
-          paymentsApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })),
-          rolesApi.list().catch(() => [])
+        const [
+          leadsRes, 
+          dealsRes, 
+          customersRes, 
+          supportRes, 
+          invoicesRes, 
+          paymentsRes, 
+          rolesRes
+        ] = await Promise.all([
+          hasPermission(user, 'leads') ? leadsApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })) : { summary: { byStatus: {} } },
+          hasPermission(user, 'deals') ? dealsApi.list({ limit: 1 }).catch(() => ({ summary: { byStage: {} } })) : { summary: { byStage: {} } },
+          hasPermission(user, 'customers') ? customersApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })) : { summary: { byStatus: {} } },
+          hasPermission(user, 'tickets') ? supportApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })) : { summary: { byStatus: {} } },
+          hasPermission(user, 'invoices') ? invoicesApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })) : { summary: { byStatus: {} } },
+          hasPermission(user, 'payments') ? paymentsApi.list({ limit: 1 }).catch(() => ({ summary: { byStatus: {} } })) : { summary: { byStatus: {} } },
+          hasPermission(user, 'users') ? rolesApi.list().catch(() => []) : []
         ])
+
 
         const roleIcons = {
           'Admin': 'shield',
@@ -170,164 +194,36 @@ export default function Sidebar({ isOpen, onClose }) {
 
 
 
-  const menuConfig = [
-    { type: 'section', title: 'CORE CONTROL' },
-    {
-      id: 'dashboard',
-      title: 'Dashboard',
-      icon: 'dashboard',
-      path: '/dashboard',
-    },
-    {
-      id: 'users',
-      title: 'Users',
-      icon: 'user',
-      path: '/users',
-      permission: 'users',
-      createPath: '/users?add=true',
-    },
-    {
-      id: 'employees',
-      title: 'Employees',
-      icon: 'users',
-      path: '/hr/employees',
-      permission: 'employees',
-      createPath: '/users?add=true',
-    },
+  const menuConfig = user?.role === 'HR' ? [
+    { id: 'hr-dashboard', title: 'Dashboard', icon: 'dashboard', path: '/dashboard' },
+    { id: 'hr-employees', title: 'Employees', icon: 'users', path: '/hr/employees', createPath: '/hr/employees/new', permission: 'employees' },
+    { id: 'hr-attendance', title: 'Attendance', icon: 'calendar', path: '/hr/attendance', permission: 'attendance' },
+    { id: 'hr-leaves', title: 'Leaves', icon: 'clock', path: '/hr/leaves', permission: 'leaves' },
+    { id: 'hr-payroll', title: 'Payroll', icon: 'billing', path: '/hr/payroll', permission: 'payroll' },
+    { id: 'hr-performance', title: 'Performance', icon: 'activity', path: '/hr/performance', permission: 'hr' },
+    { id: 'hr-docs', title: 'Documents', icon: 'download', path: '/hr/documents', permission: 'hrdocs' },
+    { id: 'hr-exit', title: 'Exit Management', icon: 'logout', path: '/hr/exit', permission: 'exitmgmt' },
+    { id: 'hr-activities', title: 'Activities', icon: 'activity', path: '/activities', permission: 'activities' },
+  ] : [
+    { type: 'section', title: '📊 Core CRM' },
+    { id: 'dashboard', title: 'Dashboard', icon: 'dashboard', path: '/dashboard' },
+    { id: 'users', title: 'Users', icon: 'users', path: '/users', createPath: '/users/new', permission: 'users' },
+    { id: 'leads', title: 'Leads', icon: 'activity', path: '/leads', createPath: '/leads/new', permission: 'leads' },
+    { id: 'deals', title: 'Deals', icon: 'deals', path: '/deals', createPath: '/deals/new', permission: 'deals' },
+    { id: 'customers', title: 'Customers', icon: 'user', path: '/customers', createPath: '/customers/new', permission: 'customers' },
 
-    { type: 'section', title: 'SALES PIPELINE' },
-    {
-      id: 'leads',
-      title: 'Leads',
-      icon: 'shoppingCart',
-      path: '/leads',
-      permission: 'leads',
-      createPath: '/leads/new',
-    },
-    {
-      id: 'deals',
-      title: 'Deals',
-      icon: 'deals',
-      path: '/deals',
-      permission: 'deals',
-      createPath: '/deals?addDeal=true',
-    },
-    {
-      id: 'customers',
-      title: 'Customers',
-      icon: 'user',
-      path: '/customers',
-      permission: 'customers',
-      createPath: '/customers/new',
-    },
-    {
-      id: 'activities',
-      title: 'Activities',
-      icon: 'activity',
-      path: '/activities',
-      permission: 'activities',
-    },
-    {
-      id: 'tasks',
-      title: 'Tasks',
-      icon: 'tasks',
-      path: '/tasks',
-      permission: 'tasks',
-    },
+    { type: 'section', title: '💰 Finance' },
+    { id: 'payments', title: 'Payments', icon: 'billing', path: '/payments', createPath: '/payments/new', permission: 'payments' },
+    { id: 'invoices', title: 'Invoices', icon: 'billing', path: '/invoices', createPath: '/invoices/new', permission: 'invoices' },
+    { id: 'expenses', title: 'Expenses', icon: 'billing', path: '/expenses', createPath: '/expenses/new', permission: 'expenses' },
 
-    { type: 'section', title: 'HR & PERFORMANCE' },
-    {
-      id: 'teamPerformance',
-      title: 'Team Performance',
-      icon: 'reports',
-      permission: 'teamPerformance',
-      path: '/reports/team'
-    },
-    {
-      id: 'attendance',
-      title: 'Attendance',
-      icon: 'calendar',
-      path: '/hr/attendance',
-      permission: 'attendance',
-    },
-    {
-      id: 'leaves',
-      title: 'Leaves',
-      icon: 'clock',
-      path: '/hr/leaves',
-      permission: 'leaves',
-    },
-    {
-      id: 'payroll',
-      title: 'Payroll',
-      icon: 'billing',
-      path: '/hr/payroll',
-      permission: 'payroll',
-    },
+    { type: 'section', title: '🎫 Support' },
+    { id: 'support', title: 'Tickets', icon: 'help', path: '/tickets', createPath: '/tickets/new', permission: 'tickets' },
 
-    { type: 'section', title: 'FINANCE HUB' },
-    {
-      id: 'invoices',
-      title: 'Invoices',
-      icon: 'billing',
-      path: '/invoices',
-      permission: 'invoices',
-      createPath: '/invoices/new',
-    },
-    {
-      id: 'payments',
-      title: 'Payments',
-      icon: 'activity',
-      path: '/payments',
-      permission: 'payments',
-      createPath: '/payments/new',
-    },
-    {
-      id: 'expenses',
-      title: 'Expenses',
-      icon: 'billing',
-      path: '/expenses',
-      permission: 'expenses',
-      createPath: '/expenses/new'
-    },
-
-    { type: 'section', title: 'SYSTEM' },
-    {
-      id: 'support',
-      title: 'Tickets',
-      icon: 'help',
-      path: '/tickets',
-      permission: 'tickets',
-      createPath: '/tickets/new',
-    },
-    {
-      id: 'reports',
-      title: 'Reports',
-      icon: 'reports',
-      permission: 'reports',
-      path: '/reports'
-    },
-    {
-      id: 'notifications',
-      title: 'Notifications',
-      icon: 'bell',
-      permission: 'notifications',
-      path: '/notifications'
-    },
-    {
-      id: 'settings',
-      title: 'Settings',
-      icon: 'settings',
-      permission: 'settings',
-      path: '/settings'
-    },
-    {
-      id: 'trash',
-      title: 'Trash',
-      icon: 'trash',
-      permission: 'trash',
-      path: '/trash'
-    }
+    { type: 'section', title: '📈 System' },
+    { id: 'reports', title: 'Reports', icon: 'reports', path: '/reports', permission: 'reports' },
+    { id: 'settings', title: 'Settings', icon: 'settings', path: '/settings', permission: 'settings' },
+    { id: 'trash', title: 'Trash', icon: 'trash', path: '/trash', permission: 'trash' }
   ]
 
 
@@ -375,6 +271,10 @@ export default function Sidebar({ isOpen, onClose }) {
             }
 
             if (item.permission && !hasPermission(user, item.permission)) return null
+            if (item.hideForAdmin && user.role === 'Admin') return null
+            
+            // Accountants should not see the Customers module in sidebar
+            if (item.id === 'customers' && user.role === 'Accountant') return null
 
             return (
               <NavLink 

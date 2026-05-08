@@ -7,6 +7,7 @@ import { Icon } from '../../../layouts/icons.jsx'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../../context/AuthContext.jsx'
 import { validateRequired } from '../../../utils/formValidation.js'
+import SearchableSelect from './SearchableSelect.jsx'
 
 export default function LeadConversionModal({ isOpen, lead, onClose, onConverted }) {
   const { user } = useAuth()
@@ -66,7 +67,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
         source: form.source,
         initial_note: form.initial_note
       })
-      toast.success('Lead converted successfully')
+      toast.success('Lead converted to customer successfully')
       onConverted(res)
       onClose()
     } catch (err) {
@@ -83,8 +84,8 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
       <div className="crm-modal-sheet" style={{ maxWidth: '600px' }}>
         <div className="crm-modal-sheet-header">
           <div className="sheet-title-area">
-            <h2 className="sheet-title">Convert Lead to Customer</h2>
-            <p className="sheet-subtitle">Finalize details for <strong>{lead?.name}</strong> to initiate customer profile.</p>
+            <h2 className="sheet-title">Change to Customer</h2>
+            <p className="sheet-subtitle">Update details to add <strong>{lead?.name}</strong> as a customer.</p>
           </div>
         </div>
 
@@ -98,50 +99,48 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
                 <Icon name="userPlus" />
-                <span>Account Finalization</span>
+                <span>Customer Info</span>
               </div>
               
               <div className="form-sheet-grid">
                 <div className="sheet-field">
-                  <label>Assign Account To</label>
-                  <select 
-                    className={`crm-input ${fieldErrors.assigned_to ? 'error' : ''}`}
+                  <label>Assign To</label>
+                  <SearchableSelect
                     value={form.assigned_to}
-                    onChange={e => {
-                      setForm({...form, assigned_to: e.target.value})
+                    onChange={val => {
+                      setForm({...form, assigned_to: val})
                       if (fieldErrors.assigned_to) setFieldErrors(prev => ({ ...prev, assigned_to: '' }))
                     }}
-                    required
-                  >
-                    <option value="">Select Staff Member...</option>
-                    {employees.map(u => <option key={u.id || u._id} value={u.id || u._id}>{u.name} ({u.role})</option>)}
-                  </select>
+                    options={employees.map(u => ({ value: u.id || u._id, label: `${u.name} (${u.role})` }))}
+                    placeholder="Select Staff Member..."
+                    icon="user"
+                    error={!!fieldErrors.assigned_to}
+                  />
                   {fieldErrors.assigned_to && <span className="error-text">{fieldErrors.assigned_to}</span>}
                 </div>
 
                 <div className="sheet-field">
-                  <label>Confirmed Source</label>
-                  <select 
-                    className={`crm-input ${fieldErrors.source ? 'error' : ''}`}
+                  <label>Source</label>
+                  <SearchableSelect
                     value={form.source}
-                    onChange={e => {
-                      setForm({...form, source: e.target.value})
+                    onChange={val => {
+                      setForm({...form, source: val})
                       if (fieldErrors.source) setFieldErrors(prev => ({ ...prev, source: '' }))
                     }}
-                    required
-                  >
-                    <option value="">Select origin source...</option>
-                    {sources.map(s => <option key={s.id || s.name} value={s.name}>{s.name}</option>)}
-                  </select>
+                    options={sources.map(s => ({ value: s.name, label: s.name }))}
+                    placeholder="Select origin source..."
+                    icon="activity"
+                    error={!!fieldErrors.source}
+                  />
                   {fieldErrors.source && <span className="error-text">{fieldErrors.source}</span>}
                 </div>
 
                 <div className="sheet-field full-width">
-                  <label>Conversion Notes / Interaction Summary</label>
+                  <label>Notes</label>
                   <textarea 
                     className="crm-input"
                     style={{ minHeight: '120px' }}
-                    placeholder="Describe any initial requirements or key discussion points..."
+                    placeholder="Add any notes about this customer..."
                     value={form.initial_note}
                     onChange={e => setForm({...form, initial_note: e.target.value})}
                   />
@@ -152,7 +151,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
         </form>
 
         <div className="crm-modal-sheet-footer">
-          <p className="footer-hint">This action creates a permanent customer record.</p>
+          <p className="footer-hint">This will save them as a customer.</p>
           <div style={{ display: 'flex', gap: '16px' }}>
             <button type="button" className="crm-btn-premium glass" onClick={onClose}>Cancel</button>
             <button 
@@ -161,7 +160,7 @@ export default function LeadConversionModal({ isOpen, lead, onClose, onConverted
               disabled={saving}
               className="crm-btn-premium vibrant"
             >
-              {saving ? 'Converting...' : 'Confirm Conversion'}
+              {saving ? 'Saving...' : 'Save Customer'}
             </button>
           </div>
         </div>

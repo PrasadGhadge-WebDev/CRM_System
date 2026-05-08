@@ -46,25 +46,24 @@ export default function Pagination({ page: rawPage, limit: rawLimit, total: rawT
     <div className="pg-wrapper">
       <div className="pg-controls">
         <button 
-          className="pg-btn nav" 
+          className="pg-btn nav-text" 
           onClick={() => onPageChange(page - 1)}
           disabled={showAll || page <= 1}
-          title="Previous Page"
         >
-          &larr;
+          Prev
         </button>
 
         <div className="pg-numbers">
           {pageNumbers.map((p, idx) => (
             <React.Fragment key={idx}>
               {p === '...' ? (
-                <span className="pg-ellipsis">...</span>
+                <div className="pg-ellipsis-circle">...</div>
               ) : (
                 <button
-                  className={`pg-btn num ${p === page ? 'active' : ''}`}
+                  className={`pg-btn-circle ${p === page ? 'active' : ''}`}
                   onClick={() => onPageChange(p)}
                 >
-                  {p}
+                  {String(p).padStart(2, '0')}
                 </button>
               )}
             </React.Fragment>
@@ -72,12 +71,11 @@ export default function Pagination({ page: rawPage, limit: rawLimit, total: rawT
         </div>
 
         <button 
-          className="pg-btn nav" 
+          className="pg-btn nav-text active" 
           onClick={() => onPageChange(page + 1)}
           disabled={showAll || page >= totalPages}
-          title="Next Page"
         >
-          &rarr;
+          Next
         </button>
       </div>
 
@@ -111,69 +109,81 @@ export default function Pagination({ page: rawPage, limit: rawLimit, total: rawT
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 16px;
-          margin-top: 24px;
-          padding: 12px 20px;
-          background: var(--bg-card);
-          border-radius: 16px;
-          border: 1px solid var(--border);
-          box-shadow: var(--shadow-sm);
+          gap: 20px;
+          margin-top: 32px;
+          padding: 16px 24px;
+          background: transparent;
+          width: 100%;
         }
 
         .pg-controls {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 24px;
         }
 
         .pg-numbers {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 12px;
         }
 
-        .pg-btn {
+        .nav-text {
+          background: transparent;
+          border: none;
+          font-size: 0.9rem;
+          font-weight: 700;
+          color: #94a3b8;
+          cursor: pointer;
+          transition: color 0.2s;
+          padding: 8px;
+        }
+        .nav-text.active:not(:disabled) {
+          color: #0066ff;
+        }
+        .nav-text:disabled {
+          color: #cbd5e1;
+          cursor: not-allowed;
+        }
+
+        .pg-btn-circle {
+          width: 40px;
           height: 40px;
-          min-width: 40px;
+          border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 1px solid var(--border);
-          background: var(--bg-surface);
-          color: var(--text-muted);
-          border-radius: 12px;
-          font-size: 0.9rem;
-          font-weight: 700;
+          border: 2px solid #cbd5e1;
+          background: white;
+          color: #475569;
+          font-size: 0.85rem;
+          font-weight: 800;
           cursor: pointer;
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .pg-btn:hover:not(:disabled) {
-          background: var(--bg-hover);
-          border-color: var(--primary-color);
-          color: var(--primary-color);
+        .pg-btn-circle:hover:not(.active) {
+          border-color: #0066ff;
+          color: #0066ff;
         }
 
-        .pg-btn.active {
-          background: var(--primary);
-          border-color: var(--primary);
+        .pg-btn-circle.active {
+          background: #0066ff;
+          border-color: #0066ff;
           color: white;
-          box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent);
+          box-shadow: 0 4px 12px rgba(0, 102, 255, 0.3);
         }
 
-        .pg-btn:disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
-
-        .pg-btn.nav {
-          font-size: 1.2rem;
-          line-height: 1;
-        }
-
-        .pg-ellipsis {
-          padding: 0 4px;
-          color: var(--text-muted);
+        .pg-ellipsis-circle {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid #cbd5e1;
+          color: #64748b;
+          font-weight: 800;
         }
 
         .pg-meta {
@@ -181,20 +191,19 @@ export default function Pagination({ page: rawPage, limit: rawLimit, total: rawT
           align-items: center;
           justify-content: space-between;
           width: 100%;
-          max-width: 550px;
           font-size: 0.85rem;
-          color: var(--text-muted);
+          color: #64748b;
           font-weight: 600;
+          padding-top: 16px;
+          border-top: 1px solid var(--border-subtle);
         }
 
-        .pg-info b {
-          color: var(--text);
-        }
+        .pg-info b { color: var(--text); }
 
         .pg-limit {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 12px;
         }
 
         .pg-select {
@@ -202,22 +211,23 @@ export default function Pagination({ page: rawPage, limit: rawLimit, total: rawT
           border: 1px solid var(--border);
           border-radius: 10px;
           color: var(--text);
-          padding: 4px 10px;
+          padding: 6px 12px;
           font-size: 0.85rem;
           font-weight: 700;
           cursor: pointer;
           outline: none;
-          transition: all 0.2s;
         }
 
-        @media (min-width: 640px) {
+        @media (min-width: 768px) {
           .pg-wrapper {
             flex-direction: row;
             justify-content: space-between;
           }
           .pg-meta {
             width: auto;
-            gap: 24px;
+            border-top: none;
+            padding-top: 0;
+            gap: 32px;
           }
         }
       `}</style>

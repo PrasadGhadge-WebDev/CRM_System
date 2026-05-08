@@ -48,6 +48,10 @@ exports.restoreTrashItem = asyncHandler(async (req, res) => {
   const entry = await TrashEntry.findById(req.params.id);
   if (!entry) return res.fail('Trash item not found', 404);
 
+  if (!entry.entity_id || entry.entity_id === 'undefined') {
+    return res.fail('Corrupted trash entry: original record identity lost', 400);
+  }
+
   if (entry.entity_type === 'lead-source' || entry.entity_type === 'lead-status') {
     const SystemSettings = require('../models/SystemSettings');
     const settings = await SystemSettings.findOne({ company_id: req.user.company_id });
@@ -73,6 +77,9 @@ exports.restoreTrashItem = asyncHandler(async (req, res) => {
         record.isDeleted = false;
         await record.save();
       }
+    } else {
+        // If findOne failed but didn't throw, maybe it's already gone or ID is wrong
+        return res.fail('Original record not found or could not be restored', 404);
     }
   }
 
@@ -84,18 +91,20 @@ exports.deleteTrashItem = asyncHandler(async (req, res) => {
   const entry = await TrashEntry.findById(req.params.id);
   if (!entry) return res.fail('Trash item not found', 404);
 
-  if (entry.entity_type === 'lead-source' || entry.entity_type === 'lead-status') {
-    const SystemSettings = require('../models/SystemSettings');
-    const settings = await SystemSettings.findOne({ company_id: req.user.company_id });
-    if (settings) {
-      const collection = entry.entity_type === 'lead-source' ? settings.leadSources : settings.leadStatuses;
-      collection.pull({ _id: entry.entity_id });
-      await settings.save();
-    }
-  } else {
-    const Model = MODEL_MAP[entry.entity_type];
-    if (Model) {
-      await Model.deleteOne({ _id: entry.entity_id }).setOptions({ isDeleted: true });
+  if (entry.entity_id && entry.entity_id !== 'undefined') {
+    if (entry.entity_type === 'lead-source' || entry.entity_type === 'lead-status') {
+      const SystemSettings = require('../models/SystemSettings');
+      const settings = await SystemSettings.findOne({ company_id: req.user.company_id });
+      if (settings) {
+        const collection = entry.entity_type === 'lead-source' ? settings.leadSources : settings.leadStatuses;
+        collection.pull({ _id: entry.entity_id });
+        await settings.save();
+      }
+    } else {
+      const Model = MODEL_MAP[entry.entity_type];
+      if (Model) {
+        await Model.deleteOne({ _id: entry.entity_id }).setOptions({ isDeleted: true });
+      }
     }
   }
 

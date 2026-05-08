@@ -40,7 +40,13 @@ import Reports from './pages/Reports.jsx'
 import Filters from './modules/admin/pages/Filters.jsx'
 import PaginationSettings from './modules/admin/pages/PaginationSettings.jsx'
 import TrashList from './modules/admin/pages/TrashList.jsx'
-import Attendance from './modules/admin/pages/Attendance.jsx'
+import AttendanceMgmt from './modules/hr/pages/AttendanceMgmt.jsx'
+import LeavesMgmt from './modules/hr/pages/LeavesMgmt.jsx'
+import EmployeeList from './modules/hr/pages/EmployeeList.jsx'
+import EmployeeForm from './modules/hr/pages/EmployeeForm.jsx'
+import EmployeeProfile from './modules/hr/pages/EmployeeProfile.jsx'
+import HRDashboard from './modules/hr/pages/HRDashboard.jsx'
+import PayrollDashboard from './modules/hr/pages/PayrollDashboard.jsx'
 import FollowupsModule from './modules/crm/pages/FollowupsModule.jsx'
 import RecycleBinIntelligence from './components/RecycleBinIntelligence.jsx'
 
@@ -54,7 +60,7 @@ import Profile from './pages/Profile.jsx'
 import { AuthProvider } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
-import { ROLE_GROUPS } from './utils/accessControl'
+import { ROLE_GROUPS, ROLES } from './utils/accessControl'
 import LandingPage from './pages/LandingPage.jsx'
 import AboutPage from './pages/AboutPage.jsx'
 import FeaturesPage from './pages/FeaturesPage.jsx'
@@ -107,12 +113,11 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
 
           <Route path="/activities" element={<ProtectedRoute permission="activities"><FollowupsModule /></ProtectedRoute>} />
-          <Route path="/tasks" element={<ProtectedRoute permission="tasks"><div className="crmContent"><h1>Tasks</h1><p>Module under development</p></div></ProtectedRoute>} />
 
           <Route path="/customers" element={<ProtectedRoute permission="customers"><CustomersList /></ProtectedRoute>} />
-          <Route path="/customers/new" element={<ProtectedRoute permission="customers"><CustomerForm mode="create" /></ProtectedRoute>} />
+          <Route path="/customers/new" element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}><CustomerForm mode="create" /></ProtectedRoute>} />
           <Route path="/customers/:id" element={<ProtectedRoute permission="customers"><CustomerDetail /></ProtectedRoute>} />
-          <Route path="/customers/:id/edit" element={<ProtectedRoute permission="customers"><CustomerForm mode="edit" /></ProtectedRoute>} />
+          <Route path="/customers/:id/edit" element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}><CustomerForm mode="edit" /></ProtectedRoute>} />
 
           <Route path="/leads" element={<ProtectedRoute permission="leads"><LeadsList /></ProtectedRoute>} />
           <Route path="/leads/new" element={<ProtectedRoute permission="leads"><LeadForm mode="create" /></ProtectedRoute>} />
@@ -120,10 +125,10 @@ export default function App() {
           <Route path="/leads/:id" element={<ProtectedRoute permission="leads"><LeadDetail /></ProtectedRoute>} />
 
           <Route path="/deals" element={<ProtectedRoute permission="deals"><DealsList /></ProtectedRoute>} />
-          <Route path="/deals/new" element={<ProtectedRoute permission="deals"><DealForm mode="create" /></ProtectedRoute>} />
+          <Route path="/deals/new" element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}><DealForm mode="create" /></ProtectedRoute>} />
           <Route path="/deals/analytics" element={<ProtectedRoute permission="deals"><DealAnalytics /></ProtectedRoute>} />
           <Route path="/deals/:id" element={<ProtectedRoute permission="deals"><DealDetail /></ProtectedRoute>} />
-          <Route path="/deals/:id/edit" element={<ProtectedRoute permission="deals"><DealForm mode="edit" /></ProtectedRoute>} />
+          <Route path="/deals/:id/edit" element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}><DealForm mode="edit" /></ProtectedRoute>} />
 
           <Route path="/tickets" element={<ProtectedRoute permission="tickets"><SupportList /></ProtectedRoute>} />
           <Route path="/tickets/new" element={<ProtectedRoute permission="tickets"><TicketForm mode="create" /></ProtectedRoute>} />
@@ -148,11 +153,19 @@ export default function App() {
             />
           </Route>
 
-          {/* HR Module Routes */}
-          <Route path="/hr/employees" element={<ProtectedRoute permission="employees"><UsersList /></ProtectedRoute>} />
-          <Route path="/hr/attendance" element={<ProtectedRoute permission="attendance"><Attendance /></ProtectedRoute>} />
-          <Route path="/hr/leaves" element={<ProtectedRoute permission="leaves"><Attendance /></ProtectedRoute>} />
-          <Route path="/hr/payroll" element={<ProtectedRoute permission="payroll"><div className="crmContent"><h1>Payroll</h1><p>Module under development</p></div></ProtectedRoute>} />
+          {/* HR Module Routes (Overhauled) */}
+          <Route path="/hr/dashboard" element={<ProtectedRoute permission="hr"><HRDashboard /></ProtectedRoute>} />
+          <Route path="/hr/employees" element={<ProtectedRoute permission="employees"><EmployeeList /></ProtectedRoute>} />
+          <Route path="/hr/employees/new" element={<ProtectedRoute permission="employees"><EmployeeForm /></ProtectedRoute>} />
+          <Route path="/hr/employees/edit/:id" element={<ProtectedRoute permission="employees"><EmployeeForm /></ProtectedRoute>} />
+          <Route path="/hr/employees/:id" element={<ProtectedRoute permission="employees"><EmployeeProfile /></ProtectedRoute>} />
+          <Route path="/hr/attendance" element={<ProtectedRoute permission="attendance"><AttendanceMgmt /></ProtectedRoute>} />
+          <Route path="/hr/leaves" element={<ProtectedRoute permission="leaves"><LeavesMgmt /></ProtectedRoute>} />
+          <Route path="/hr/payroll" element={<ProtectedRoute permission="payroll"><PayrollDashboard /></ProtectedRoute>} />
+          <Route path="/hr/performance" element={<ProtectedRoute permission="performance"><div className="crmContent"><h1>Performance</h1><p>Module under development</p></div></ProtectedRoute>} />
+          <Route path="/activities" element={<ProtectedRoute permission="activities"><FollowupsModule /></ProtectedRoute>} />
+          <Route path="/hr/documents" element={<ProtectedRoute permission="hrdocs"><div className="crmContent"><h1>Documents</h1><p>Module under development</p></div></ProtectedRoute>} />
+          <Route path="/hr/exit" element={<ProtectedRoute permission="exitmgmt"><div className="crmContent"><h1>Exit Management</h1><p>Module under development</p></div></ProtectedRoute>} />
 
           <Route
             element={
@@ -164,6 +177,7 @@ export default function App() {
             <Route path="/payments" element={<PaymentsList />} />
             <Route path="/payments/new" element={<PaymentForm mode="create" />} />
             <Route path="/payments/:id" element={<PaymentDetail />} />
+            <Route path="/payments/:id/edit" element={<PaymentForm mode="edit" />} />
           </Route>
 
           <Route

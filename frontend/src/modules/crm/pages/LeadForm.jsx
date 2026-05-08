@@ -20,6 +20,7 @@ import { leadSourcesApi as sourcesApi } from '../../../services/leadSources.js'
 import { statusesApi } from '../../../services/statuses.js'
 import { usersApi } from '../../../services/users.js'
 import { useAuth } from '../../../context/AuthContext.jsx'
+import SearchableSelect from '../components/SearchableSelect.jsx'
 
 import { 
   validateRequired, 
@@ -30,21 +31,17 @@ import {
 } from '../../../utils/formValidation.js'
 
 const INITIAL_LEAD = {
-  first_name: '',
-  last_name: '',
+  name: '',
   email: '',
   phone: '',
   source: 'Organic',
   status: 'New',
   assigned_to: '',
   follow_up_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-  address: '',
   city: '',
-  state: '',
-  postal_code: '',
-  country: 'India',
+  state: 'Maharashtra',
+  value: '',
   notes: '',
-  interest_level: 'Medium',
 }
 
 export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
@@ -105,8 +102,18 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
         } else if (!leadId) {
           const defaultSrc = srcRes?.find(s => s.is_default)
           const defaultStat = statRes?.find(s => s.is_default)
-          if (defaultSrc) setModel(prev => ({ ...prev, source: defaultSrc.name }))
-          if (defaultStat) setModel(prev => ({ ...prev, status: defaultStat.name }))
+          
+          let initialAssigned = ''
+          if (user?.role === 'Employee') {
+            initialAssigned = user.id || user._id
+          }
+
+          setModel(prev => ({ 
+            ...prev, 
+            source: defaultSrc ? defaultSrc.name : prev.source,
+            status: defaultStat ? defaultStat.name : prev.status,
+            assigned_to: initialAssigned
+          }))
         }
       } catch (err) {
         toast.error('Initialization failed')
@@ -125,7 +132,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
         const matches = field === 'email' ? l.email?.toLowerCase() === value.trim().toLowerCase() : l.phone === value.trim()
         return matches && (isEdit ? l.id !== id : true)
       })
-      if (conflict) setFieldErrors(prev => ({ ...prev, [field]: `Already exists: "${conflict.first_name} ${conflict.last_name}"` }))
+      if (conflict) setFieldErrors(prev => ({ ...prev, [field]: `Already exists: "${conflict.name}"` }))
       else setFieldErrors(prev => { const next = { ...prev }; delete next[field]; return next })
     } catch { } finally { setChecking(false) }
   }, [id, isEdit])
@@ -133,8 +140,8 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
   const validate = () => {
     const errors = {}
     
-    const fNameErr = validateRequired('First Name', model.first_name)
-    if (fNameErr) errors.first_name = fNameErr
+    const nameErr = validateRequired('Full Name', model.name)
+    if (nameErr) errors.name = nameErr
 
     const emailErr = validateEmail('Email', model.email) || validateRequired('Email', model.email)
     if (emailErr) errors.email = emailErr
@@ -142,9 +149,9 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
     const phoneErr = validatePhone('Phone', model.phone, { required: true })
     if (phoneErr) errors.phone = phoneErr
 
-    if (!model.follow_up_date) {
-      errors.follow_up_date = 'Follow-up date is required'
-    } else if (new Date(model.follow_up_date) < new Date().setHours(0, 0, 0, 0)) {
+    if (!model.source) errors.source = 'Lead source is required'
+
+    if (model.follow_up_date && new Date(model.follow_up_date) < new Date().setHours(0, 0, 0, 0)) {
       errors.follow_up_date = 'Follow-up date cannot be in the past'
     }
 
@@ -199,7 +206,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
     }
   }
 
-  if (loading) return <div className="p-40 text-center text-dimmed">Accessing lead vault...</div>
+  if (loading) return <div className="p-40 text-center text-dimmed">Loading...</div>
 
   const modalContent = (
     <div className="crm-modal-portal-overlay">
@@ -207,48 +214,46 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
         <div className="crm-modal-sheet-header">
           <div className="sheet-title-area">
             <h2 className="sheet-title">{isEdit ? 'Update Lead' : 'Add New Lead'}</h2>
-            <p className="sheet-subtitle">{isEdit ? `Editing record for ${model.first_name} ${model.last_name}` : 'Initialize a new prospect in the CRM'}</p>
+            <p className="sheet-subtitle">{isEdit ? `Editing record for ${model.name}` : 'Add a new lead to the system'}</p>
           </div>
         </div>
 
         <form className="crm-modal-sheet-body custom-scrollbar" onKeyDown={handleKeyDown} onSubmit={handleSubmit}>
           <div className="sheet-content-container">
+            {initialModel?.status === 'Converted' && (
+              <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 16px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <FiActivity style={{ color: 'var(--primary)' }} />
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)' }}>Archived Lead Record</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)' }}>This lead has been converted to a Customer. Editing here will not update the Customer profile.</div>
+                </div>
+              </div>
+            )}
             {/* Core Identity */}
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <FiUser />
-                <span>Prospect Identity</span>
+                <span>Contact Information</span>
               </div>
               <div className="form-sheet-grid">
-                <div className="sheet-field">
-                  <label>First Name</label>
-                  <div className={`crm-input-group ${fieldErrors.first_name ? 'error' : ''}`}>
+                <div className="sheet-field full-width">
+                  <label>Full Name</label>
+                  <div className={`crm-input-group ${fieldErrors.name ? 'error' : ''}`}>
                     <div className="input-icon-box"><FiUser /></div>
                     <input 
                       autoFocus 
-                      value={model.first_name} 
+                      value={model.name} 
                       onChange={e => {
-                        setModel({ ...model, first_name: normalizeName(e.target.value) })
-                        if (fieldErrors.first_name) setFieldErrors(prev => ({ ...prev, first_name: '' }))
+                        setModel({ ...model, name: normalizeName(e.target.value) })
+                        if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: '' }))
                       }} 
-                      placeholder="e.g. John" 
+                      placeholder="e.g. John Doe" 
                     />
                   </div>
-                  {fieldErrors.first_name && <span className="error-text">{fieldErrors.first_name}</span>}
+                  {fieldErrors.name && <span className="error-text">{fieldErrors.name}</span>}
                 </div>
                 <div className="sheet-field">
-                  <label>Last Name</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiUser /></div>
-                    <input 
-                      value={model.last_name} 
-                      onChange={e => setModel({ ...model, last_name: normalizeName(e.target.value) })} 
-                      placeholder="e.g. Doe" 
-                    />
-                  </div>
-                </div>
-                <div className="sheet-field">
-                  <label>Primary Email</label>
+                  <label>Email Address</label>
                   <div className={`crm-input-group ${fieldErrors.email ? 'error' : ''}`}>
                     <div className="input-icon-box"><FiMail /></div>
                     <input 
@@ -265,7 +270,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                   {fieldErrors.email && <span className="error-text">{fieldErrors.email}</span>}
                 </div>
                 <div className="sheet-field">
-                  <label>Secure Phone</label>
+                  <label>Phone Number</label>
                   <div className={`crm-input-group ${fieldErrors.phone ? 'error' : ''}`}>
                     <div className="input-icon-box"><FiPhone /></div>
                     <input 
@@ -287,65 +292,66 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <FiLayers />
-                <span>Classification & Source</span>
+                <span>Lead Source</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
-                  <label>Acquisition Source</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiLink /></div>
-                    <select value={model.source} onChange={e => setModel({ ...model, source: e.target.value })}>
-                      {availableSources.length > 0 
-                        ? availableSources.map(s => <option key={s.id} value={s.name}>{s.name}</option>)
-                        : ['Organic', 'Referral', 'Social', 'Ads'].map(name => <option key={name} value={name}>{name}</option>)
-                      }
-                    </select>
-                  </div>
+                  <label>Source *</label>
+                  <SearchableSelect
+                    value={model.source}
+                    onChange={val => setModel({ ...model, source: val })}
+                    options={availableSources.length > 0 
+                      ? availableSources.map(s => ({ value: s.name, label: s.name }))
+                      : ['Organic', 'Referral', 'Social', 'Ads'].map(name => ({ value: name, label: name }))
+                    }
+                    icon="activity"
+                  />
+                  {fieldErrors.source && <span className="error-text">{fieldErrors.source}</span>}
                 </div>
                 <div className="sheet-field">
-                  <label>Interest Level</label>
+                  <label>Estimated Value</label>
                   <div className="crm-input-group">
-                    <div className="input-icon-box"><FiStar /></div>
-                    <select value={model.interest_level} onChange={e => setModel({ ...model, interest_level: e.target.value })}>
-                      <option value="High">High (Hot)</option>
-                      <option value="Medium">Medium (Warm)</option>
-                      <option value="Low">Low (Cold)</option>
-                    </select>
+                    <div className="input-icon-box"><FiTag /></div>
+                    <input 
+                      type="number"
+                      value={model.value} 
+                      onChange={e => setModel({ ...model, value: e.target.value })} 
+                      placeholder="Estimated value..." 
+                    />
                   </div>
                 </div>
               </div>
             </section>
 
+
+
             {/* Geography */}
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <FiMapPin />
-                <span>Geographic Intelligence</span>
+                <span>Location</span>
               </div>
               <div className="form-sheet-grid">
-                <div className="sheet-field full-width">
-                  <label>Street Address</label>
+                <div className="sheet-field">
+                  <label>City</label>
                   <div className="crm-input-group">
                     <div className="input-icon-box"><FiMapPin /></div>
                     <input 
-                      value={model.address} 
-                      onChange={e => setModel({ ...model, address: e.target.value })} 
-                      placeholder="Suite, Building, Street..." 
+                      value={model.city} 
+                      onChange={e => setModel({ ...model, city: e.target.value })} 
+                      placeholder="e.g. Mumbai" 
                     />
                   </div>
                 </div>
                 <div className="sheet-field">
-                  <label>City / Region</label>
+                  <label>State</label>
                   <div className="crm-input-group">
                     <div className="input-icon-box"><FiMapPin /></div>
-                    <input value={model.city} onChange={e => setModel({ ...model, city: e.target.value })} placeholder="e.g. Mumbai" />
-                  </div>
-                </div>
-                <div className="sheet-field">
-                  <label>State / Province</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiMapPin /></div>
-                    <input value={model.state} onChange={e => setModel({ ...model, state: e.target.value })} placeholder="e.g. Maharashtra" />
+                    <input 
+                      value={model.state} 
+                      onChange={e => setModel({ ...model, state: e.target.value })} 
+                      placeholder="e.g. Maharashtra" 
+                    />
                   </div>
                 </div>
               </div>
@@ -355,31 +361,37 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
                 <FiActivity />
-                <span>Operational Governance</span>
+                <span>Status & Assignment</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
-                  <label>Lifecycle Status</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiTag /></div>
-                    <select value={model.status} onChange={e => setModel({ ...model, status: e.target.value })}>
-                      {availableStatuses.length > 0 
-                        ? availableStatuses.map(s => <option key={s.id} value={s.name}>{s.name}</option>)
-                        : ['New', 'Contacted', 'Qualified', 'Lost'].map(name => <option key={name} value={name}>{name}</option>)
-                      }
-                    </select>
-                  </div>
+                  <label>Lead Status {initialModel?.status === 'Converted' ? '(Archived - Converted)' : (user?.role === 'Employee' ? '(Read Only)' : '')}</label>
+                  <SearchableSelect
+                    value={model.status}
+                    onChange={val => setModel({ ...model, status: val })}
+                    options={availableStatuses.length > 0 
+                      ? availableStatuses.map(s => ({ value: s.name, label: s.name }))
+                      : ['New', 'Contacted', 'Qualified', 'Lost', 'Converted'].map(name => ({ value: name, label: name }))
+                    }
+                    icon="activity"
+                    disabled={user?.role === 'Employee' || initialModel?.status === 'Converted'}
+                  />
                 </div>
                 {user?.role !== 'Employee' && (
                   <div className="sheet-field">
-                    <label>Assigned Officer</label>
-                    <div className="crm-input-group">
-                      <div className="input-icon-box"><FiBriefcase /></div>
-                      <select value={model.assigned_to} onChange={e => setModel({ ...model, assigned_to: e.target.value })}>
-                        <option value="">Unassigned</option>
-                        {allUsers.map(u => <option key={u.id || u._id} value={u.id || u._id}>{u.name}</option>)}
-                      </select>
-                    </div>
+                    <label>Assign To</label>
+                    <SearchableSelect
+                      value={model.assigned_to}
+                      onChange={val => setModel({ ...model, assigned_to: val })}
+                      disabled={initialModel?.status === 'Converted'}
+                      options={[
+                        { value: '', label: 'Unassigned' }, 
+                        ...allUsers
+                          .filter(u => user?.role === 'Admin' ? true : u.role === 'Employee')
+                          .map(u => ({ value: u.id || u._id, label: u.name }))
+                      ]}
+                      icon="user"
+                    />
                   </div>
                 )}
                 <div className="sheet-field">
@@ -395,14 +407,14 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                   {fieldErrors.follow_up_date && <span className="error-text">{fieldErrors.follow_up_date}</span>}
                 </div>
                 <div className="sheet-field full-width">
-                  <label>Strategic Notes</label>
+                  <label>Lead Description</label>
                   <div className="crm-input-group">
                     <div className="input-icon-box"><FiMessageSquare /></div>
                     <textarea 
                       style={{ minHeight: '100px' }} 
                       value={model.notes} 
                       onChange={e => setModel({ ...model, notes: e.target.value })} 
-                      placeholder="Add background context, requirements, or meeting summaries..." 
+                      placeholder="Add background context or description..." 
                     />
                   </div>
                 </div>
@@ -412,11 +424,11 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
         </form>
 
         <div className="crm-modal-sheet-footer">
-          <p className="footer-hint">Data is encrypted with 256-bit security.</p>
+          <p className="footer-hint">Your data is safe and secure.</p>
           <div style={{ display: 'flex', gap: '16px' }}>
             <button className="crm-btn-premium glass" onClick={() => (onCancel ? onCancel() : navigate(-1))}>Cancel</button>
             <button className="crm-btn-premium vibrant" disabled={saving || checking} onClick={handleSubmit}>
-              {saving ? 'Processing...' : isEdit ? 'Save Changes' : 'Create Lead'}
+              {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Lead'}
             </button>
           </div>
         </div>

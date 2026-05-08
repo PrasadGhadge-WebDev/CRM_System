@@ -40,21 +40,21 @@ body.dark .crmSidebar {
 }
 
 .sidebarTop {
-  padding: 20px 16px;
+  padding: 16px 14px;
   border-bottom: 1px solid var(--sidebar-border-internal);
 }
 
 .brandRow {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   cursor: pointer;
   outline: none;
 }
 
 .brandMark {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   background: var(--primary, #3b82f6);
   color: white;
   border-radius: 12px;
@@ -65,14 +65,14 @@ body.dark .crmSidebar {
 }
 
 .brandName {
-  font-size: 1.1rem;
+  font-size: 0.98rem;
   font-weight: 800;
   color: var(--sidebar-text-internal);
   letter-spacing: -0.02em;
 }
 
 .brandSub {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--sidebar-text-muted-internal);
   opacity: 0.8;
@@ -80,23 +80,23 @@ body.dark .crmSidebar {
 
 .sidebarNav {
   flex: 1;
-  padding: 24px 12px;
+  padding: 18px 10px;
   overflow-y: auto;
 }
 
 .navSection {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .navSectionLabel,
 .navSectionHeader {
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   font-weight: 800;
   color: var(--sidebar-text-muted-internal);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  margin: 24px 0 12px 0;
-  padding-left: 14px;
+  margin: 18px 0 10px 0;
+  padding-left: 12px;
   opacity: 0.85;
   display: flex;
   align-items: center;
@@ -141,13 +141,13 @@ body.dark .crmSidebar {
 .navItem {
   display: flex;
   align-items: center;
-  padding: 10px 14px;
-  margin-bottom: 3px;
+  padding: 8px 12px;
+  margin-bottom: 2px;
   border-radius: 8px;
   text-decoration: none;
   color: var(--sidebar-text-internal);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   transition: all 0.2s;
   border: 1px solid transparent;
   cursor: pointer;
@@ -172,9 +172,9 @@ body.dark .crmSidebar {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin-right: 12px;
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
   color: var(--sidebar-text-muted-internal);
   transition: all 0.2s;
 }
@@ -186,11 +186,12 @@ body.dark .crmSidebar {
 
 .navText {
   flex: 1;
+  line-height: 1.15;
 }
 
 .addInlineBtn {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 8px;
   border: 1.5px solid var(--sidebar-border-internal);
   background: var(--bg-card, #ffffff);
@@ -198,7 +199,7 @@ body.dark .crmSidebar {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
+  opacity: 0.35;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   margin-right: 8px;
   cursor: pointer;
@@ -208,8 +209,8 @@ body.dark .crmSidebar {
 }
 
 .addInlineBtn svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   stroke-width: 3px;
 }
 
@@ -286,15 +287,15 @@ body.dark .crmSidebar {
 }
 
 .sidebarBottom {
-  padding: 24px 16px;
+  padding: 18px 14px;
   border-top: 1px solid var(--sidebar-border-internal);
 }
 
 .userCard {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 10px;
   border-radius: 12px;
   cursor: pointer;
   transition: background 0.2s;
@@ -305,8 +306,8 @@ body.dark .crmSidebar {
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   background: var(--primary, #3b82f6);
   color: white;
   border-radius: 50%;
@@ -314,7 +315,7 @@ body.dark .crmSidebar {
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
 }
 
 .userMeta {
@@ -323,7 +324,7 @@ body.dark .crmSidebar {
 }
 
 .userName {
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--sidebar-text-internal);
   white-space: nowrap;
@@ -332,7 +333,7 @@ body.dark .crmSidebar {
 }
 
 .userRole {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--sidebar-text-muted-internal);
   opacity: 0.8;
@@ -378,15 +379,15 @@ body.dark .crmSidebar {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  margin-top: 12px;
+  gap: 10px;
+  padding: 10px;
+  margin-top: 10px;
   border: 1.5px solid var(--sidebar-border-internal);
   background: transparent;
   color: #ef4444;
   border-radius: 12px;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;

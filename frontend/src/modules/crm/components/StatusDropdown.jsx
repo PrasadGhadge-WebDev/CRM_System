@@ -15,7 +15,8 @@ export default function StatusDropdown({
   options = [], 
   onChange, 
   disabled = false,
-  className = ''
+  className = '',
+  bypassRules = false
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef(null)
@@ -46,18 +47,38 @@ export default function StatusDropdown({
     setIsOpen(false)
   }
 
-  // Transition Rules
+  // Transition Rules (Merged for Leads and Support)
   const transitionRules = {
+    // Leads
     'New': ['Contacted', 'Lost', 'Junk'],
     'Contacted': ['Qualified', 'Lost', 'Junk'],
     'Qualified': ['Converted', 'Lost'],
-    'Lost': [],
-    'Converted': [],
-    'Junk': []
+    
+    // Support (Case-insensitive support)
+    'open': ['assigned', 'in-progress', 'resolved', 'closed'],
+    'assigned': ['in-progress', 'waiting', 'resolved', 'closed'],
+    'in-progress': ['waiting', 'resolved', 'closed'],
+    'waiting': ['in-progress', 'resolved', 'closed'],
+    'resolved': ['in-progress', 'closed'],
+    'closed': ['open'], // Re-open if needed by Admin
+    
+    'Open': ['Assigned', 'In Progress', 'Resolved', 'Closed'],
+    'Assigned': ['In Progress', 'Waiting', 'Resolved', 'Closed'],
+    'In Progress': ['Waiting', 'Resolved', 'Closed'],
+    'Waiting': ['In Progress', 'Resolved', 'Closed'],
+    'Resolved': ['In Progress', 'Closed'],
+    'Closed': ['Open'],
+
+    // Deals Pipeline
+    'Qualification': ['Proposal', 'Negotiation', 'Won', 'Lost'],
+    'Proposal': ['Negotiation', 'Won', 'Lost'],
+    'Negotiation': ['Won', 'Lost'],
+    'Won': ['Negotiation', 'Lost'],
+    'Lost': ['New', 'Qualification', 'Proposal', 'Negotiation', 'Won']
   }
 
-  const isTerminal = status === 'Lost' || status === 'Converted' || status === 'Junk'
-  const isActuallyDisabled = disabled || isTerminal
+  const isTerminal = status === 'Lost' || status === 'Converted' || status === 'Junk' || status === 'closed' || status === 'Closed'
+  const isActuallyDisabled = disabled || (isTerminal && !bypassRules)
 
   // Normalize options to objects
   const normalizedOptions = options.map(opt => {
@@ -65,11 +86,13 @@ export default function StatusDropdown({
     return opt
   })
 
-  // Filter options based on transition rules
-  const currentRules = transitionRules[status || 'New'] || []
-  const availableOptions = normalizedOptions.filter(opt => 
-    currentRules.includes(opt.name) || opt.name === status
-  )
+  // Filter options based on transition rules (Admins can bypass)
+  const currentRules = transitionRules[status] || []
+  const availableOptions = (disabled === 'admin' || bypassRules || currentRules.length === 0)
+    ? normalizedOptions
+    : normalizedOptions.filter(opt => 
+        currentRules.includes(opt.name) || opt.name === status
+      )
 
   // Find color for current status
   const currentOpt = normalizedOptions.find(o => o.name === status) || { name: status || 'NEW', color: 'var(--primary)' }

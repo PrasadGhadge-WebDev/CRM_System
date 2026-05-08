@@ -53,8 +53,8 @@ export const leadsApi = {
     const data = await api.delete(`/api/leads/${cleanId(leadId)}/notes/${cleanId(noteId)}`)
     return data
   },
-  async bulkUpdate(ids, update) {
-    const data = await api.patch('/api/leads/bulk-update', { ids, update })
+  async bulkUpdate(payload) {
+    const data = await api.patch('/api/leads/bulk-update', payload)
     return data
   },
   async bulkDelete(ids, hard = false) {
