@@ -13,7 +13,6 @@ import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
 import { useToastFeedback } from '../../../utils/useToastFeedback.js'
 import FollowupModal from '../../../components/FollowupModal.jsx'
 import LeadNoteModal from '../components/LeadNoteModal.jsx'
-import LeadAssignModal from '../components/LeadAssignModal.jsx'
 import DealModal from '../components/DealModal.jsx'
 import StatusDropdown from '../components/StatusDropdown.jsx'
 import DeleteConfirmModal from '../components/DeleteConfirmModal.jsx'
@@ -40,9 +39,19 @@ export default function LeadsList() {
   const isAdmin = (currentUser?.role || '') === 'Admin'
   const isAdminOrManager = isAdmin || (currentUser?.role || '') === 'Manager'
 
+  const LEAD_STATUS_FINAL = [
+    { label: 'New', color: '#3b82f6' },
+    { label: 'Contacted', color: '#8b5cf6' },
+    { label: 'Qualified', color: '#10b981' },
+    { label: 'Proposal Sent', color: '#ec4899' },
+    { label: 'Negotiation', color: '#f59e0b' },
+    { label: 'Converted', color: '#10b981' },
+    { label: 'Lost', color: '#ef4444' }
+  ]
+
+
   const qParam = searchParams.get('q') || ''
   const statusParam = searchParams.get('status') || ''
-  const assignedToParam = searchParams.get('assignedTo') || ''
   const followupDateParam = searchParams.get('followupDate') || ''
   const pageParam = Math.max(1, Number(searchParams.get('page') || 1) || 1)
   const rawLimitParam = (searchParams.get('limit') || '20').trim().toLowerCase()
@@ -54,12 +63,9 @@ export default function LeadsList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const [employees, setEmployees] = useState([])
-  const [statusOptions, setStatusOptions] = useState([])
 
   const [q, setQ] = useState(qParam)
   const [status, setStatus] = useState(statusParam)
-  const [assignedTo, setAssignedTo] = useState(assignedToParam)
   const [source, setSource] = useState(searchParams.get('source') || '')
   const [dateRange, setDateRange] = useState(searchParams.get('dateRange') || 'all')
   const [customDates, setCustomDates] = useState({ start: '', end: '' })
@@ -72,7 +78,6 @@ export default function LeadsList() {
 
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false)
   const [noteLead, setNoteLead] = useState(null)
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   const [isDealModalOpen, setIsDealModalOpen] = useState(false)
   const [convertedCustomerId, setConvertedCustomerId] = useState(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -107,30 +112,6 @@ export default function LeadsList() {
     }
   }, [searchParams, items, loading])
 
-  useEffect(() => {
-    statusesApi
-      .list('lead')
-      .then((res) => {
-        const raw = Array.isArray(res) ? res : []
-        const mapped = mappedStatusOptions(raw)
-        setStatusOptions(mapped)
-      })
-      .catch(() => { })
-
-    usersApi
-      .list({ limit: 'all' })
-      .then((res) => {
-        const list = res?.items || []
-        setEmployees(list.filter((u) => (u?.role || '').toLowerCase() === 'employee'))
-      })
-      .catch(() => { })
-
-    // For Employees, we hardcode the status options to the new flow if they don't exist
-    if (isEmployee) {
-      const newFlow = ['New', 'Contacted', 'Follow-up', 'Qualified', 'Converted']
-      setStatusOptions(newFlow.map(s => ({ value: s, label: s, color: 'var(--primary)' })))
-    }
-  }, [])
 
   const desiredParams = useMemo(() => {
     const next = new URLSearchParams()
@@ -138,7 +119,6 @@ export default function LeadsList() {
     if (status.trim()) next.set('status', status.trim())
     if (source.trim()) next.set('source', source.trim())
     if (dateRange !== 'all') next.set('dateRange', dateRange)
-    if (assignedTo.trim()) next.set('assignedTo', assignedTo.trim())
     if (followupDate.trim()) next.set('followupDate', followupDate.trim())
     if (page > 1) next.set('page', String(page))
     if (String(limit) !== '20') next.set('limit', String(limit))
@@ -150,7 +130,7 @@ export default function LeadsList() {
     if (act) next.set('action', act)
     
     return next
-  }, [debouncedQ, status, source, dateRange, assignedTo, followupDate, page, limit, searchParams])
+  }, [debouncedQ, status, source, dateRange, followupDate, page, limit, searchParams])
 
   useEffect(() => {
     if (desiredParams.toString() !== searchParams.toString()) {
@@ -199,7 +179,6 @@ export default function LeadsList() {
         ...(source.trim() ? { source: source.trim() } : null),
         ...(startDate ? { startDate } : null),
         ...(endDate ? { endDate } : null),
-        ...(assignedTo.trim() ? { assignedTo: assignedTo.trim() } : null),
         ...(followupDate.trim() ? { followupDate: followupDate.trim() } : null),
         page,
         limit,
@@ -224,7 +203,7 @@ export default function LeadsList() {
     return () => {
       canceled = true
     }
-  }, [debouncedQ, status, source, dateRange, customDates, assignedTo, followupDate, page, limit, refreshTrigger])
+  }, [debouncedQ, status, source, dateRange, customDates, followupDate, page, limit, refreshTrigger])
 
   const handleSelectAll = (checked) =>
     setSelectedLeads(checked ? items.map((lead) => String(lead.id || lead._id || '')) : [])
@@ -237,23 +216,6 @@ export default function LeadsList() {
     }
   }
 
-  const handleBulkAssign = async (assigneeId, reason) => {
-    try {
-      const res = await leadsApi.bulkUpdate({
-        ids: selectedLeads,
-        update: { assignedTo: assigneeId },
-        reason
-      })
-      toast.success(res.message || `${selectedLeads.length} leads assigned successfully`)
-      setSelectedLeads([])
-      setIsAssignModalOpen(false)
-      // Refresh list
-      setPage(1)
-      window.location.reload() // Simple refresh to update UI fully
-    } catch (err) {
-      toast.error(err.message || 'Failed to assign leads')
-    }
-  }
   async function onDelete(id) {
     setDeleteTarget({ id, isBulk: false })
     setIsDeleteModalOpen(true)
@@ -463,7 +425,7 @@ export default function LeadsList() {
                 setQ(e.target.value)
                 setPage(1)
               }}
-              placeholder="Search by name, email, phone, source, city, status, priority..."
+              placeholder="Search by name, email, phone, source, city, status..."
             />
 
             <SearchableSelect
@@ -471,19 +433,13 @@ export default function LeadsList() {
               onChange={(val) => { setStatus(val); setPage(1); }}
               options={[
                 { value: '', label: 'Status: All' },
-                ...(isEmployee 
-                   ? [
-                      { value: 'New', label: 'New' },
-                      { value: 'Contacted', label: 'Contacted' },
-                      { value: 'Follow-up', label: 'Follow-up' },
-                      { value: 'Qualified', label: 'Qualified' },
-                      { value: 'Converted', label: 'Converted' }
-                     ]
-                   : (statusOptions.length > 0 
-                      ? statusOptions 
-                      : Object.keys(summary.byStatus).map(name => ({ value: name, label: name }))
-                     )
-                )
+                { value: 'New', label: 'New' },
+                { value: 'Contacted', label: 'Contacted' },
+                { value: 'Qualified', label: 'Qualified' },
+                { value: 'Proposal Sent', label: 'Proposal Sent' },
+                { value: 'Negotiation', label: 'Negotiation' },
+                { value: 'Converted', label: 'Converted' },
+                { value: 'Lost', label: 'Lost' }
               ]}
               placeholder="Status: All"
               icon="activity"
@@ -496,6 +452,7 @@ export default function LeadsList() {
               placeholder="Source: All"
               icon="activity"
             />
+
 
             <SearchableSelect
               value={dateRange}
@@ -530,26 +487,7 @@ export default function LeadsList() {
               </div>
             )}
 
-            {!isEmployee && (
-              <SearchableSelect
-                value={assignedTo}
-                onChange={(val) => { setAssignedTo(val); setPage(1); }}
-                options={[{ value: '', label: 'All Employees' }, ...employees.map(e => ({ value: e.id || e._id, label: e.name }))]}
-                placeholder="All Employees"
-                icon="user"
-              />
-            )}
 
-            {selectedLeads.length > 0 && isAdminOrManager && (
-              <button
-                className="btn-premium-mini bulk-assign-btn"
-                onClick={() => setIsAssignModalOpen(true)}
-              >
-                <Icon name="user" size={14} />
-                <span>Assign Leads</span>
-                <span className="selection-count">{selectedLeads.length}</span>
-              </button>
-            )}
 
 
 
@@ -577,12 +515,13 @@ export default function LeadsList() {
                           onChange={(e) => handleSelectAll(e.target.checked)}
                         />
                       </th>
-                      <th style={{ minWidth: '180px' }}>NAME</th>
-                      <th style={{ minWidth: '180px' }}>MOBILE NUMBER</th>
-                      <th style={{ minWidth: '140px' }} className="tablet-hide">ASSIGNED TO</th>
-                      <th style={{ minWidth: '120px' }}>FOLLOW-UP</th>
-                      <th style={{ width: '120px' }}>STATUS</th>
-                      {!isEmployee && <th style={{ minWidth: '140px' }} className="tablet-hide">CREATED BY / DATE</th>}
+                      {!isEmployee && <th style={{ width: '80px' }}>ID</th>}
+                      <th style={{ minWidth: '180px' }}>LEAD NAME</th>
+                      <th style={{ minWidth: '160px' }}>CONTACT</th>
+                      <th style={{ minWidth: '180px' }}>EMAIL</th>
+                      <th style={{ width: '140px' }}>STATUS</th>
+                      <th style={{ minWidth: '160px' }}>NEXT FOLLOW-UP</th>
+                      <th style={{ minWidth: '140px' }}>LAST INTERACTION</th>
                       <th className="text-right" style={{ width: '140px' }}>ACTIONS</th>
                     </tr>
                   </thead>
@@ -611,40 +550,53 @@ export default function LeadsList() {
                               />
                             </td>
 
+
+                            {!isEmployee && (
+                              <td>
+                                <span className="id-badge">{lead.readable_id || lead.leadId || '—'}</span>
+                              </td>
+                            )}
                             <td>
                               <div className="leadsPrimaryText">{lead.name || '—'}</div>
-                              <div className="leadsSecondaryText" style={{ color: 'var(--primary)', fontWeight: 700 }}>{lead.source || 'Other'}</div>
+                              <div className="leadsSecondaryText" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '10px' }}>{lead.source || 'Other'}</div>
                             </td>
 
                             <td>
                               <div className="leadsContactCell">
-                                <div className="contactMain">{lead.phone || '—'}</div>
+                                <div className="contactMain" style={{ fontSize: '13px', fontWeight: 700 }}>{lead.phone || '—'}</div>
                                 <div className="contactQuickActions">
-                                   <a href={`tel:${lead.phone}`} className="action-icon-mini phone" onClick={stopRowNavigation} title="Call"><Icon name="phone" size={12} /></a>
+                                   <a href={`tel:${lead.phone}`} className="action-icon-mini phone" onClick={stopRowNavigation} title="Quick Call"><Icon name="phone" size={12} /></a>
                                    <a href={`https://wa.me/${lead.phone?.replace(/\D/g, '')}`} target="_blank" className="action-icon-mini whatsapp" onClick={stopRowNavigation} title="WhatsApp"><Icon name="whatsapp" size={12} /></a>
-                                   <a href={`mailto:${lead.email}`} className="action-icon-mini email" onClick={stopRowNavigation} title="Email"><Icon name="mail" size={12} /></a>
                                 </div>
                               </div>
                             </td>
 
-
-
-                            <td className="tablet-hide">
-                              <div className="leadsOwnerCell">
-                                <span className="ownerName">{lead.assignedTo?.name || 'Unassigned'}</span>
-                                <span className="ownerRole">{lead.assignedTo?.role || ''}</span>
-                              </div>
+                            <td>
+                              <div className="text-xs muted">{lead.email || '—'}</div>
                             </td>
 
 
-                            <td className="tablet-hide">
+
+                            <td>
+                                <StatusDropdown 
+                                  status={lead.status} 
+                                  options={LEAD_STATUS_FINAL.map(s => ({ name: s.label, color: s.color }))} 
+                                  onChange={(newStatus) => onUpdateStatus(id, newStatus)}
+                                  bypassRules={isAdmin}
+                                  disabled={lead.status === 'Converted' && !isAdmin}
+                                />
+                            </td>
+
+
+
+                            <td>
                               <div className={`leadsFollowupCell ${isOverdue ? 'is-overdue' : ''} ${isToday ? 'is-today' : ''}`}>
-                                <div className="followupDate">
+                                {isToday && <div className="badge-modern success animate-pulse" style={{ fontSize: '9px', marginBottom: '4px', padding: '2px 6px' }}>Follow-up Today</div>}
+                                <div className="followupDate" style={{ fontSize: '13px', fontWeight: 700 }}>
                                   {nextDate ? nextDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'None'}
                                 </div>
                                 {nextDate && (
-                                  <div className="followupTime">
-                                    {isToday ? 'TODAY at ' : ''}
+                                  <div className="followupTime" style={{ fontSize: '11px', opacity: 0.7 }}>
                                     {nextDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                                   </div>
                                 )}
@@ -652,27 +604,12 @@ export default function LeadsList() {
                             </td>
 
                             <td>
-                                <StatusDropdown 
-                                  status={lead.status} 
-                                  options={statusOptions.length > 0 
-                                    ? statusOptions.map(s => ({ name: s.label, color: s.color }))
-                                    : Object.keys(summary.byStatus).map(name => ({ name, color: 'var(--primary)' }))
-                                  } 
-                                  onChange={(newStatus) => onUpdateStatus(id, newStatus)}
-                                  bypassRules={isAdmin}
-                                  disabled={lead.status === 'Converted' && !isAdmin}
-                                />
+                              <div className="text-xs muted">
+                                {lead.lastActivityAt ? new Date(lead.lastActivityAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}
+                                <div style={{ fontSize: '10px', opacity: 0.6 }}>{lead.lastActivityAt ? new Date(lead.lastActivityAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}</div>
+                              </div>
                             </td>
 
-                            {/* Created field removed for employees to save space */}
-                            {!isEmployee && (
-                              <td className="tablet-hide">
-                                <div className="leadsOwnerCell">
-                                  <span className="ownerName">{lead.createdBy?.name || 'System'}</span>
-                                  <span className="ownerRole">{lead.created_at ? new Date(lead.created_at).toLocaleDateString() : ''}</span>
-                                </div>
-                              </td>
-                            )}
                             <td className="text-right" onClick={stopRowNavigation}>
                               <div className="crm-action-group">
                                 {true && (
@@ -757,7 +694,7 @@ export default function LeadsList() {
                       })
                     ) : (
                       <tr>
-                        <td colSpan={isAdminOrManager ? 8 : 7}>
+                        <td colSpan={8}>
                           <div className="emptyState" style={{ padding: '80px 0' }}>
                             <h3>No leads found</h3>
                             <p className="muted">Try a different search or add a new lead.</p>
@@ -819,13 +756,6 @@ export default function LeadsList() {
         }}
       />
 
-      <LeadAssignModal
-        isOpen={isAssignModalOpen}
-        onClose={() => setIsAssignModalOpen(false)}
-        onAssign={handleBulkAssign}
-        employees={employees}
-        selectedCount={selectedLeads.length}
-      />
 
       <DeleteConfirmModal
         isOpen={isDeleteModalOpen}

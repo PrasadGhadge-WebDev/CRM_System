@@ -210,9 +210,8 @@ export default function Sidebar({ isOpen, onClose }) {
     { id: 'leads', title: 'Leads', icon: 'activity', path: '/leads', createPath: '/leads/new', permission: 'leads' },
     { id: 'deals', title: 'Deals', icon: 'deals', path: '/deals', createPath: '/deals/new', permission: 'deals' },
     { id: 'customers', title: 'Customers', icon: 'user', path: '/customers', createPath: '/customers/new', permission: 'customers' },
-    { type: 'section', title: '💰 Payments' },
-    { id: 'payments-list', title: 'Payment List', icon: 'billing', path: '/payments', permission: 'payments' },
-    { id: 'payments-pending', title: 'Pending Payments', icon: 'info', path: '/payments?status=Pending', permission: 'payments' },
+    { type: 'section', title: '💰 Payment' },
+    { id: 'payments-list', title: 'Payment', icon: 'wallet', path: '/payments', permission: 'payments' },
     { id: 'support', title: 'Tickets', icon: 'help', path: '/tickets', createPath: '/tickets/new', permission: 'tickets' },
     { id: 'activities', title: 'Activities', icon: 'calendar', path: '/activities', permission: 'activities' }
   ] : [
@@ -224,7 +223,7 @@ export default function Sidebar({ isOpen, onClose }) {
     { id: 'customers', title: 'Customers', icon: 'user', path: '/customers', createPath: '/customers/new', permission: 'customers' },
 
     { type: 'section', title: '💰 Finance' },
-    { id: 'payments', title: 'Payments', icon: 'dollar-sign', path: '/payments', createPath: '/payments/new', permission: 'payments' },
+    { id: 'payments', title: 'Payment', icon: 'wallet', path: '/payments', createPath: '/payments/new', permission: 'payments' },
     { id: 'invoices', title: 'Invoices', icon: 'billing', path: '/invoices', createPath: '/invoices/new', permission: 'invoices' },
     { id: 'expenses', title: 'Expenses', icon: 'billing', path: '/expenses', createPath: '/expenses/new', permission: 'expenses' },
 

@@ -4,13 +4,13 @@ import { Icon } from '../../../layouts/icons.jsx'
 import { FiBriefcase } from 'react-icons/fi'
 import { useAuth } from '../../../context/AuthContext'
 
-const STAGES = ['New', 'Qualification', 'Proposal', 'Negotiation', 'Won', 'Lost']
+const STAGES = ['New Deal', 'Proposal Sent', 'Negotiation', 'Follow-up', 'Won', 'Lost']
 
 const STAGE_COLORS = {
-  'New': 'info',
-  'Qualification': 'purple',
-  'Proposal': 'warning',
+  'New Deal': 'info',
+  'Proposal Sent': 'warning',
   'Negotiation': 'orange',
+  'Follow-up': 'purple',
   'Won': 'success',
   'Lost': 'danger'
 }

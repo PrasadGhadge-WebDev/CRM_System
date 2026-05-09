@@ -11,6 +11,7 @@ import { useToastFeedback } from '../../../utils/useToastFeedback.js'
 import DealModal from '../components/DealModal.jsx'
 import BillingModal from '../components/BillingModal.jsx'
 import TransactionModal from '../components/TransactionModal.jsx'
+import AttachmentManager from '../../../components/AttachmentManager.jsx'
 
 function stripHtml(html) {
   if (!html) return ''
@@ -88,6 +89,16 @@ export default function DealDetail() {
               <span>Create Bill</span>
             </button>
           )}
+          {isEmployee && deal.customer_id?.phone && (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <a href={`tel:${deal.customer_id.phone}`} className="crm-btn-premium glass" style={{ textDecoration: 'none' }} title="Call">
+                <Icon name="phone" size={16} />
+              </a>
+              <a href={`https://wa.me/${deal.customer_id.phone.replace(/\D/g, '')}`} target="_blank" className="crm-btn-premium glass" style={{ textDecoration: 'none' }} title="WhatsApp">
+                <Icon name="whatsapp" size={16} />
+              </a>
+            </div>
+          )}
           {canEdit && (
             <button className="crm-btn-premium" onClick={() => setIsEditModalOpen(true)} style={{ background: 'var(--primary)', color: '#ffffff', border: 'none', padding: '8px 24px', borderRadius: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', boxShadow: 'var(--shadow-sm)', cursor: 'pointer' }}>
               <Icon name="edit" />
@@ -152,6 +163,70 @@ export default function DealDetail() {
         </div>
       </section>
 
+      {/* Progress Bar */}
+      <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px 32px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-dimmed)', textTransform: 'uppercase' }}>Deal Progress</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>{deal.stage}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', padding: '10px 0' }}>
+          {['New Deal', 'Proposal Sent', 'Negotiation', 'Follow-up', 'Won'].map((s, i, arr) => {
+            const isLost = deal.stage === 'Lost';
+            const currentIndex = arr.indexOf(deal.stage);
+            const isCompleted = !isLost && currentIndex >= i;
+            const isCurrent = !isLost && currentIndex === i;
+            
+            return (
+              <div key={s} style={{ flex: 1, display: 'flex', alignItems: 'center', position: 'relative' }}>
+                <div style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  borderRadius: '50%', 
+                  background: isCompleted ? 'var(--primary)' : 'var(--bg-surface)', 
+                  border: isCompleted ? '1px solid var(--primary)' : '1px solid var(--border)',
+                  color: isCompleted ? 'white' : 'var(--text-dimmed)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  zIndex: 2,
+                  boxShadow: isCurrent ? '0 0 0 4px var(--primary-soft)' : 'none'
+                }}>
+                  {isCompleted ? <Icon name="check" size={14} /> : i + 1}
+                </div>
+                <div style={{ 
+                  position: 'absolute', 
+                  top: '40px', 
+                  left: '50%', 
+                  transform: 'translateX(-50%)', 
+                  fontSize: '10px', 
+                  fontWeight: 700, 
+                  color: isCurrent ? 'var(--primary)' : 'var(--text-dimmed)',
+                  whiteSpace: 'nowrap',
+                  textAlign: 'center'
+                }}>
+                  {s}
+                </div>
+                {i < arr.length - 1 && (
+                  <div style={{ 
+                    position: 'absolute', 
+                    left: '32px', 
+                    right: '-8px', 
+                    height: '3px', 
+                    background: (currentIndex > i && !isLost) ? 'var(--primary)' : 'var(--border)', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)',
+                    zIndex: 1 
+                  }} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ height: '30px' }} /> {/* Spacer for labels */}
+      </section>
+
       {/* Main Grid */}
       <div className="crm-profile-grid-desktop" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
         
@@ -185,6 +260,10 @@ export default function DealDetail() {
               <div>
                 <label style={{ fontSize: '0.7rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: '4px', letterSpacing: '0.05em' }}>Deal Status</label>
                 <div style={{ color: 'var(--text)', fontWeight: 600 }}>{deal.status || 'Open'}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.7rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: '4px', letterSpacing: '0.05em' }}>Last Follow-up</label>
+                <div style={{ color: 'var(--text)', fontWeight: 600 }}>{deal.last_followup_date ? new Date(deal.last_followup_date).toLocaleDateString() : 'No activity yet'}</div>
               </div>
             </div>
             {deal.description && (
@@ -255,6 +334,7 @@ export default function DealDetail() {
           { id: 'info', label: 'Overview', icon: 'dashboard' },
           { id: 'activity', label: 'History', icon: 'reports' },
           { id: 'notes', label: 'Notes', icon: 'notes' },
+          { id: 'documents', label: 'Documents', icon: 'download' },
           { id: 'payments', label: 'Payments', icon: 'activity' }
         ].filter(tab => {
           if (isAccountant) {
@@ -348,6 +428,12 @@ export default function DealDetail() {
           <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '32px', boxShadow: 'var(--shadow-sm)' }}>
             <label style={{ fontSize: '0.7rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: '16px', letterSpacing: '0.05em' }}>Internal Notes</label>
             <div style={{ color: 'var(--text-muted)', lineHeight: '1.8', whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>{stripHtml(deal.notes) || 'No detailed internal notes available for this opportunity.'}</div>
+          </section>
+        )}
+
+        {activeTab === 'documents' && (
+          <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '32px', boxShadow: 'var(--shadow-sm)' }}>
+            <AttachmentManager relatedId={id} relatedType="Deal" />
           </section>
         )}
 

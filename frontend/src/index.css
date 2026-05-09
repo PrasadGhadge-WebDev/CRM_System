@@ -58,3 +58,8 @@ textarea {
   background: var(--selection-bg);
   color: var(--selection-text);
 }
+
+.border-none {
+  border: none !important;
+  box-shadow: none !important;
+}

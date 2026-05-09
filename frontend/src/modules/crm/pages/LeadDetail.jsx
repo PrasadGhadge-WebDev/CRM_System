@@ -380,22 +380,8 @@ export default function LeadDetail() {
                 <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(lead.name)}</div>
               </div>
               <div>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Company</label>
-                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(lead.company)}</div>
-              </div>
-              <div>
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Source</label>
                 <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(lead.source)}</div>
-              </div>
-              <div>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Priority</label>
-                <div className="priority-badge" style={{ 
-                  background: `${getPriorityColor(lead.priority)}15`, 
-                  color: getPriorityColor(lead.priority),
-                  borderColor: `${getPriorityColor(lead.priority)}30`
-                }}>
-                  {lead.priority || 'Medium'}
-                </div>
               </div>
             </div>
             {lead.followupNote && (
@@ -416,9 +402,9 @@ export default function LeadDetail() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
               <div style={{ padding: '20px 24px', borderRight: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>🧑💼</span> Assigned To
+                  <span>📅</span> Lead Source
                 </div>
-                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{lead.assignedTo?.name || 'Unassigned'}</div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{lead.source || 'Organic'}</div>
               </div>
               <div style={{ padding: '20px 24px' }}>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -11,7 +11,9 @@ import {
   FiInfo,
   FiTarget,
   FiCreditCard,
-  FiTag
+  FiTag,
+  FiPhone,
+  FiMail
 } from 'react-icons/fi'
 import { dealsApi } from '../../../services/deals.js'
 import { customersApi } from '../../../services/customers.js'
@@ -27,7 +29,7 @@ const INITIAL_DEAL = {
   next_followup_date: '',
   value: 0,
   currency: 'INR',
-  stage: 'New',
+  stage: 'New Deal',
   status: 'Open',
   assigned_to: '',
   description: '',
@@ -37,7 +39,10 @@ const INITIAL_DEAL = {
   discount_percent: 0,
   notes: '',
   lost_reason: '',
-  priority: 'Medium'
+  priority: 'Medium',
+  contact_number: '',
+  company_name: '',
+  email: ''
 }
 
 export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
@@ -49,28 +54,31 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
   const navigate = useNavigate()
   const isEdit = mode === 'edit' || (!!id && id !== 'new')
 
+  const { user: currentUser } = useAuth()
+  const isEmployee = (currentUser?.role || '') === 'Employee'
+  const isAdmin = (currentUser?.role || '') === 'Admin'
+  const canAssign = ['Admin', 'Manager', 'Accountant'].includes(currentUser?.role)
+
   const [model, setModel] = useState({
     ...INITIAL_DEAL,
-    customer_id: preSelectedCustomerId || ''
+    customer_id: preSelectedCustomerId || '',
+    assigned_to: (currentUser?.role === 'Employee' && !isEdit) ? (currentUser.id || currentUser._id) : ''
   })
   const [initialModel, setInitialModel] = useState(null)
   const [customers, setCustomers] = useState([])
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(isEdit && !!id)
   const [saving, setSaving] = useState(false)
-  
-  const { user: currentUser } = useAuth()
-  const canAssign = ['Admin', 'Manager', 'Employee', 'Accountant'].includes(currentUser?.role)
 
   // Auto-calculate Deal Value
   useEffect(() => {
     const baseValue = (model.price || 0) * (model.quantity || 1)
     const discountAmount = baseValue * ((model.discount_percent || 0) / 100)
     const finalValue = Math.max(0, baseValue - discountAmount)
-    if (model.value !== finalValue) {
+    if (!isEmployee && model.value !== finalValue) {
       setModel(prev => ({ ...prev, value: finalValue }))
     }
-  }, [model.price, model.quantity, model.discount_percent])
+  }, [model.price, model.quantity, model.discount_percent, isEmployee])
 
   useEffect(() => {
     async function loadResources() {
@@ -100,6 +108,9 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
           next_followup_date: data.next_followup_date ? new Date(data.next_followup_date).toISOString().split('T')[0] : '',
           customer_id: data.customer_id?._id || data.customer_id?.id || data.customer_id || '',
           assigned_to: data.assigned_to?._id || data.assigned_to?.id || data.assigned_to || '',
+          contact_number: data.customer_id?.phone || '',
+          company_name: data.customer_id?.company || '',
+          email: data.customer_id?.email || '',
           priority: data.priority || 'Medium'
         }
         setModel(normalized)
@@ -190,10 +201,15 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
                       onChange={e => {
                         const custId = e.target.value;
                         const selectedCust = customers.find(c => String(c.id || c._id) === String(custId));
-                        const updates = { customer_id: custId };
+                        const updates = { 
+                          customer_id: custId,
+                          contact_number: selectedCust?.phone || '',
+                          company_name: selectedCust?.company || '',
+                          email: selectedCust?.email || ''
+                        };
                         
                         // Auto-fill logic: Get owner from customer/lead
-                        if (selectedCust && selectedCust.assigned_to) {
+                        if (selectedCust && selectedCust.assigned_to && !isEmployee) {
                           updates.assigned_to = selectedCust.assigned_to._id || selectedCust.assigned_to;
                         }
                         
@@ -206,18 +222,45 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
                   </div>
                 </div>
                 <div className="sheet-field">
-                  <label>Total Price (₹) - Done automatically</label>
-                  <div className="crm-input-group disabled">
+                  <label>Deal Value (₹)</label>
+                  <div className={`crm-input-group ${isEmployee ? '' : 'disabled'}`}>
                     <div className="input-icon-box"><FiCreditCard /></div>
                     <input
                       type="number"
                       value={model.value}
-                      readOnly
+                      readOnly={!isEmployee}
+                      onChange={e => isEmployee && setModel({ ...model, value: Number(e.target.value) })}
                       placeholder="0.00"
                     />
                   </div>
                 </div>
               </div>
+               
+              {isEmployee && model.customer_id && (
+                <div className="form-sheet-grid" style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+                  <div className="sheet-field">
+                    <label>Company Name</label>
+                    <div className="crm-input-group disabled">
+                      <div className="input-icon-box"><FiBriefcase /></div>
+                      <input value={model.company_name} readOnly />
+                    </div>
+                  </div>
+                  <div className="sheet-field">
+                    <label>Contact Number</label>
+                    <div className="crm-input-group disabled">
+                      <div className="input-icon-box"><FiPhone /></div>
+                      <input value={model.contact_number} readOnly />
+                    </div>
+                  </div>
+                  <div className="sheet-field">
+                    <label>Email Address</label>
+                    <div className="crm-input-group disabled">
+                      <div className="input-icon-box"><FiMail /></div>
+                      <input value={model.email} readOnly />
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
 
             <section className="form-sheet-section">
@@ -243,7 +286,7 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
                         setModel({ ...model, ...updates });
                       }}
                     >
-                      {['New', 'Qualification', 'Proposal', 'Negotiation', 'Won', 'Lost'].map(s => <option key={s} value={s}>{s}</option>)}
+                      {['New Deal', 'Proposal Sent', 'Negotiation', 'Follow-up', 'Won', 'Lost'].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                 </div>
@@ -257,21 +300,23 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
                     </select>
                   </div>
                 </div>
-                <div className="sheet-field">
-                  <label>Assigned To</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiBriefcase /></div>
-                    <select 
-                      value={model.assigned_to} 
-                      onChange={e => setModel({ ...model, assigned_to: e.target.value })}
-                      disabled={!canAssign}
-                      style={!canAssign ? { opacity: 0.7, cursor: 'not-allowed', background: 'var(--bg-surface)' } : {}}
-                    >
-                      <option value="">Unassigned</option>
-                      {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
+                {!isEmployee && (
+                  <div className="sheet-field">
+                    <label>Assigned To</label>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiBriefcase /></div>
+                      <select 
+                        value={model.assigned_to} 
+                        onChange={e => setModel({ ...model, assigned_to: e.target.value })}
+                        disabled={!canAssign}
+                        style={!canAssign ? { opacity: 0.7, cursor: 'not-allowed', background: 'var(--bg-surface)' } : {}}
+                      >
+                        <option value="">Unassigned</option>
+                        {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="sheet-field">
                   <label>Expected Date to Close</label>
                   <div className="crm-input-group">
@@ -284,73 +329,72 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
                   <div className="crm-input-group">
                     <div className="input-icon-box"><FiFlag /></div>
                     <select value={model.priority} onChange={e => setModel({ ...model, priority: e.target.value })}>
-                      <option value="Hot">🔥 Hot</option>
                       <option value="High">🔴 High</option>
                       <option value="Medium">🟡 Medium</option>
                       <option value="Low">🟢 Low</option>
-                      <option value="Warm">🟠 Warm</option>
-                      <option value="Cold">❄️ Cold</option>
                     </select>
                   </div>
                 </div>
               </div>
             </section>
 
-            <section className="form-sheet-section">
-              <div className="form-sheet-section-header">
-                <FiBriefcase />
-                <span>What are you selling?</span>
-              </div>
-              <div className="form-sheet-grid">
-                <div className="sheet-field full-width">
-                  <label>Product / Service</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiBriefcase /></div>
-                    <input
-                      value={model.product_service}
-                      onChange={e => setModel({ ...model, product_service: e.target.value })}
-                      placeholder="What are we selling?"
-                    />
+            {!isEmployee && (
+              <section className="form-sheet-section">
+                <div className="form-sheet-section-header">
+                  <FiBriefcase />
+                  <span>What are you selling?</span>
+                </div>
+                <div className="form-sheet-grid">
+                  <div className="sheet-field full-width">
+                    <label>Product / Service</label>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiBriefcase /></div>
+                      <input
+                        value={model.product_service}
+                        onChange={e => setModel({ ...model, product_service: e.target.value })}
+                        placeholder="What are we selling?"
+                      />
+                    </div>
+                  </div>
+                  <div className="sheet-field">
+                    <label>Item Price (₹)</label>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiCreditCard /></div>
+                      <input
+                        type="number"
+                        value={model.price}
+                        onChange={e => setModel({ ...model, price: Number(e.target.value) })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div className="sheet-field">
+                    <label>Quantity</label>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiTarget /></div>
+                      <input
+                        type="number"
+                        value={model.quantity}
+                        onChange={e => setModel({ ...model, quantity: Number(e.target.value) })}
+                        placeholder="1"
+                      />
+                    </div>
+                  </div>
+                  <div className="sheet-field">
+                    <label>Discount (%)</label>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiTarget /></div>
+                      <input
+                        type="number"
+                        value={model.discount_percent}
+                        onChange={e => setModel({ ...model, discount_percent: Number(e.target.value) })}
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="sheet-field">
-                  <label>Item Price (₹)</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiCreditCard /></div>
-                    <input
-                      type="number"
-                      value={model.price}
-                      onChange={e => setModel({ ...model, price: Number(e.target.value) })}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div className="sheet-field">
-                  <label>Quantity</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiTarget /></div>
-                    <input
-                      type="number"
-                      value={model.quantity}
-                      onChange={e => setModel({ ...model, quantity: Number(e.target.value) })}
-                      placeholder="1"
-                    />
-                  </div>
-                </div>
-                <div className="sheet-field">
-                  <label>Discount (%)</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiTarget /></div>
-                    <input
-                      type="number"
-                      value={model.discount_percent}
-                      onChange={e => setModel({ ...model, discount_percent: Number(e.target.value) })}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">

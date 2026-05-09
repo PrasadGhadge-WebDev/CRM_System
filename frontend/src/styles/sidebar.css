@@ -192,8 +192,8 @@ body.dark .crmSidebar {
 .addInlineBtn {
   width: 24px;
   height: 24px;
-  border-radius: 8px;
-  border: 1.5px solid var(--sidebar-border-internal);
+  border-radius: 50%;
+  border: 1px solid var(--sidebar-border-internal);
   background: var(--bg-card, #ffffff);
   color: var(--sidebar-text-muted-internal);
   display: flex;

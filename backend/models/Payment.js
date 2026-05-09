@@ -16,7 +16,6 @@ const paymentSchema = new mongoose.Schema(
     customer_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Customer',
-      required: true,
       index: true,
     },
     invoice_id: {
@@ -28,6 +27,21 @@ const paymentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Deal',
       index: true,
+    },
+    user_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
+    payment_type: {
+      type: String,
+      enum: ['Customer Payment', 'internal', 'Salary Payment', 'Employee Reimbursement', 'Vendor Payment', 'Refund'],
+      default: 'Customer Payment',
+      index: true,
+    },
+    vendor_name: {
+      type: String,
+      trim: true,
     },
     total_amount: {
       type: Number,

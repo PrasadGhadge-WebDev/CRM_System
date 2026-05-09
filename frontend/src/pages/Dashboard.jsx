@@ -187,7 +187,7 @@ export default function Dashboard() {
            <div className="section-card-v3">
               <div className="crm-flex-between mb-16">
                 <h3>🧲 Recent Leads</h3>
-                <button className="btn-link text-xs" onClick={() => navigate('/leads')}>View All</button>
+                <button className="btn-text-only text-xs" onClick={() => navigate('/leads')}>View All</button>
               </div>
               <div className="v3-list">
                 {employee.leadsRecent?.length > 0 ? employee.leadsRecent.map((lead, i) => (
@@ -209,7 +209,7 @@ export default function Dashboard() {
            <div className="section-card-v3">
               <div className="crm-flex-between mb-16">
                 <h3>💼 Deal Progress</h3>
-                <button className="btn-link text-xs" onClick={() => navigate('/deals')}>View All</button>
+                <button className="btn-text-only text-xs" onClick={() => navigate('/deals')}>View All</button>
               </div>
               <div className="v3-list">
                 {employee.dealsRecent?.length > 0 ? employee.dealsRecent.map((deal, i) => (
@@ -231,7 +231,7 @@ export default function Dashboard() {
            <div className="section-card-v3">
               <div className="crm-flex-between mb-16">
                 <h3>💰 Payment Follow-up</h3>
-                <button className="btn-link text-xs" onClick={() => navigate('/payments')}>View All</button>
+                <button className="btn-text-only text-xs" onClick={() => navigate('/payments')}>View All</button>
               </div>
               <div className="v3-list">
                 {employee.payments.recent?.length > 0 ? employee.payments.recent.map((pay, i) => (
@@ -398,7 +398,7 @@ export default function Dashboard() {
       {/* 2. MAIN GRID */}
       <div className="dashboard-grid-v3">
         {/* Performance Chart */}
-        <div className="section-card-v3">
+        <div className="section-card-v3 borderless-card">
           <div className="crm-flex-between" style={{ marginBottom: '20px' }}>
              <h3>{isEmployee ? 'My Performance' : 'Monthly Revenue'}</h3>
              <select className="input-premium small" style={{ width: 'auto', padding: '4px 12px' }}>
@@ -429,7 +429,7 @@ export default function Dashboard() {
 
         {/* Alerts or Leads Chart */}
         {!isEmployee ? (
-          <div className="section-card-v3">
+          <div className="section-card-v3 borderless-card">
             <div className="crm-flex-between" style={{ marginBottom: '20px' }}>
               <h3>Leads vs Conversions</h3>
               <select className="input-premium small" style={{ width: 'auto', padding: '4px 12px' }}>
@@ -451,7 +451,7 @@ export default function Dashboard() {
             </div>
           </div>
         ) : (
-          <div className="section-card-v3">
+          <div className="section-card-v3 borderless-card">
              <h3>Quick Access</h3>
              <div className="quick-actions-grid-v3">
                 {quickActions.map((qa, i) => (
@@ -468,7 +468,7 @@ export default function Dashboard() {
       {/* 3. THREE COL ROW */}
       <div className="dashboard-three-col-v3">
         {/* Priority Items or Top Performers */}
-        <div className="section-card-v3">
+        <div className="section-card-v3 borderless-card">
           <h3>{isEmployee ? 'Priority Items' : 'Top Performers'}</h3>
           {isEmployee ? (
             <div className="follow-up-list">
@@ -511,7 +511,7 @@ export default function Dashboard() {
         </div>
 
         {/* Follow-up Summary or Recent Deals */}
-        <div className="section-card-v3">
+        <div className="section-card-v3 borderless-card">
           <h3>{isEmployee ? 'Active Deals' : 'Follow-up Summary'}</h3>
           {isEmployee ? (
             <div className="follow-up-list">
@@ -542,11 +542,13 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-          <button className="btn-link full-width margin-top-12" onClick={() => navigate(isEmployee ? '/deals' : '/leads')}>View Details</button>
+          <button className="btn-link full-width margin-top-12" onClick={() => navigate(isEmployee ? '/deals' : '/leads')}>
+            View Details <FiChevronRight size={14} />
+          </button>
         </div>
 
         {/* Alerts & Notifications */}
-        <div className="section-card-v3">
+        <div className="section-card-v3 borderless-card">
           <h3>Recent Activities</h3>
           <div className="activity-list">
               {(metrics?.activities?.recent || []).slice(0, 5).map((act, i) => (
@@ -561,7 +563,9 @@ export default function Dashboard() {
                 </div>
               ))}
           </div>
-          <button className="btn-link full-width margin-top-12" onClick={() => navigate('/activities')}>See All History</button>
+          <button className="btn-link full-width margin-top-12" onClick={() => navigate('/activities')}>
+            See All History <FiChevronRight size={14} />
+          </button>
         </div>
       </div>
     </div>

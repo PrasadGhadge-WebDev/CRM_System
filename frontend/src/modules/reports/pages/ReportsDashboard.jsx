@@ -466,8 +466,8 @@ export default function ReportsDashboard() {
         
         .reports-main { min-height: 400px; }
         .report-content-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-        .report-card { background: white; padding: 24px; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: inset 4px 0 0 var(--card-accent), 0 4px 20px rgba(0,0,0,0.02); transition: all 0.3s; min-height: 350px; display: flex; flex-direction: column; }
-        .report-card:hover { border-color: #335c85; box-shadow: inset 4px 0 0 var(--card-accent), 0 10px 30px rgba(0,0,0,0.05); }
+        .report-card { background: white; padding: 24px; border-radius: 20px; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.02); transition: all 0.3s; min-height: 350px; display: flex; flex-direction: column; }
+        .report-card:hover { box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
         .report-card.full-width { grid-column: span 2; min-height: 420px; }
         .report-card-title { font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.05em; }
         .chart-container { flex: 1; width: 100%; min-height: 280px; position: relative; }

@@ -94,7 +94,6 @@ export default function ExpensesList() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [modal, setModal] = useState({ open: false, mode: 'create', id: null })
-  const [activeMenu, setActiveMenu] = useState(null)
   const limit = 20
   const debouncedQ = useDebouncedValue(q, 300)
 
@@ -418,7 +417,40 @@ export default function ExpensesList() {
                               )}
                             </td>
                             <td className="text-right" onClick={stopRowNavigation}>
-                              <div className="crm-action-group" style={{ position: 'relative' }}>
+                              <div className="crm-action-group" style={{ justifyContent: 'flex-end', gap: '8px' }}>
+                                
+                                {canApprove(exp) && (
+                                  <>
+                                    <button 
+                                      className="modern-action-btn" 
+                                      style={{ background: 'var(--success-soft)', color: 'var(--success)', border: '1px solid var(--success)' }}
+                                      onClick={() => handleStatusUpdate(id, 'Approved')}
+                                      title="Approve"
+                                    >
+                                      <Icon name="check" size={14} />
+                                    </button>
+                                    <button 
+                                      className="modern-action-btn" 
+                                      style={{ background: 'var(--danger-soft)', color: 'var(--danger)', border: '1px solid var(--danger)' }}
+                                      onClick={() => handleStatusUpdate(id, 'Rejected')}
+                                      title="Reject"
+                                    >
+                                      <Icon name="close" size={14} />
+                                    </button>
+                                  </>
+                                )}
+
+                                {canRecordPayment(exp) && (
+                                  <button 
+                                    className="modern-action-btn"
+                                    style={{ background: 'var(--primary-soft)', color: 'var(--primary)', border: '1px solid var(--primary)' }}
+                                    onClick={() => handleStatusUpdate(id, 'Completed')}
+                                    title="Mark Paid"
+                                  >
+                                    <Icon name="wallet" size={14} />
+                                  </button>
+                                )}
+
                                 <button
                                   className="modern-action-btn"
                                   onClick={() => setModal({ open: true, mode: 'edit', id })}
@@ -427,57 +459,15 @@ export default function ExpensesList() {
                                   <Icon name="edit" size={14} />
                                 </button>
 
-                                <div className="dropdown-container-leads">
-                                  <button 
-                                    className={`modern-action-btn ${activeMenu === id ? 'active' : ''}`}
-                                    onClick={() => setActiveMenu(activeMenu === id ? null : id)}
+                                {canDelete && (
+                                  <button
+                                    className="modern-action-btn danger"
+                                    onClick={() => handleDelete(id)}
+                                    title="Delete"
                                   >
-                                    <Icon name="more-vertical" size={14} />
+                                    <Icon name="trash" size={14} />
                                   </button>
-
-                                  {activeMenu === id && (
-                                    <div className="dropdown-menu-leads animate-fade-in shadow-lg">
-                                      {canApprove(exp) && (
-                                        <>
-                                          <button className="dropdown-item success" onClick={() => { handleStatusUpdate(id, 'Approved'); setActiveMenu(null); }}>
-                                            <Icon name="check" size={14} />
-                                            <span>Approve Expense</span>
-                                          </button>
-                                          <button className="dropdown-item danger" onClick={() => { handleStatusUpdate(id, 'Rejected'); setActiveMenu(null); }}>
-                                            <Icon name="close" size={14} />
-                                            <span>Reject Expense</span>
-                                          </button>
-                                          <div className="dropdown-divider"></div>
-                                        </>
-                                      )}
-
-                                      {canRecordPayment(exp) && (
-                                        <button 
-                                          className="dropdown-item vibrant" 
-                                          style={{ color: 'var(--primary)', background: 'var(--primary-soft)' }}
-                                          onClick={() => { handleStatusUpdate(id, 'Completed'); setActiveMenu(null); }}
-                                        >
-                                          <Icon name="billing" size={14} />
-                                          <span>Mark as Paid</span>
-                                        </button>
-                                      )}
-                                      
-                                      <button className="dropdown-item" onClick={() => { setModal({ open: true, mode: 'edit', id }); setActiveMenu(null); }}>
-                                        <Icon name="edit" size={14} />
-                                        <span>Edit Details</span>
-                                      </button>
-
-                                      <div className="dropdown-divider"></div>
-                                      
-                                      {canDelete && (
-                                        <button className="dropdown-item danger" onClick={() => { handleDelete(id); setActiveMenu(null); }}>
-                                          <Icon name="trash" size={14} />
-                                          <span>Delete Permanently</span>
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
+                                )}
                               </div>
                             </td>
                           </tr>

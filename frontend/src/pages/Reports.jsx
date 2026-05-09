@@ -43,7 +43,7 @@ export default function Reports() {
 
       <div className="reports-grid">
         {/* REVENUE GROWTH */}
-        <div className="card glass-panel report-card full-width shadow-vibrant">
+        <div className="card glass-panel report-card full-width shadow-vibrant border-none">
           <div className="report-header">
             <div>
               <h3>Monthly Revenue</h3>
@@ -78,7 +78,7 @@ export default function Reports() {
         </div>
 
         {/* CUSTOMER ANALYTICS */}
-        <div className="card glass-panel report-card full-width shadow-vibrant">
+        <div className="card glass-panel report-card full-width shadow-vibrant border-none">
            <div className="report-header">
               <h3>Customer Demographics</h3>
               <p className="muted small">Breakdown by status and classification</p>
@@ -122,7 +122,7 @@ export default function Reports() {
 
         <div className="grid2 gap-24">
           {/* LEAD CONVERSION RATE */}
-          <div className="card glass-panel report-card shadow-vibrant">
+          <div className="card glass-panel report-card shadow-vibrant border-none">
             <div className="report-header">
               <h3>Lead Conversion</h3>
               <div className="conversion-badge">{conversionRate}%</div>

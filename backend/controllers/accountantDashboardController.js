@@ -23,9 +23,9 @@ exports.getAccountantDashboard = asyncHandler(async (req, res) => {
     recentPayments,
     recentInvoices
   ] = await Promise.all([
-    // Today's payments received
+    // Today's payments received (Revenue Only)
     Payment.aggregate([
-      { $match: { company_id: companyId, payment_date: { $gte: todayStart, $lte: todayEnd } } },
+      { $match: { company_id: companyId, payment_date: { $gte: todayStart, $lte: todayEnd }, payment_type: { $ne: 'internal' } } },
       { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
     ]),
     // Today's invoices generated
@@ -38,12 +38,13 @@ exports.getAccountantDashboard = asyncHandler(async (req, res) => {
       { $match: { company_id: companyId, status: { $nin: ['Paid', 'Cancelled'] } } },
       { $group: { _id: null, total: { $sum: { $subtract: ['$total_amount', '$paid_amount'] } } } }
     ]),
-    // Monthly revenue chart (last 6 months)
+    // Monthly revenue chart (last 6 months - Revenue Only)
     Payment.aggregate([
       { 
         $match: { 
           company_id: companyId, 
-          payment_date: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) } 
+          payment_date: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) },
+          payment_type: { $ne: 'internal' }
         } 
       },
       {
@@ -65,8 +66,8 @@ exports.getAccountantDashboard = asyncHandler(async (req, res) => {
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
       { $sort: { total: -1 } }
     ]),
-    // Recent Payments
-    Payment.find({ company_id: companyId })
+    // Recent Payments (Revenue Only)
+    Payment.find({ company_id: companyId, payment_type: { $ne: 'internal' } })
       .populate('customer_id', 'name')
       .sort({ payment_date: -1 })
       .limit(5),

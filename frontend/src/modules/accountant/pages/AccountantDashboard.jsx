@@ -1,13 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Icon } from '../../../layouts/icons'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend, AreaChart, Area
+} from 'recharts'
+import { 
+  FiCreditCard, 
+  FiTrendingUp, 
+  FiAlertCircle, 
+  FiFileText, 
+  FiActivity, 
+  FiPlus,
+  FiChevronRight,
+  FiPieChart,
+  FiDollarSign
+} from 'react-icons/fi'
 import { useAuth } from '../../../context/AuthContext'
 import { accountantDashboardApi } from '../../../services/accountantDashboard'
 import { formatCurrency } from '../../../utils/formatters'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
-} from 'recharts'
+import '../../../styles/dashboard-v3.css'
 
 export default function AccountantDashboard() {
   const { user } = useAuth()
@@ -21,87 +32,130 @@ export default function AccountantDashboard() {
       .finally(() => setLoading(false))
   }, [])
 
+  const stats = useMemo(() => {
+    if (!data) return []
+    return [
+      {
+        label: "Today's Income",
+        value: formatCurrency(data.today?.payments?.total || 0),
+        icon: <FiTrendingUp />,
+        iconColor: '#10b981',
+        bgClass: 'bg-green-soft',
+        trend: `${data.today?.payments?.count || 0} payments`
+      },
+      {
+        label: "Today's Invoices",
+        value: formatCurrency(data.today?.invoices?.total || 0),
+        icon: <FiFileText />,
+        iconColor: '#3b82f6',
+        bgClass: 'bg-blue-soft',
+        trend: `${data.today?.invoices?.count || 0} generated`
+      },
+      {
+        label: "Money Pending",
+        value: formatCurrency(data.pendingTotal || 0),
+        icon: <FiAlertCircle />,
+        iconColor: '#f59e0b',
+        bgClass: 'bg-orange-soft',
+        trend: 'Collection due'
+      },
+      {
+        label: "Total Collection",
+        value: formatCurrency(data.totalCollection || 0),
+        icon: <FiCreditCard />,
+        iconColor: '#8b5cf6',
+        bgClass: 'bg-purple-soft',
+        trend: 'Overall revenue'
+      }
+    ]
+  }, [data])
+
   if (loading) {
-    return <div className="p-8 muted">Loading Dashboard...</div>
+    return (
+      <div className="dashboard-container-v3">
+        <div className="flex-center" style={{ minHeight: '400px' }}>
+          <div className="spinner-medium" />
+          <span className="muted ml-12">Loading Accountant Home...</span>
+        </div>
+      </div>
+    )
   }
 
-  if (!data) return <div className="p-8 muted">Failed to load dashboard</div>
+  if (!data) return <div className="p-40 text-center muted">Failed to load dashboard data</div>
 
   return (
-    <div className="accountant-dashboard stack gap-24">
-      <header className="page-header">
+    <div className="dashboard-container-v3">
+      {/* 1. HEADER */}
+      <header className="crm-flex-between mb-32">
         <div>
-          <h1 className="text-2xl font-bold">Accountant Home</h1>
-          <p className="muted">Overview of your money and bills</p>
+          <h1 className="text-2xl font-black letter-tight">Accountant Home</h1>
+          <p className="muted">Financial overview and billing tracking</p>
         </div>
-        <div className="actions">
-          <Link to="/invoices/new" className="btn primary">
-            <Icon name="plus" size={16} /> New Invoice
+        <div className="crm-flex-gap-12">
+          <Link to="/invoices/new" className="btn-premium action-secondary">
+            <FiPlus /> <span>New Invoice</span>
           </Link>
-          <Link to="/payments/new" className="btn">
-            <Icon name="plus" size={16} /> Add Payment
+          <Link to="/payments/new" className="btn-premium action-vibrant">
+            <FiPlus /> <span>Add Payment</span>
           </Link>
         </div>
       </header>
 
-      {/* KPI Cards */}
-      <div className="grid-cards">
-        <div className="card stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#10b981' }}>
-            <Icon name="billing" />
+      {/* 2. KPI ROW */}
+      <div className="metrics-row-v3">
+        {stats.map((s, i) => (
+          <div key={i} className="metric-card-v3">
+            <div className="card-top">
+              <div className={`icon-box ${s.bgClass}`} style={{ color: s.iconColor }}>
+                {s.icon}
+              </div>
+              <span className="label">{s.label}</span>
+            </div>
+            <div className="value">{s.value}</div>
+            {s.trend && (
+              <div className="trend">
+                {s.trend}
+              </div>
+            )}
           </div>
-          <div className="stat-content">
-            <h3 className="muted">Today's Income</h3>
-            <div className="stat-val">{formatCurrency(data.today?.payments?.total || 0)}</div>
-            <p className="text-small text-success">{data.today?.payments?.count || 0} payments received</p>
-          </div>
-        </div>
-
-        <div className="card stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-            <Icon name="deals" />
-          </div>
-          <div className="stat-content">
-            <h3 className="muted">Today's Invoices</h3>
-            <div className="stat-val">{formatCurrency(data.today?.invoices?.total || 0)}</div>
-            <p className="text-small text-info">{data.today?.invoices?.count || 0} invoices generated</p>
-          </div>
-        </div>
-
-        <div className="card stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-            <Icon name="alert" />
-          </div>
-          <div className="stat-content">
-            <h3 className="muted">Money Pending</h3>
-            <div className="stat-val">{formatCurrency(data.pendingTotal || 0)}</div>
-            <p className="text-small text-warning">Total money to be collected</p>
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="grid2">
-        {/* Monthly Revenue Chart */}
-        <div className="card stack">
-          <h3 className="text-lg font-bold mb-16">Monthly Income (Last 6 Months)</h3>
-          <div style={{ width: '100%', height: 300 }}>
+      {/* 3. CHARTS GRID */}
+      <div className="dashboard-grid-v3">
+        {/* Monthly Income Chart */}
+        <div className="section-card-v3 borderless-card">
+          <div className="crm-flex-between mb-24">
+            <div className="crm-flex-gap-8 align-center">
+               <FiActivity className="text-primary" />
+               <h3>Monthly Income</h3>
+            </div>
+            <span className="badge-modern">Last 6 Months</span>
+          </div>
+          <div style={{ width: '100%', height: 280 }}>
             {data.monthlyRevenue?.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color, #e2e8f0)" />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} />
+                <AreaChart data={data.monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
+                    tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }}
                     tickFormatter={(value) => `₹${value >= 1000 ? (value/1000) + 'k' : value}`} 
                   />
                   <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', background: 'var(--bg-card)', boxShadow: 'var(--shadow-lg)', color: 'var(--text)' }}
                     formatter={(value) => formatCurrency(value)}
-                    cursor={{ fill: 'var(--sidebar-item-active, #f1f5f9)' }}
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                   />
-                  <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
+                </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex-center muted" style={{ height: '100%' }}>No revenue data available</div>
@@ -110,9 +164,15 @@ export default function AccountantDashboard() {
         </div>
 
         {/* Expense Pie Chart */}
-        <div className="card stack">
-          <h3 className="text-lg font-bold mb-16">Spending by Category (Last 30 Days)</h3>
-          <div style={{ width: '100%', height: 300 }}>
+        <div className="section-card-v3 borderless-card">
+          <div className="crm-flex-between mb-24">
+             <div className="crm-flex-gap-8 align-center">
+                <FiPieChart className="text-warning" />
+                <h3>Spending by Category</h3>
+             </div>
+             <span className="badge-modern">Last 30 Days</span>
+          </div>
+          <div style={{ width: '100%', height: 280 }}>
             {data.expenses?.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -120,8 +180,8 @@ export default function AccountantDashboard() {
                     data={data.expenses}
                     cx="50%"
                     cy="45%"
-                    innerRadius={60}
-                    outerRadius={80}
+                    innerRadius={70}
+                    outerRadius={95}
                     paddingAngle={5}
                     dataKey="value"
                     nameKey="label"
@@ -131,8 +191,11 @@ export default function AccountantDashboard() {
                       return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     })}
                   </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(value)} />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', background: 'var(--bg-card)', boxShadow: 'var(--shadow-lg)' }}
+                    formatter={(value) => formatCurrency(value)} 
+                  />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600 }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -142,77 +205,104 @@ export default function AccountantDashboard() {
         </div>
       </div>
 
-      <div className="grid2">
+      {/* 4. RECENT TABLES ROW */}
+      <div className="dashboard-three-col-v3 mt-24">
         {/* Recent Invoices */}
-        <div className="card stack">
-          <div className="row align-center justify-between">
-            <h3 className="text-lg font-bold">Recent Invoices</h3>
-            <Link to="/invoices" className="btn small">View All</Link>
+        <div className="section-card-v3 borderless-card" style={{ gridColumn: 'span 2' }}>
+          <div className="crm-flex-between mb-20">
+            <h3>Recent Invoices</h3>
+            <Link to="/invoices" className="btn-text-only">
+              View All <FiChevronRight />
+            </Link>
           </div>
-          <div className="table-responsive">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>No.</th>
-                  <th>Customer</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.recent?.invoices?.map(inv => (
-                  <tr key={inv._id}>
-                    <td><Link to={`/invoices/${inv._id}`}>{inv.invoice_number}</Link></td>
-                    <td>{inv.customer_id?.name || 'Unknown'}</td>
-                    <td>{formatCurrency(inv.total_amount)}</td>
-                    <td>
-                      <span className={`badge ${inv.status.toLowerCase().replace(' ', '-')}`}>
-                        {inv.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {(!data.recent?.invoices || data.recent.invoices.length === 0) && (
-                  <tr><td colSpan="4" className="text-center muted py-4">No recent invoices</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className="v3-list">
+            {data.recent?.invoices?.map(inv => (
+              <div key={inv._id} className="v3-list-item clickable" onClick={() => navigate(`/invoices/${inv._id}`)}>
+                <div className="item-main">
+                  <div className="item-title">{inv.invoice_number}</div>
+                  <div className="item-sub">{inv.customer_id?.name || 'Unknown Customer'}</div>
+                </div>
+                <div className="text-right">
+                  <div className="item-title">{formatCurrency(inv.total_amount)}</div>
+                  <div className={`text-xs font-bold ${inv.status.toLowerCase()}`}>
+                    {inv.status}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {(!data.recent?.invoices || data.recent.invoices.length === 0) && (
+              <div className="p-20 text-center muted text-xs">No recent invoices</div>
+            )}
           </div>
         </div>
 
         {/* Recent Payments */}
-        <div className="card stack">
-          <div className="row align-center justify-between">
-            <h3 className="text-lg font-bold">Recent Payments</h3>
-            <Link to="/payments" className="btn small">View All</Link>
+        <div className="section-card-v3 borderless-card">
+          <div className="crm-flex-between mb-20">
+            <h3>Recent Payments</h3>
+            <Link to="/payments" className="btn-text-only">
+              View All <FiChevronRight />
+            </Link>
           </div>
-          <div className="table-responsive">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>No.</th>
-                  <th>Customer</th>
-                  <th>Amount</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.recent?.payments?.map(pay => (
-                  <tr key={pay._id}>
-                    <td><Link to={`/payments/${pay._id}`}>{pay.payment_number}</Link></td>
-                    <td>{pay.customer_id?.name || 'Unknown'}</td>
-                    <td><strong className="text-success">{formatCurrency(pay.amount)}</strong></td>
-                    <td>{new Date(pay.payment_date).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-                {(!data.recent?.payments || data.recent.payments.length === 0) && (
-                  <tr><td colSpan="4" className="text-center muted py-4">No recent payments</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className="v3-list">
+            {data.recent?.payments?.map(pay => (
+              <div key={pay._id} className="v3-list-item clickable" onClick={() => navigate(`/payments/${pay._id}`)}>
+                <div className="item-main">
+                  <div className="item-title">{pay.payment_number}</div>
+                  <div className="item-sub">{new Date(pay.payment_date).toLocaleDateString()}</div>
+                </div>
+                <div className="text-right">
+                  <div className="item-title text-success">{formatCurrency(pay.amount)}</div>
+                  <div className="item-sub">{pay.payment_method}</div>
+                </div>
+              </div>
+            ))}
+            {(!data.recent?.payments || data.recent.payments.length === 0) && (
+              <div className="p-20 text-center muted text-xs">No recent payments</div>
+            )}
           </div>
         </div>
       </div>
+
+      <style>{`
+        .mb-32 { margin-bottom: 32px; }
+        .mb-24 { margin-bottom: 24px; }
+        .mb-20 { margin-bottom: 20px; }
+        .mt-24 { margin-top: 24px; }
+        .ml-12 { margin-left: 12px; }
+        .letter-tight { letter-spacing: -0.03em; }
+        .v3-list { display: flex; flex-direction: column; gap: 10px; }
+        .v3-list-item { 
+          display: flex; 
+          align-items: center; 
+          justify-content: space-between; 
+          padding: 12px 16px; 
+          background: var(--bg-surface); 
+          border: 1px solid var(--border-subtle); 
+          border-radius: 14px; 
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .v3-list-item.clickable { cursor: pointer; }
+        .v3-list-item.clickable:hover { 
+          border-color: var(--primary); 
+          background: var(--bg-card); 
+          transform: translateX(4px);
+          box-shadow: var(--shadow-sm);
+        }
+        .item-main { flex: 1; }
+        .item-title { font-size: 0.9rem; font-weight: 800; color: var(--text); }
+        .item-sub { font-size: 0.75rem; color: var(--text-dimmed); margin-top: 2px; font-weight: 600; }
+        .text-xs { font-size: 0.7rem; }
+        
+        .bg-green-soft { background: rgba(16, 185, 129, 0.1) !important; }
+        .bg-blue-soft { background: rgba(59, 130, 246, 0.1) !important; }
+        .bg-orange-soft { background: rgba(245, 158, 11, 0.1) !important; }
+        .bg-purple-soft { background: rgba(139, 92, 246, 0.1) !important; }
+        
+        .paid { color: #10b981; }
+        .pending { color: #f59e0b; }
+        .overdue { color: #ef4444; }
+      `}</style>
     </div>
   )
 }

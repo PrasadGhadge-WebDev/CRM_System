@@ -29,13 +29,14 @@ exports.listPayments = asyncHandler(async (req, res) => {
     startDate, 
     endDate, 
     q, 
+    payment_type,
     page = 1, 
     limit = 20 
   } = req.query;
 
-  // HR Role has NO access to Payments
-  if (req.user.role === 'HR') {
-    return res.fail('HR Personnel are not authorized to access financial payment data', 403);
+  // HR Role has NO access to Customer Payments, but can see internal
+  if (req.user.role === 'HR' && payment_type !== 'internal') {
+    return res.fail('HR Personnel are not authorized to access customer financial data', 403);
   }
 
   const filter = { company_id: req.user.company_id };
@@ -51,8 +52,6 @@ exports.listPayments = asyncHandler(async (req, res) => {
       { collected_by: req.user.id },
       { customer_id: { $in: assignedCustomers } }
     ];
-  } else if (req.user.role === 'Manager') {
-    // Managers see everything for monitoring but can't delete
   }
 
   // Applied Filters
@@ -61,6 +60,13 @@ exports.listPayments = asyncHandler(async (req, res) => {
   if (deal_id) filter.deal_id = deal_id;
   if (payment_mode) filter.payment_mode = payment_mode;
   if (status) filter.status = status;
+  if (payment_type) {
+    if (payment_type === 'internal') {
+      filter.payment_type = { $ne: 'Customer Payment' };
+    } else {
+      filter.payment_type = payment_type;
+    }
+  }
 
   if (startDate || endDate) {
     filter.payment_date = {};
@@ -75,7 +81,8 @@ exports.listPayments = asyncHandler(async (req, res) => {
       { status: search },
       { notes: search },
       { transaction_id: search },
-      { payment_mode: search }
+      { payment_mode: search },
+      { vendor_name: search }
     ];
   }
 
@@ -88,6 +95,7 @@ exports.listPayments = asyncHandler(async (req, res) => {
       .populate('invoice_id', 'invoice_number total_amount paid_amount due_date status')
       .populate('deal_id', 'name')
       .populate('collected_by', 'name')
+      .populate('user_id', 'name role')
       .sort({ created_at: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum),
@@ -106,6 +114,10 @@ exports.listPayments = asyncHandler(async (req, res) => {
     total: totalFiltered,
     totalCollection: 0,
     totalPending: 0,
+    todayCollection: 0,
+    totalStaffPayments: 0,
+    pendingStaffCount: 0,
+    pendingClaimsAmount: 0,
     byMode: {},
     byStatus: {}
   };
@@ -119,25 +131,33 @@ exports.listPayments = asyncHandler(async (req, res) => {
     }
   });
 
+  if (payment_type === 'internal') {
+    summary.totalStaffPayments = summary.totalCollection;
+    summary.pendingStaffCount = summary.byStatus['Pending'] || 0;
+    summary.pendingClaimsAmount = statusStats.find(s => s._id === 'Pending')?.total || 0;
+  }
+
   modeStats.forEach(s => {
     if (s._id) summary.byMode[s._id] = s.count;
   });
 
-  // Calculate Global Pending from Invoices
-  const pendingRes = await Invoice.aggregate([
-    { $match: { company_id: req.user.company_id, status: { $ne: 'Paid' } } },
-    { $group: { _id: null, total: { $sum: { $subtract: ['$total_amount', '$paid_amount'] } } } }
-  ]);
-  summary.totalPending = pendingRes[0]?.total || 0;
+  // Calculate Global Pending from Invoices (only for Customer Payments)
+  if (payment_type !== 'internal') {
+    const pendingRes = await Invoice.aggregate([
+      { $match: { company_id: req.user.company_id, status: { $ne: 'Paid' } } },
+      { $group: { _id: null, total: { $sum: { $subtract: ['$total_amount', '$paid_amount'] } } } }
+    ]);
+    summary.totalPending = pendingRes[0]?.total || 0;
 
-  // Today's Collection
-  const startOfToday = new Date();
-  startOfToday.setHours(0,0,0,0);
-  const todayRes = await Payment.aggregate([
-    { $match: { company_id: req.user.company_id, payment_date: { $gte: startOfToday }, status: { $in: ['Paid', 'Partial'] } } },
-    { $group: { _id: null, total: { $sum: '$paid_amount' } } }
-  ]);
-  summary.todayCollection = todayRes[0]?.total || 0;
+    // Today's Collection
+    const startOfToday = new Date();
+    startOfToday.setHours(0,0,0,0);
+    const todayRes = await Payment.aggregate([
+      { $match: { company_id: req.user.company_id, payment_date: { $gte: startOfToday }, status: { $in: ['Paid', 'Partial'] }, payment_type: { $ne: 'internal' } } },
+      { $group: { _id: null, total: { $sum: '$paid_amount' } } }
+    ]);
+    summary.todayCollection = todayRes[0]?.total || 0;
+  }
 
   res.ok({ items, total: totalFiltered, page: pageNum, limit: limitNum, summary });
 });

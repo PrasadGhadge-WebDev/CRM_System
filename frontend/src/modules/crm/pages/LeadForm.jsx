@@ -42,7 +42,6 @@ const INITIAL_LEAD = {
   state: 'Maharashtra',
   dealAmount: 0,
   notes: '',
-  priority: 'Medium',
 }
 
 export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
@@ -323,15 +322,6 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                     />
                   </div>
                 </div>
-                <div className="sheet-field">
-                  <label>Priority</label>
-                  <SearchableSelect
-                    value={model.priority}
-                    onChange={val => setModel({ ...model, priority: val })}
-                    options={['Low', 'Medium', 'High'].map(name => ({ value: name, label: name }))}
-                    icon="star"
-                  />
-                </div>
               </div>
             </section>
 
@@ -392,23 +382,6 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                     disabled={initialModel?.status === 'Converted'}
                   />
                 </div>
-                {user?.role !== 'Employee' && (
-                  <div className="sheet-field">
-                    <label>Assign To</label>
-                    <SearchableSelect
-                      value={model.assigned_to}
-                      onChange={val => setModel({ ...model, assigned_to: val })}
-                      disabled={initialModel?.status === 'Converted'}
-                      options={[
-                        { value: '', label: 'Unassigned' }, 
-                        ...allUsers
-                          .filter(u => user?.role === 'Admin' ? true : u.role === 'Employee')
-                          .map(u => ({ value: u.id || u._id, label: u.name }))
-                      ]}
-                      icon="user"
-                    />
-                  </div>
-                )}
                 <div className="sheet-field">
                   <label>Next Follow-up Date</label>
                   <div className={`crm-input-group ${fieldErrors.follow_up_date ? 'error' : ''}`}>

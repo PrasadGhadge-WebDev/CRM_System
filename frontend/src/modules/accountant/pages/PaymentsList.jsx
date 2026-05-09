@@ -469,7 +469,6 @@ export default function PaymentsList() {
                       </tr>
                     ) : (
                       <tr>
-                        <th style={{ minWidth: '120px' }}>TXN ID</th>
                         <th style={{ minWidth: '150px' }}>EMPLOYEE NAME</th>
                         <th style={{ minWidth: '140px' }}>PAYMENT TYPE</th>
                         <th style={{ minWidth: '120px' }}>MONTH / DATE</th>
@@ -517,13 +516,24 @@ export default function PaymentsList() {
                                     <Icon name="edit" size={14} />
                                   </button>
 
-                                  <details className="crm-actions-overflow">
-                                    <summary className="modern-action-btn" title="More Options"><Icon name="more-vertical" size={14} /></summary>
-                                    <div className="overflow-menu-content shadow-soft">
-                                      {pay.invoice_id && <button className="overflow-item" onClick={() => navigate(`/invoices/${pay.invoice_id?.id || pay.invoice_id?._id}`)}><Icon name="billing" size={14} /><span>View Invoice</span></button>}
-                                      {isAdmin && <button className="overflow-item danger" onClick={() => handleDelete(pay.id)}><Icon name="trash" size={14} /><span>Delete</span></button>}
-                                    </div>
-                                  </details>
+                                  {pay.invoice_id && (
+                                    <button 
+                                      className="modern-action-btn" 
+                                      title="View Invoice"
+                                      onClick={() => navigate(`/invoices/${pay.invoice_id?.id || pay.invoice_id?._id}`)}
+                                    >
+                                      <Icon name="billing" size={14} />
+                                    </button>
+                                  )}
+                                  {isAdmin && (
+                                    <button 
+                                      className="modern-action-btn danger" 
+                                      title="Delete"
+                                      onClick={() => handleDelete(pay.id)}
+                                    >
+                                      <Icon name="trash" size={14} />
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -531,16 +541,17 @@ export default function PaymentsList() {
                         } else {
                           return (
                             <tr key={pay.id} className="crm-table-row clickable-row" onClick={() => navigate(`/payments/${pay.id}`)}>
-                              <td><div className="font-numeric strong">{pay.transaction_id || 'INTERNAL'}</div></td>
-                              <td><div className="font-bold">{pay.user_id?.name || pay.vendor_name || 'Staff Member'}</div></td>
+                              <td><div className="font-bold">{pay.user_id?.name || pay.vendor_name || 'Unknown Staff'}</div></td>
                               <td>
                                 <div className="stack gap-0">
-                                  <span className="font-bold text-xs caps">{pay.payment_type}</span>
-                                  <span className="muted text-xs">{pay.notes || ''}</span>
+                                  <span className="font-bold text-xs caps" style={{ color: 'var(--primary)' }}>
+                                    {pay.payment_type === 'internal' ? 'Internal Payment' : pay.payment_type}
+                                  </span>
+                                  <span className="muted text-xs" style={{ fontSize: '0.65rem' }}>{pay.notes?.substring(0, 30)}{pay.notes?.length > 30 ? '...' : ''}</span>
                                 </div>
                               </td>
                               <td><div className="text-xs font-numeric strong">{new Date(pay.payment_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</div></td>
-                              <td className="text-right font-numeric font-bold" style={{ color: '#6366f1' }}>{formatCurrency(pay.total_amount)}</td>
+                              <td className="text-right font-numeric font-bold" style={{ color: '#6366f1' }}>{formatCurrency(pay.paid_amount)}</td>
                               <td><div className="text-xs strong caps">{pay.payment_mode}</div></td>
                               <td><span className={`status-badge-mini ${pay.status === 'Paid' ? 'success' : 'warning'}`}>{pay.status}</span></td>
                               <td onClick={e => e.stopPropagation()}>
@@ -553,12 +564,15 @@ export default function PaymentsList() {
                                     <Icon name="edit" size={14} />
                                   </button>
 
-                                  <details className="crm-actions-overflow">
-                                    <summary className="modern-action-btn" title="More Options"><Icon name="more-vertical" size={14} /></summary>
-                                    <div className="overflow-menu-content shadow-soft">
-                                      {isAdmin && <button className="overflow-item danger" onClick={() => handleDelete(pay.id)}><Icon name="trash" size={14} /><span>Delete Record</span></button>}
-                                    </div>
-                                  </details>
+                                  {isAdmin && (
+                                    <button 
+                                      className="modern-action-btn danger" 
+                                      title="Delete Record"
+                                      onClick={() => handleDelete(pay.id)}
+                                    >
+                                      <Icon name="trash" size={14} />
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -617,43 +631,14 @@ export default function PaymentsList() {
       </Modal>
 
       <style>{`
-         .status-dropdown-mini {
-           background: var(--bg-surface);
-           border: 1px solid var(--border-strong);
-           border-radius: 8px;
-           padding: 4px 8px;
-           font-size: 0.75rem;
-           font-weight: 700;
-           cursor: pointer;
-           outline: none;
-         }
-          .status-dropdown-mini.paid { color: var(--success); border-color: var(--success); }
-          .status-dropdown-mini.partial { color: var(--warning); border-color: var(--warning); }
-          .status-dropdown-mini.pending { color: var(--danger); border-color: var(--danger); }
-          .status-dropdown-mini.failed { color: var(--danger); border-color: var(--danger); }
-
-         .users-page-header { margin-bottom: 24px; }
-         .users-title { font-size: 1.5rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }
-         .users-subtitle { font-size: 0.9rem; color: var(--text-dimmed); font-weight: 500; }
-
-          .filter-select-modern {
-            height: 42px;
-            border-radius: 12px;
-            border: 1px solid var(--border-strong);
-            background: var(--bg-surface);
-            padding: 0 16px;
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--text);
-            cursor: pointer;
-            transition: all 0.2s;
-            min-width: 150px;
-          }
-          .filter-select-modern:hover { border-color: var(--primary); background: var(--bg-card); }
-          .filter-select-modern:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.1); }
+          /* Unified Design System */
+          .users-page-header { margin-bottom: 24px; }
+          .users-title { font-size: 1.5rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+          .users-subtitle { font-size: 0.9rem; color: var(--text-dimmed); font-weight: 500; }
 
           .unified-action-bar { margin-bottom: 24px; }
           .crm-stats-grid { display: grid; gap: 20px; }
+          
           .premium-stat-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -662,12 +647,10 @@ export default function PaymentsList() {
             display: flex;
             align-items: center;
             gap: 20px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
             box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-sm);
           }
-          .premium-stat-card:hover { transform: translateY(-4px); box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-md); border-color: var(--primary); }
           .premium-stat-card::after {
             content: '';
             position: absolute;
@@ -675,6 +658,50 @@ export default function PaymentsList() {
             background: transparent;
           }
           .premium-stat-card.highlight::after { background: var(--danger); }
+
+          /* Header Actions & Buttons */
+          .header-actions { display: flex; gap: 12px; align-items: center; }
+          .btn-premium, .btn-premium-mini {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 0 24px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+            height: 44px;
+            white-space: nowrap;
+          }
+          .btn-premium-mini { padding: 0 16px; height: 38px; font-size: 0.82rem; }
+          
+          .action-vibrant {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+          }
+          .action-vibrant:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.35);
+          }
+
+          .secondary-outline-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-strong);
+            color: var(--text);
+            box-shadow: var(--shadow-sm);
+          }
+          .secondary-outline-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--bg-surface);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+          }
 
           .stat-icon {
             width: 54px;
@@ -695,429 +722,124 @@ export default function PaymentsList() {
           .stat-value.text-success { color: #22c55e; }
           .stat-value.text-danger { color: #ef4444; }
 
-         .overdue-row { background: rgba(239, 68, 68, 0.03) !important; }
-         .overdue-row:hover { background: rgba(239, 68, 68, 0.1) !important; }
-
-         .due-badge { 
-           font-size: 0.6rem; 
-           font-weight: 900; 
-           color: #ef4444; 
-           background: rgba(239, 68, 68, 0.1); 
-           padding: 1px 6px; 
-           border-radius: 4px; 
-           width: fit-content;
-           margin-top: 2px;
-         }
-
-         .overdue-text {
-           font-size: 0.6rem;
-           font-weight: 900;
-           color: white;
-           background: #ef4444;
-           padding: 1px 6px;
-           border-radius: 4px;
-           width: fit-content;
-           margin-top: 2px;
-           animation: pulse 2s infinite;
-         }
-
-          .modern-action-btn { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-          .modern-action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); }
-          
-          .crm-actions-overflow { position: relative; }
-          .crm-actions-overflow summary { list-style: none; outline: none; }
-          .crm-actions-overflow summary::-webkit-details-marker { display: none; }
-           
-          .overflow-menu-content { 
-            position: absolute; 
-            right: 0; 
-            top: calc(100% + 8px); 
-            background: var(--bg-card); 
-            border: 1px solid var(--border); 
-            border-radius: 16px; 
-            padding: 8px; 
-            z-index: 1000; 
-            min-width: 220px;
+          /* Payment Flow Tabs - Modern Proper Shape */
+          .payment-flow-tabs {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            backdrop-filter: blur(20px);
+            gap: 12px;
+            margin-bottom: 32px;
+            padding: 6px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            width: fit-content;
           }
-           
-          .overflow-item {
+          .flow-tab {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 10px 14px;
-            border-radius: 10px;
-            color: var(--text);
-            font-size: 0.82rem;
-            font-weight: 700;
-            text-decoration: none;
-            border: none;
+            gap: 14px;
+            padding: 10px 24px;
             background: transparent;
+            border: none;
+            border-radius: 16px;
             cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--text-dimmed);
             text-align: left;
-            width: 100%;
+            position: relative;
+          }
+          .flow-tab:hover { background: rgba(var(--primary-rgb), 0.03); color: var(--text); }
+          .flow-tab.active { 
+            background: white; 
+            color: var(--primary); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(var(--primary-rgb), 0.05);
+          }
+          
+          .tab-icon-wrap {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-dimmed);
+            transition: all 0.3s;
+          }
+          .flow-tab.active .tab-icon-wrap { 
+            background: var(--primary); 
+            color: white; 
+            border-color: var(--primary);
+            box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.3);
+          }
+          .flow-tab.active .tab-icon-wrap.staff {
+            background: #0ea5e9;
+            border-color: #0ea5e9;
+            box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3);
+          }
+
+          .tab-info { display: flex; flex-direction: column; gap: 1px; }
+          .tab-label { font-size: 0.95rem; font-weight: 800; color: inherit; }
+          .tab-desc { font-size: 0.65rem; font-weight: 700; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.02em; }
+
+          /* Table & Actions */
+          .table-responsive { overflow-x: auto; border-radius: 16px; border: 1px solid var(--border-subtle); background: white; }
+          .crm-table th { font-size: 0.75rem !important; text-transform: uppercase; letter-spacing: 0.05em; padding: 14px 16px !important; color: var(--text-dimmed); background: var(--bg-surface); }
+          .crm-table td { padding: 12px 16px !important; vertical-align: middle; }
+          .crm-table-row { border-bottom: 1px solid var(--border-subtle); transition: all 0.2s; }
+          .crm-table-row:hover { background: var(--bg-surface) !important; }
+          
+          .modern-action-btn { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+          .modern-action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: translateY(-1px); }
+          .modern-action-btn.danger:hover { background: #fee2e2; color: #ef4444; border-color: #fecaca; }
+
+          /* Status Badges */
+          .status-badge-mini {
+            display: inline-flex;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+          }
+          .status-badge-mini.success { background: #dcfce7; color: #15803d; }
+          .status-badge-mini.warning { background: #fef3c7; color: #b45309; }
+          .status-badge-mini.danger { background: #fee2e2; color: #b91c1c; }
+
+          /* Overdue Banner & Banner Actions */
+          .overdue-banner {
+            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
+          }
+          .banner-content { display: flex; align-items: center; gap: 12px; font-weight: 500; }
+          .banner-action {
+            background: white;
+            color: #b91c1c;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.82rem;
+            cursor: pointer;
             transition: all 0.2s;
             white-space: nowrap;
           }
-          .overflow-item:hover { background: var(--bg-surface); color: var(--primary); }
-          .overflow-item.danger:hover { background: #fee2e2; color: #ef4444; }
-          .overflow-item span { flex: 1; }
+          .banner-action:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 
-         .pending-highlight {
-           background: rgba(239, 68, 68, 0.1);
-           border-radius: 999px;
-           padding: 2px;
-           display: inline-block;
-         }
-
-         @keyframes pulse {
-           0% { opacity: 1; transform: scale(1); }
-           50% { opacity: 0.8; transform: scale(0.95); }
-           100% { opacity: 1; transform: scale(1); }
-         }
-
-         .payment-summary-mini {
-           background: var(--bg-surface);
-           border: 1px solid var(--border);
-           border-radius: 16px;
-         }
-
-         .crm-action-btn-mini {
-           width: 30px;
-           height: 30px;
-           border-radius: 8px;
-           display: flex;
-           align-items: center;
-           justify-content: center;
-           border: 1px solid var(--border);
-           background: var(--bg-surface);
-           color: var(--text-dimmed);
-           transition: all 0.2s;
-         }
-         .crm-action-btn-mini:hover { transform: translateY(-2px); border-color: var(--primary); color: var(--primary); }
-         .crm-action-btn-mini.danger { color: #ef4444; border-color: rgba(239, 68, 68, 0.2); }
-         .crm-action-btn-mini.danger:hover { background: #ef4444; color: white; border-color: #ef4444; }
-         .crm-action-btn-mini.success { color: var(--success); border-color: var(--success-soft); }
-         .crm-action-btn-mini.success:hover { background: var(--success); color: white; }
-
-         .crm-table th { font-size: 0.75rem !important; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 16px !important; color: var(--text-dimmed); }
-         .crm-table td { padding: 12px 16px !important; vertical-align: middle; }
-
-         .crm-table-row.selected { background: var(--primary-soft) !important; }
-         .clickable-row { cursor: pointer; }
-         .crm-table-row:hover { background: var(--bg-surface) !important; }
-         
-         .glass-btn {
-           background: var(--bg-surface) !important;
-           border: 1px solid var(--border-strong) !important;
-           color: var(--text-dimmed) !important;
-           border-radius: 8px !important;
-           width: 30px !important;
-           height: 30px !important;
-           display: flex !important;
-           align-items: center !important;
-           justify-content: center !important;
-           transition: all 0.2s !important;
-         }
-         .glass-btn:hover { border-color: var(--primary) !important; color: var(--primary) !important; transform: translateY(-2px); }
-
-         .danger-btn {
-           background: rgba(239, 68, 68, 0.1) !important;
-           border: 1px solid rgba(239, 68, 68, 0.2) !important;
-           color: #ef4444 !important;
-           border-radius: 8px !important;
-           width: 30px !important;
-           height: 30px !important;
-           display: flex !important;
-           align-items: center !important;
-           justify-content: center !important;
-         }
-         .danger-btn:hover { background: #ef4444 !important; color: white !important; transform: translateY(-2px); }
-         
-         .status-dropdown-mini.partial { color: var(--warning); border-color: var(--warning); }
-         
-         /* Payment Flow Tabs */
-         .payment-flow-tabs {
-           display: flex;
-           gap: 16px;
-           margin-bottom: 24px;
-           border-bottom: 1px solid var(--border);
-           padding-bottom: 1px;
-         }
-         .flow-tab {
-           display: flex;
-           align-items: center;
-           gap: 12px;
-           padding: 12px 24px;
-           background: transparent;
-           border: none;
-           border-bottom: 3px solid transparent;
-           cursor: pointer;
-           transition: all 0.3s;
-           color: var(--text-dimmed);
-           text-align: left;
-         }
-         .flow-tab:hover { background: var(--bg-surface); color: var(--text); }
-         .flow-tab.active { 
-           color: var(--primary); 
-           border-bottom-color: var(--primary); 
-           background: rgba(var(--primary-rgb), 0.05); 
-         }
-         .flow-tab .tab-info { display: flex; flex-direction: column; }
-         .tab-label { font-size: 0.9rem; font-weight: 800; line-height: 1.2; }
-         .tab-desc { font-size: 0.65rem; font-weight: 600; opacity: 0.7; }
-
-         /* Admin Analytics & Overdue Banner */
-         .analytics-pane {
-           animation: slideDown 0.4s ease-out;
-         }
-         @keyframes slideDown {
-           from { opacity: 0; transform: translateY(-20px); }
-           to { opacity: 1; transform: translateY(0); }
-         }
-
-         .overdue-banner {
-           display: flex;
-           justify-content: space-between;
-           align-items: center;
-           background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-           border: 1px solid #ef4444;
-           padding: 12px 20px;
-           border-radius: 16px;
-           margin-bottom: 24px;
-           color: #991b1b;
-         }
-         .banner-content { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; }
-         .banner-action {
-           background: #ef4444;
-           color: white;
-           border: none;
-           padding: 6px 16px;
-           border-radius: 8px;
-           font-size: 0.75rem;
-           font-weight: 800;
-           cursor: pointer;
-           transition: all 0.2s;
-         }
-         .banner-action:hover { background: #dc2626; transform: scale(1.05); }
-
-         @keyframes animate-pulse {
-           0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-           70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-           100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-         }
-         .animate-pulse { animation: animate-pulse 2s infinite; }
-
-         /* FINAL Compact Structure Styles */
-         .payee-avatar-mini {
-           width: 28px;
-           height: 28px;
-           border-radius: 8px;
-           background: var(--primary-soft);
-           color: var(--primary);
-           display: flex;
-           align-items: center;
-           justify-content: center;
-           font-weight: 800;
-           font-size: 0.75rem;
-         }
-         .payee-name-mini { font-size: 0.8rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
-         
-         .invoice-link-mini {
-           color: var(--primary);
-           font-weight: 800;
-           font-size: 0.8rem;
-           text-decoration: none;
-           background: rgba(var(--primary-rgb), 0.05);
-           padding: 2px 6px;
-           border-radius: 4px;
-         }
-         .invoice-link-mini:hover { background: var(--primary-soft); }
-
-         .method-tag {
-           font-size: 0.7rem;
-           font-weight: 700;
-           color: var(--text-dimmed);
-           background: var(--bg-surface);
-           border: 1px solid var(--border-strong);
-           padding: 2px 8px;
-           border-radius: 6px;
-           width: fit-content;
-           white-space: nowrap;
-         }
-
-         .crm-status-pill-mini {
-           font-size: 0.65rem;
-           font-weight: 800;
-           padding: 2px 8px;
-           border-radius: 6px;
-           text-transform: uppercase;
-         }
-         .crm-status-pill-mini.success { background: #dcfce7; color: #166534; }
-         .crm-status-pill-mini.warning { background: #fef9c3; color: #854d0e; }
-         .crm-status-pill-mini.danger { background: #fee2e2; color: #991b1b; }
-         .crm-status-pill-mini.info { background: #e0f2fe; color: #075985; }
-
-         .overdue-text { font-size: 0.6rem; font-weight: 900; color: #ef4444; margin-top: 2px; text-transform: uppercase; }
-          .due-badge { font-size: 0.55rem; font-weight: 900; background: #fee2e2; color: #ef4444; padding: 1px 4px; border-radius: 4px; margin-top: 2px; letter-spacing: 0.05em; width: fit-content; }
-          .stack { display: flex; flex-direction: column; }
-          .gap-0 { gap: 0; }
-          .font-numeric { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-
-         .crm-action-btn-mini {
-           width: 26px;
-           height: 26px;
-           border-radius: 6px;
-           display: flex;
-           align-items: center;
-           justify-content: center;
-           border: 1px solid var(--border-strong);
-           transition: all 0.2s;
-           background: var(--bg-surface);
-           color: var(--text-dimmed);
-         }
-         .crm-action-btn-mini.glass:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-1px); }
-         .crm-action-btn-mini.danger:hover { background: #ef4444; border-color: #ef4444; color: white; transform: translateY(-1px); }
-
-         .table-responsive { overflow-x: auto; border-radius: 12px; }
-         .crm-table th { white-space: nowrap; padding: 10px 12px !important; }
-         .crm-table td { padding: 8px 12px !important; vertical-align: middle; }
-
-         .add-payment-btn {
-           background: var(--primary) !important;
-           color: white !important;
-           border: none !important;
-           border-radius: 12px !important;
-           padding: 0 20px !important;
-           font-weight: 700 !important;
-           height: 38px !important;
-           display: flex !important;
-           align-items: center !important;
-           gap: 8px !important;
-           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-           box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2) !important;
-           font-size: 0.85rem !important;
-         }
-         .add-payment-btn:hover {
-           background: var(--primary-hover) !important;
-           transform: translateY(-2px);
-           box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4);
-         }
-
-         .secondary-outline-btn {
-           background: var(--bg-surface) !important;
-           border: 1px solid var(--border-strong) !important;
-           color: var(--text) !important;
-           border-radius: 12px !important;
-           padding: 0 16px !important;
-           font-weight: 700 !important;
-           height: 38px !important;
-           display: flex !important;
-           align-items: center !important;
-           gap: 8px !important;
-           transition: all 0.2s !important;
-           font-size: 0.85rem !important;
-         }
-         .secondary-outline-btn:hover {
-           border-color: var(--primary) !important;
-           color: var(--primary) !important;
-           transform: translateY(-2px);
-         }
-         .payment-flow-tabs { display: flex; gap: 24px; margin-bottom: 32px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; }
-         .flow-tab { 
-           background: none; 
-           border: none; 
-           padding: 12px 0; 
-           display: flex; 
-           align-items: center; 
-           gap: 16px; 
-           cursor: pointer; 
-           transition: all 0.3s;
-           opacity: 0.5;
-           position: relative;
-         }
-         .flow-tab:hover { opacity: 0.8; }
-         .flow-tab.active { opacity: 1; }
-         .flow-tab.active::after {
-           content: '';
-           position: absolute;
-           bottom: -9px;
-           left: 0;
-           right: 0;
-           height: 3px;
-           background: var(--primary);
-           border-radius: 3px 3px 0 0;
-         }
-
-         .tab-icon-wrap {
-           width: 42px;
-           height: 42px;
-           border-radius: 12px;
-           display: flex;
-           align-items: center;
-           justify-content: center;
-           background: var(--bg-surface);
-           border: 1px solid var(--border);
-           color: var(--text-dimmed);
-           transition: all 0.3s;
-         }
-         .flow-tab.active .tab-icon-wrap { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: scale(1.05); }
-         .tab-icon-wrap.staff { }
-         .flow-tab.active .tab-icon-wrap.staff { background: #f0f9ff; color: #0369a1; border-color: #0369a1; }
-
-         .tab-info { display: flex; flex-direction: column; align-items: flex-start; }
-         .tab-label { font-size: 0.95rem; font-weight: 800; color: var(--text); }
-         .tab-desc { font-size: 0.7rem; font-weight: 600; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
-
-         .caps { text-transform: uppercase; }
-         .text-primary { color: var(--primary); }
-         .status-badge-mini {
-           display: inline-flex;
-           padding: 4px 12px;
-           border-radius: 8px;
-           font-size: 0.7rem;
-           font-weight: 800;
-           text-transform: uppercase;
-           letter-spacing: 0.02em;
-         }
-         .status-badge-mini.success { background: #dcfce7; color: #15803d; }
-         .status-badge-mini.warning { background: #fef3c7; color: #b45309; }
-         .status-badge-mini.danger { background: #fee2e2; color: #b91c1c; }
-
-         .overdue-banner {
-           background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-           color: white;
-           padding: 16px 24px;
-           border-radius: 16px;
-           display: flex;
-           justify-content: space-between;
-           align-items: center;
-           margin-bottom: 24px;
-           box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
-         }
-         .banner-action {
-           background: white;
-           color: #b91c1c;
-           border: none;
-           padding: 8px 16px;
-           border-radius: 10px;
-           font-weight: 800;
-           font-size: 0.8rem;
-           cursor: pointer;
-           transition: all 0.2s;
-         }
-         .banner-action:hover { transform: scale(1.05); }
-
-         @keyframes pulse {
-           0% { transform: scale(1); }
-           50% { transform: scale(1.02); }
-           100% { transform: scale(1); }
-         }
-         .animate-pulse { animation: pulse 3s infinite ease-in-out; }
+          .animate-pulse { animation: pulse 3s infinite ease-in-out; }
+          @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.95; transform: scale(1.01); }
+            100% { opacity: 1; transform: scale(1); }
+          }
       `}</style>
     </div>
   )

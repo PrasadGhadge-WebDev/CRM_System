@@ -319,26 +319,12 @@ export default function InvoicesList() {
                                   </button>
                                 )}
 
-                                {/* 📄 Receipt */}
-                                {(inv.paid_amount || 0) > 0 && (
-                                  <button 
-                                    className="modern-action-btn success" 
-                                    title="View Receipt" 
-                                    onClick={() => navigate(`/payments?invoice_id=${inv.id}`)}
-                                  >
-                                    <Icon name="reports" size={14} />
-                                  </button>
-                                )}
                                 
                                 <details className="crm-actions-overflow">
                                   <summary className="modern-action-btn" title="More">
                                     <Icon name="more-vertical" size={14} />
                                   </summary>
                                   <div className="overflow-menu-content shadow-soft">
-                                    <button className="overflow-item" onClick={() => navigate(`/payments?invoice_id=${inv.id}`)}>
-                                      <Icon name="activity" size={14} />
-                                      <span>Payment History</span>
-                                    </button>
                                     <button className="overflow-item" onClick={() => navigate(`/invoices/${inv.id}`)}>
                                       <Icon name="edit" size={14} />
                                       <span>Finance Notes</span>

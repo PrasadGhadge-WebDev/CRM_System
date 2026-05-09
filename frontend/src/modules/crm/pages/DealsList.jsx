@@ -20,10 +20,10 @@ import LeadAssignModal from '../components/LeadAssignModal.jsx'
 import LeadNoteModal from '../components/LeadNoteModal.jsx'
 
 const STAGE_OPTIONS = [
-  { name: 'New', color: '#6366f1' },
-  { name: 'Qualification', color: '#3b82f6' },
-  { name: 'Proposal', color: '#f59e0b' },
+  { name: 'New Deal', color: '#6366f1' },
+  { name: 'Proposal Sent', color: '#f59e0b' },
   { name: 'Negotiation', color: '#f97316' },
+  { name: 'Follow-up', color: '#8b5cf6' },
   { name: 'Won', color: '#10b981' },
   { name: 'Lost', color: '#ef4444' }
 ]
@@ -187,7 +187,6 @@ export default function DealsList() {
   }, [loadDeals])
 
   async function onUpdateStage(id, newStage) {
-    // If Admin sets to Lost, we must show the form to collect the reason
     if (newStage === 'Lost') {
       const deal = items.find(d => d.id === id) || { id };
       handleOpenEditModal(deal);
@@ -197,7 +196,6 @@ export default function DealsList() {
 
     try {
       const updates = { stage: newStage };
-      // Auto-close if Lost; Won stays Open until paid
       if (newStage === 'Lost') {
         updates.status = 'Closed';
       } else if (newStage !== 'Won') {
@@ -224,6 +222,14 @@ export default function DealsList() {
     setSearchParams(next)
   }
 
+  const closeFormModal = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('addDeal')
+    next.delete('editDeal')
+    setSearchParams(next)
+    setFormModal({ open: false, deal: null })
+  }
+
   const handleDeleteDeal = (deal) => {
     if (currentUser?.role !== 'Admin') {
       toast.info('Admin access required')
@@ -232,7 +238,7 @@ export default function DealsList() {
 
     const DeleteConfirm = ({ closeToast }) => (
       <div className="stack gap-10">
-        <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Delete "{deal.name}"?</div>
+        <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Delete \"{deal.name}\"?</div>
         <div style={{ fontSize: '0.8rem', color: '#64748b' }}>This action cannot be undone.</div>
         <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
           <button 
@@ -267,13 +273,6 @@ export default function DealsList() {
       draggable: false,
       closeButton: false
     })
-  }
-
-  const closeFormModal = () => {
-    const next = new URLSearchParams(searchParams)
-    next.delete('addDeal')
-    next.delete('editDeal')
-    setSearchParams(next)
   }
 
   return (
@@ -325,46 +324,8 @@ export default function DealsList() {
                 setQ(e.target.value)
                 setPage(1)
               }}
-              placeholder="Search by name, ID, description, stage, priority, lifecycle, payment status..."
+              placeholder="Search deals..."
             />
-
-            {isAccountant && (
-              <>
-                <SearchableSelect
-                  value={searchParams.get('payment_status') || ''}
-                  onChange={(val) => { 
-                    const next = new URLSearchParams(searchParams);
-                    if (val) next.set('payment_status', val); else next.delete('payment_status');
-                    setSearchParams(next);
-                    setPage(1);
-                  }}
-                  options={[
-                    { value: '', label: 'Payment: All' },
-                    { value: 'Paid', label: 'Paid' },
-                    { value: 'Partial', label: 'Partial' },
-                    { value: 'Unpaid', label: 'Unpaid' }
-                  ]}
-                  placeholder="Payment Status"
-                  icon="billing"
-                />
-                <SearchableSelect
-                  value={searchParams.get('invoice_status') || ''}
-                  onChange={(val) => { 
-                    const next = new URLSearchParams(searchParams);
-                    if (val) next.set('invoice_status', val); else next.delete('invoice_status');
-                    setSearchParams(next);
-                    setPage(1);
-                  }}
-                  options={[
-                    { value: '', label: 'Invoice: All' },
-                    { value: 'Invoiced', label: 'Invoiced' },
-                    { value: 'Pending', label: 'Pending' }
-                  ]}
-                  placeholder="Invoice Status"
-                  icon="reports"
-                />
-              </>
-            )}
 
             {!isAccountant && (
               <>
@@ -376,344 +337,167 @@ export default function DealsList() {
                   icon="activity"
                 />
 
-                <SearchableSelect
-                  value={assignedTo}
-                  onChange={(val) => { setAssignedTo(val); setPage(1); }}
-                  options={[{ value: '', label: 'All Assigned To' }, ...employees.map(emp => ({ value: emp.id, label: emp.name }))]}
-                  placeholder="All Assigned To"
-                  icon="user"
-                />
+                {isManagement && (
+                  <SearchableSelect
+                    value={assignedTo}
+                    onChange={(val) => { setAssignedTo(val); setPage(1); }}
+                    options={[{ value: '', label: 'All Assigned To' }, ...employees.map(emp => ({ value: emp.id, label: emp.name }))]}
+                    placeholder="All Assigned To"
+                    icon="user"
+                  />
+                )}
               </>
             )}
 
-            <SearchableSelect
-              value={dateRange}
-              onChange={(val) => { setDateRange(val); setPage(1); }}
-              options={[
-                { value: 'all', label: 'Date: All' },
-                { value: 'today', label: 'Today' },
-                { value: 'yesterday', label: 'Yesterday' },
-                { value: 'week', label: 'This Week' },
-                { value: 'month', label: 'This Month' },
-                { value: 'overdue', label: 'Overdue' },
-                { value: 'custom', label: 'Custom Range' }
-              ]}
-              placeholder="Date: All"
-              icon="calendar"
-            />
-
-            {dateRange === 'custom' && (
-              <div className="flex items-center gap-4 animate-fade-in">
-                <input 
-                  type="date" 
-                  className="crm-input date-mini" 
-                  value={customDates.start} 
-                  onChange={e => setCustomDates(prev => ({ ...prev, start: e.target.value }))}
-                />
-                <span className="muted" style={{ fontSize: '0.7rem' }}>to</span>
-                <input 
-                  type="date" 
-                  className="crm-input date-mini" 
-                  value={customDates.end} 
-                  onChange={e => setCustomDates(prev => ({ ...prev, end: e.target.value }))}
-                />
-              </div>
+            {isAccountant && (
+              <SearchableSelect
+                value={searchParams.get('payment_status') || ''}
+                onChange={(val) => { 
+                  const next = new URLSearchParams(searchParams);
+                  if (val) next.set('payment_status', val); else next.delete('payment_status');
+                  setSearchParams(next);
+                  setPage(1);
+                }}
+                options={[
+                  { value: '', label: 'Payment: All' },
+                  { value: 'Paid', label: 'Paid' },
+                  { value: 'Partial', label: 'Partial' },
+                  { value: 'Unpaid', label: 'Unpaid' }
+                ]}
+                placeholder="Payment Status"
+                icon="billing"
+              />
             )}
+          </div>
 
+          <div className="view-toggle-group">
             <div className="crm-toggle-group">
               <button 
                 className={`toggle-item ${viewMode === 'list' ? 'active' : ''}`}
                 onClick={() => setViewMode('list')}
                 title="List View"
               >
-                <Icon name="list" size={16} />
+                <Icon name="list" size={18} />
               </button>
               <button 
                 className={`toggle-item ${viewMode === 'board' ? 'active' : ''}`}
                 onClick={() => setViewMode('board')}
-                title="Pipeline View"
+                title="Board View"
               >
-                <Icon name="columns" size={16} />
+                <Icon name="columns" size={18} />
               </button>
             </div>
-
-
-            {(q || stage || assignedTo || dateRange !== 'all') && (
-              <button 
-                className="btn-premium-mini reset-btn"
-                onClick={() => {
-                  setQ(''); setStage(''); setAssignedTo('');
-                  setDateRange('all'); setCustomDates({ start: '', end: '' });
-                  setPage(1);
-                }}
-                style={{ height: '42px', width: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                title="Reset Filters"
-              >
-                <Icon name="refresh" size={14} />
-              </button>
-            )}
           </div>
         </div>
 
-        {error ? <div className="alert error glass-alert">{error}</div> : null}
-
         {loading ? (
-          <LottieLoader message="Loading data..." />
+          <div className="loading-state-centered">
+            <LottieLoader size={200} />
+            <span>Synchronizing deal intelligence...</span>
+          </div>
         ) : (
           <>
-            {viewMode === 'board' ? (
-              <DealsKanban deals={items} loading={loading} onStatusChange={onUpdateStage} />
+            {items.length === 0 ? (
+              <div className="empty-state-centered">
+                <LottieEmpty size={240} />
+                <h3>No opportunities found</h3>
+                <p>Try adjusting your search filters or create a new deal.</p>
+              </div>
             ) : (
               <>
-                {items.length === 0 ? (
-                  <LottieEmpty 
-                    message="No data found" 
-                    description="Try adjusting your filters or search terms." 
+                {viewMode === 'board' ? (
+                  <DealsKanban 
+                    deals={items} 
+                    loading={loading}
+                    onStatusChange={onUpdateStage}
                   />
                 ) : (
                   <>
                     <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                      <div className="crm-table-scroll">
+                      <div style={{ overflowX: 'auto' }}>
                         <table className="crm-table">
                           <thead>
                             <tr>
-                              <th style={{ minWidth: '180px' }}>DEAL NAME</th>
-                              <th style={{ minWidth: '160px' }}>CUSTOMER</th>
-                              {isAccountant ? (
-                                <>
-                                  <th style={{ minWidth: '120px' }}>DEAL VALUE</th>
-                                  <th style={{ minWidth: '130px' }} className="text-center">INVOICE STATUS</th>
-                                  <th style={{ minWidth: '130px' }}>PAYMENT STATUS</th>
-                                  <th style={{ minWidth: '120px' }}>PAID AMOUNT</th>
-                                  <th style={{ minWidth: '130px' }}>PENDING AMOUNT</th>
-                                  <th style={{ minWidth: '120px' }}>DUE DATE</th>
-                                  <th style={{ minWidth: '120px' }}>METHOD</th>
-                                  <th style={{ minWidth: '140px' }}>ASSIGNED TO</th>
-                                </>
-                              ) : (
-                                <>
-                                  <th style={{ minWidth: '120px' }}>VALUE</th>
-                                  <th style={{ minWidth: '120px' }}>STAGE</th>
-                                  <th style={{ minWidth: '140px' }}>ASSIGNED TO</th>
-                                  <th style={{ minWidth: '130px' }}>EXPECTED CLOSE</th>
-                                  <th style={{ minWidth: '130px' }}>LAST ACTIVITY</th>
-                                </>
-                              )}
-                              <th style={{ minWidth: '150px' }} className="text-right">ACTIONS</th>
+                              {!isEmployee && <th style={{ width: '80px' }}>ID</th>}
+                              <th style={{ minWidth: '200px' }}>DEAL NAME</th>
+                              <th style={{ minWidth: '180px' }}>CUSTOMER</th>
+                              <th style={{ minWidth: '120px' }}>VALUE</th>
+                              <th style={{ minWidth: '120px' }}>STAGE</th>
+                              {!isEmployee && <th style={{ minWidth: '100px' }}>PRIORITY</th>}
+                              {!isEmployee && <th style={{ minWidth: '140px' }}>ASSIGNED TO</th>}
+                              <th style={{ minWidth: '130px' }}>EXPECTED CLOSE</th>
+                              <th style={{ minWidth: '130px' }}>LAST FOLLOW-UP</th>
+                              {!isEmployee && <th style={{ minWidth: '130px' }}>NEXT FOLLOW-UP</th>}
+                              <th style={{ width: '120px', textAlign: 'right' }}>ACTIONS</th>
                             </tr>
                           </thead>
                           <tbody>
                             {items.map((item) => (
-                              <tr
-                                key={item.id}
-                                className="crm-table-row"
-                                onClick={() => navigate(`/deals/${item.id}`)}
-                                style={{ cursor: 'pointer' }}
-                              >
-                                <td style={{ padding: '12px 16px' }}>
-                                  <div className="usersPrimaryText" style={{ fontWeight: 700 }}>{item.name}</div>
-                                  <div className="text-xs muted uppercase" style={{ marginTop: '2px' }}>{item.readable_id || 'DL-PENDING'}</div>
+                              <tr key={item.id} className="crm-table-row" onClick={() => navigate(`/deals/${item.id}`)}>
+                                {!isEmployee && <td><span className="id-badge">{item.readable_id}</span></td>}
+                                <td>
+                                  <div className="usersPrimaryText">{item.name}</div>
+                                  {!isEmployee && item.customer_id?.company_name && <div className="usersEmailText">{item.customer_id.company_name}</div>}
                                 </td>
-                                <td style={{ padding: '12px 16px' }}>
-                                  <div className="usersPrimaryText" style={{ fontWeight: 700, color: 'var(--text)' }}>
-                                    {item.customer_id?.name || '—'}
-                                  </div>
-                                  <div className="text-xs muted uppercase">{item.customer_id?.company || 'Personal'}</div>
+                                <td>
+                                  <div className="usersPrimaryText">{item.customer_id?.name || 'No Customer'}</div>
+                                  <div className="usersEmailText">{item.customer_id?.phone || ''}</div>
                                 </td>
-                                {isAccountant ? (
-                                  <>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <div className="usersPrimaryText" style={{ fontWeight: 800 }}>
-                                        ₹{item.value?.toLocaleString('en-IN') || '0'}
-                                      </div>
-                                    </td>
-                                    <td className="text-center" style={{ padding: '12px 16px' }}>
-                                      <span className={`status-badge-mini ${item.invoice_status === 'Invoiced' ? 'success' : 'warning'}`} style={{ 
-                                        background: item.invoice_status === 'Invoiced' ? '#dcfce7' : '#fef9c3',
-                                        color: item.invoice_status === 'Invoiced' ? '#15803d' : '#a16207',
-                                        padding: '4px 10px',
-                                        borderRadius: '6px',
-                                        fontSize: '0.7rem',
-                                        fontWeight: 800,
-                                        textTransform: 'uppercase'
-                                      }}>
-                                        {item.invoice_status || (item.stage === 'Won' ? 'Invoiced' : 'Pending')}
-                                      </span>
-                                    </td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <span className={`status-badge-mini ${item.payment_status === 'Paid' ? 'success' : item.payment_status === 'Partial' ? 'warning' : 'danger'}`} style={{ 
-                                        background: item.payment_status === 'Paid' ? '#dcfce7' : item.payment_status === 'Partial' ? '#fef9c3' : '#fee2e2',
-                                        color: item.payment_status === 'Paid' ? '#15803d' : item.payment_status === 'Partial' ? '#a16207' : '#b91c1c',
-                                        padding: '4px 10px',
-                                        borderRadius: '6px',
-                                        fontSize: '0.7rem',
-                                        fontWeight: 800,
-                                        textTransform: 'uppercase'
-                                      }}>
-                                        {item.payment_status || 'Unpaid'}
-                                      </span>
-                                    </td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <div className="usersPrimaryText" style={{ fontWeight: 700, color: '#10b981' }}>
-                                        ₹{item.paid_amount?.toLocaleString('en-IN') || '0'}
-                                      </div>
-                                    </td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <div className="usersPrimaryText" style={{ fontWeight: 800, color: (item.value - (item.paid_amount || 0)) > 0 ? '#ef4444' : '#10b981' }}>
-                                        ₹{(item.value - (item.paid_amount || 0)).toLocaleString('en-IN')}
-                                      </div>
-                                    </td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <div className="usersPrimaryText" style={{ 
-                                        fontSize: '0.85rem', 
-                                        fontWeight: 700,
-                                        color: (item.expected_close_date && new Date(item.expected_close_date) < new Date() && item.payment_status !== 'Paid') ? '#ef4444' : 'inherit'
-                                      }}>
-                                        {item.expected_close_date ? new Date(item.expected_close_date).toLocaleDateString('en-GB') : '—'}
-                                      </div>
-                                      {item.expected_close_date && new Date(item.expected_close_date) < new Date() && item.payment_status !== 'Paid' && (
-                                        <div style={{ fontSize: '0.6rem', color: '#ef4444', fontWeight: 900, textTransform: 'uppercase', marginTop: '2px' }}>● Overdue</div>
-                                      )}
-                                    </td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <div className="usersPrimaryText" style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-dimmed)' }}>{item.payment_method || '—'}</div>
-                                    </td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <div className="usersPrimaryText" style={{ fontSize: '0.85rem', fontWeight: 600 }}>{item.assigned_to?.name || 'Unassigned'}</div>
-                                    </td>
-                                  </>
-                                ) : (
-                                  <>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <div className="usersPrimaryText" style={{ fontWeight: 800 }}>
-                                        ₹{item.value?.toLocaleString('en-IN') || '0'}
-                                      </div>
-                                    </td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: STAGE_OPTIONS.find(s => s.name === item.stage)?.color || 'var(--primary)' }}></div>
-                                        <span className="usersPrimaryText" style={{ fontSize: '0.85rem' }}>{item.stage}</span>
-                                      </div>
-                                    </td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <div className="usersPrimaryText" style={{ fontSize: '0.85rem' }}>{item.assigned_to?.name || 'Unassigned'}</div>
-                                      <div className="text-xs muted">{item.assigned_to?.email || ''}</div>
-                                    </td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <div className="usersPrimaryText" style={{ fontSize: '0.85rem' }}>
-                                        {item.expected_close_date ? new Date(item.expected_close_date).toLocaleDateString('en-GB') : '—'}
-                                      </div>
-                                    </td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                      <div className="usersPrimaryText" style={{ fontSize: '0.85rem' }}>
-                                        {item.last_followup_date ? new Date(item.last_followup_date).toLocaleDateString('en-GB') : 'No activity'}
-                                      </div>
-                                    </td>
-                                  </>
+                                <td><span style={{ fontWeight: 800, color: 'var(--success)' }}>₹{item.value?.toLocaleString('en-IN')}</span></td>
+                                <td>
+                                  <StatusDropdown 
+                                    status={item.stage} 
+                                    options={STAGE_OPTIONS} 
+                                    onChange={(newStage) => onUpdateStage(item.id, newStage)}
+                                    disabled={!canAssign}
+                                  />
+                                </td>
+                                {!isEmployee && (
+                                  <td>
+                                    <span className={`priority-badge ${item.priority?.toLowerCase() || 'medium'}`}>
+                                      {item.priority || 'Medium'}
+                                    </span>
+                                  </td>
                                 )}
-                                <td className="text-right" style={{ padding: '12px 16px' }} onClick={stopRowNavigation}>
-                                  <div className="crm-action-group" style={{ justifyContent: 'flex-end' }}>
-                                    {!isAccountant && (
-                                      <>
-                                        <button
-                                          className="modern-action-btn"
-                                          onClick={() => handleOpenEditModal(item)}
-                                          title="Edit Deal"
-                                        >
-                                          <Icon name="edit" size={14} />
-                                        </button>
-
-                                        <button
-                                          className="modern-action-btn"
-                                          onClick={() => setFollowupModal({ open: true, deal: item })}
-                                          title="Schedule Follow-up"
-                                        >
-                                          <Icon name="phone" size={14} />
-                                        </button>
-                                      </>
+                                {!isEmployee && (
+                                  <td>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <div className="tableAvatarFallback" style={{ width: '24px', height: '24px', fontSize: '0.65rem' }}>
+                                        {(item.assigned_to?.name || 'U').charAt(0)}
+                                      </div>
+                                      <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{item.assigned_to?.name || 'Unassigned'}</span>
+                                    </div>
+                                  </td>
+                                )}
+                                <td><span style={{ fontSize: '0.85rem' }}>{item.expected_close_date ? new Date(item.expected_close_date).toLocaleDateString() : '-'}</span></td>
+                                <td><span style={{ fontSize: '0.85rem' }}>{item.last_followup_date ? new Date(item.last_followup_date).toLocaleDateString() : 'No activity'}</span></td>
+                                {!isEmployee && (
+                                  <td><span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 700 }}>{item.next_followup_date ? new Date(item.next_followup_date).toLocaleDateString() : '-'}</span></td>
+                                )}
+                                <td onClick={stopRowNavigation}>
+                                  <div className="crm-action-group">
+                                    {isEmployee && item.customer_id?.phone && (
+                                      <div className="contactQuickActions" style={{ display: 'inline-flex', gap: '6px', marginRight: '8px' }}>
+                                         <a href={`tel:${item.customer_id.phone}`} className="action-icon-mini phone" onClick={stopRowNavigation} title="Call"><Icon name="phone" size={14} /></a>
+                                         <a href={`https://wa.me/${item.customer_id.phone.replace(/\D/g, '')}`} target="_blank" className="action-icon-mini whatsapp" onClick={stopRowNavigation} title="WhatsApp"><Icon name="whatsapp" size={14} /></a>
+                                      </div>
                                     )}
-
+                                    <button className="modern-action-btn" onClick={() => handleOpenEditModal(item)} title="Edit Deal">
+                                      <Icon name="edit" size={14} />
+                                    </button>
+                                    <button className="modern-action-btn" onClick={() => setFollowupModal({ open: true, deal: item })} title="Schedule Follow-up">
+                                      <Icon name="calendar" size={14} />
+                                    </button>
                                     {isAccountant && (
-                                      <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button 
-                                          className="modern-action-btn" 
-                                          style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #15803d' }}
-                                          onClick={() => navigate(`/invoices/new?dealId=${item.id}`)}
-                                          title="Create Invoice"
-                                        >
-                                          <Icon name="billing" size={14} />
-                                        </button>
-                                        <button 
-                                          className="modern-action-btn" 
-                                          style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #15803d' }}
-                                          onClick={() => navigate(`/payments/new?customer_id=${item.customer_id?.id || item.customer_id?._id}&deal_id=${item.id}`)}
-                                          title="Add Payment"
-                                        >
-                                          <Icon name="wallet" size={14} />
-                                        </button>
-                                      </div>
+                                      <button className="modern-action-btn success" onClick={() => navigate(`/payments/new?customer_id=${item.customer_id?.id || item.customer_id?._id}&deal_id=${item.id}`)} title="Add Payment">
+                                        <Icon name="wallet" size={14} />
+                                      </button>
                                     )}
-
-                                    <details className="crm-actions-overflow">
-                                      <summary className="modern-action-btn" title="More Actions">
-                                        <Icon name="more-vertical" size={14} />
-                                      </summary>
-                                      <div className="overflow-menu-content shadow-soft">
-                                        {isAccountant ? (
-                                          <>
-                                            <button className="overflow-item" onClick={() => navigate(`/invoices/new?dealId=${item.id}`)}>
-                                              <Icon name="billing" size={14} />
-                                              <span>Create Invoice</span>
-                                            </button>
-                                            <button className="overflow-item" onClick={() => navigate(`/payments/new?customer_id=${item.customer_id?.id || item.customer_id?._id}&deal_id=${item.id}`)}>
-                                              <Icon name="reports" size={14} />
-                                              <span>Download Receipt</span>
-                                            </button>
-                                            <button className="overflow-item" onClick={() => navigate(`/invoices?deal_id=${item.id}`)}>
-                                              <Icon name="billing" size={14} />
-                                              <span>Download Invoice</span>
-                                            </button>
-                                            <button className="overflow-item" onClick={() => navigate(`/payments?deal_id=${item.id}`)}>
-                                              <Icon name="activity" size={14} />
-                                              <span>Payment History</span>
-                                            </button>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <button className="overflow-item" onClick={() => navigate(`/invoices/new?dealId=${item.id}`)}>
-                                              <Icon name="billing" size={14} />
-                                              <span>Invoice</span>
-                                            </button>
-                                            <button className="overflow-item" onClick={() => navigate(`/payments/new?customer_id=${item.customer_id?.id || item.customer_id?._id}&deal_id=${item.id}`)}>
-                                              <Icon name="dollar-sign" size={14} />
-                                              <span>Payment</span>
-                                            </button>
-                                            <button className="overflow-item" onClick={() => setNoteModal({ open: true, deal: item })}>
-                                              <Icon name="notes" size={14} />
-                                              <span>Notes</span>
-                                            </button>
-                                            <button className="overflow-item" onClick={() => toast.info('Document upload coming soon')}>
-                                              <Icon name="download" size={14} />
-                                              <span>Upload Docs</span>
-                                            </button>
-                                            <button className="overflow-item" onClick={() => setAssignModal({ open: true, deal: item })}>
-                                              <Icon name="user" size={14} />
-                                              <span>Assign</span>
-                                            </button>
-                                            <button className="overflow-item" onClick={() => handleOpenEditModal(item)}>
-                                              <Icon name="activity" size={14} />
-                                              <span>Change Stage</span>
-                                            </button>
-                                          </>
-                                        )}
-                                        {canDelete && (
-                                          <button className="overflow-item danger" onClick={() => handleDeleteDeal(item)}>
-                                            <Icon name="trash" size={14} />
-                                            <span>Delete</span>
-                                          </button>
-                                        )}
-                                      </div>
-                                    </details>
+                                    {canDelete && (
+                                      <button className="modern-action-btn danger" onClick={() => handleDeleteDeal(item)} title="Delete Deal">
+                                        <Icon name="trash" size={14} />
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -763,18 +547,22 @@ export default function DealsList() {
                                   <span className="stat-label">Value</span>
                                   <span className="stat-value">₹{item.value?.toLocaleString('en-IN') || '0'}</span>
                                 </div>
-                                <div className="card-stat">
-                                  <span className="stat-label">Assigned To</span>
-                                  <div className="stat-value" style={{ fontSize: '0.8rem', fontWeight: 700, textAlign: 'right' }}>
-                                    {item.assigned_to?.name || 'Unassigned'}
-                                  </div>
-                                </div>
-                                <div className="card-stat">
-                                  <span className="stat-label">Priority</span>
-                                  <span className={`priority-badge ${item.priority?.toLowerCase() || 'medium'}`} style={{ transform: 'scale(0.8)', transformOrigin: 'right' }}>
-                                    {item.priority || 'Medium'}
-                                  </span>
-                                </div>
+                                {!isEmployee && (
+                                  <>
+                                    <div className="card-stat">
+                                      <span className="stat-label">Assigned To</span>
+                                      <div className="stat-value" style={{ fontSize: '0.8rem', fontWeight: 700, textAlign: 'right' }}>
+                                        {item.assigned_to?.name || 'Unassigned'}
+                                      </div>
+                                    </div>
+                                    <div className="card-stat">
+                                      <span className="stat-label">Priority</span>
+                                      <span className={`priority-badge ${item.priority?.toLowerCase() || 'medium'}`} style={{ transform: 'scale(0.8)', transformOrigin: 'right' }}>
+                                        {item.priority || 'Medium'}
+                                      </span>
+                                    </div>
+                                  </>
+                                )}
                               </>
                             )}
                           </div>
@@ -962,6 +750,38 @@ export default function DealsList() {
           .modern-action-btn:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
           .modern-action-btn.danger:hover { color: var(--danger); border-color: var(--danger); background: var(--bg-hover); }
 
+          .contactQuickActions {
+            display: inline-flex;
+            gap: 6px;
+            margin-right: 8px;
+          }
+          .action-icon-mini {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.2s;
+          }
+          .action-icon-mini.phone { background: #3b82f6; }
+          .action-icon-mini.whatsapp { background: #10b981; }
+          .action-icon-mini:hover { transform: scale(1.1); filter: brightness(1.1); }
+
+          .priority-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            display: inline-block;
+          }
+          .priority-badge.hot { background: #fee2e2; color: #ef4444; }
+          .priority-badge.high { background: #ffedd5; color: #f97316; }
+          .priority-badge.medium { background: #fef9c3; color: #ca8a04; }
+          .priority-badge.low { background: #dcfce7; color: #10b981; }
+
           /* Responsive Layout */
           .crm-mobile-cards { display: none; }
 
@@ -994,21 +814,6 @@ export default function DealsList() {
             .card-actions { display: flex; gap: 8px; }
             .icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: center; }
             .icon-btn.danger { color: #ef4444; }
-
-            .priority-badge {
-              padding: 4px 10px;
-              border-radius: 6px;
-              font-size: 0.7rem;
-              font-weight: 800;
-              text-transform: uppercase;
-              display: inline-block;
-            }
-            .priority-badge.hot { background: #fee2e2; color: #ef4444; }
-            .priority-badge.high { background: #ffedd5; color: #f97316; }
-            .priority-badge.medium { background: #fef9c3; color: #ca8a04; }
-            .priority-badge.low { background: #dcfce7; color: #10b981; }
-            .priority-badge.warm { background: #fff7ed; color: #ea580c; }
-            .priority-badge.cold { background: #f1f5f9; color: #64748b; }
           }
 
          .users-page-header { margin-bottom: 12px; }

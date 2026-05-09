@@ -87,7 +87,7 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
             currency: 'INR',
             stage: 'New',
             status: 'Open',
-            assigned_to: '',
+            assigned_to: isEmployee ? (user.id || user._id) : '',
             expected_close_date: '',
             next_followup_date: '',
             description: '',
@@ -227,7 +227,7 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                       const updates = { customer_id: val };
                       
                       // Auto-fill logic: Get owner from customer/lead
-                      if (selectedCust && selectedCust.assigned_to) {
+                      if (selectedCust && selectedCust.assigned_to && !isEmployee) {
                         updates.assigned_to = selectedCust.assigned_to._id || selectedCust.assigned_to;
                       }
 
@@ -305,22 +305,24 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                     />
                   </div>
                 )}
-                <div className="sheet-field">
-                  <label>Assigned Staff</label>
-                  <SearchableSelect
-                    value={formData.assigned_to}
-                    onChange={val => {
-                      setFormData({ ...formData, assigned_to: val })
-                      if (fieldErrors.assigned_to) setFieldErrors(prev => ({ ...prev, assigned_to: '' }))
-                    }}
-                    options={employees.map(u => ({ value: u.id || u._id, label: u.name }))}
-                    placeholder="Select owner..."
-                    icon="user"
-                    disabled={isEmployee || !['Admin', 'Manager'].includes(user?.role)}
-                    error={!!fieldErrors.assigned_to}
-                  />
-                  {fieldErrors.assigned_to && <span className="error-text">{fieldErrors.assigned_to}</span>}
-                </div>
+                {!isEmployee && (
+                  <div className="sheet-field">
+                    <label>Assigned Staff</label>
+                    <SearchableSelect
+                      value={formData.assigned_to}
+                      onChange={val => {
+                        setFormData({ ...formData, assigned_to: val })
+                        if (fieldErrors.assigned_to) setFieldErrors(prev => ({ ...prev, assigned_to: '' }))
+                      }}
+                      options={employees.map(u => ({ value: u.id || u._id, label: u.name }))}
+                      placeholder="Select owner..."
+                      icon="user"
+                      disabled={!['Admin', 'Manager'].includes(user?.role)}
+                      error={!!fieldErrors.assigned_to}
+                    />
+                    {fieldErrors.assigned_to && <span className="error-text">{fieldErrors.assigned_to}</span>}
+                  </div>
+                )}
                 <div className="sheet-field">
                   <label>Expected Closing Date</label>
                   <input 

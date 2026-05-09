@@ -203,9 +203,10 @@ export default function LeadsTable({
               <th className="lt-w-cb">
                 <input type="checkbox" checked={selectedIds.length === leads.length && leads.length > 0} onChange={toggleAll} />
               </th>
+              {userRole !== 'Employee' && <th style={{ width: '80px' }}>ID</th>}
               <th className="lt-sortable" onClick={() => handleSort('name')}>Lead</th>
               <th className="lt-sortable" onClick={() => handleSort('status')}>Status</th>
-              <th className="lt-sortable lt-hide-tablet" onClick={() => handleSort('assignedTo')}>Owner</th>
+              {userRole !== 'Employee' && <th className="lt-sortable lt-hide-tablet" onClick={() => handleSort('assignedTo')}>Owner</th>}
               <th className="lt-sortable lt-hide-tablet" onClick={() => handleSort('nextFollowupDate')}>Next Follow-up</th>
               <th className="lt-text-right">Actions</th>
             </tr>
@@ -227,6 +228,9 @@ export default function LeadsTable({
                     onChange={(e) => { e.stopPropagation(); toggleSelect(l.id || l._id); }} 
                   />
                 </td>
+                {userRole !== 'Employee' && (
+                  <td><span className="id-badge">{l.readable_id || l.leadId || '—'}</span></td>
+                )}
                 <td>
                   <div className="lt-lead-cell">
                     <div className="lt-lead-av" style={{ background: `${getStatusColor(l.status)}15`, color: getStatusColor(l.status), borderColor: `${getStatusColor(l.status)}30` }}>
@@ -235,6 +239,7 @@ export default function LeadsTable({
                     <div className="lt-lead-info">
                       <div className="lt-lead-name">{l.name}</div>
                       <div className="lt-lead-sub">{l.phone || l.email || 'No contact info'}</div>
+                      <div className="lt-lead-sub" style={{ color: 'var(--primary)', fontSize: '10px', marginTop: '2px', fontWeight: 700 }}>{l.source || 'Other'}</div>
                     </div>
                   </div>
                 </td>
@@ -245,12 +250,13 @@ export default function LeadsTable({
                   />
                 </td>
 
-                <td className="lt-hide-tablet">
-                  <div className="lt-owner-cell">
-                    <span className="lt-assignee">{l.assignedTo?.name || 'Unassigned'}</span>
-                    <span className="lt-src-tag">{l.source || 'Direct'}</span>
-                  </div>
-                </td>
+                {userRole !== 'Employee' && (
+                  <td className="lt-hide-tablet">
+                    <div className="lt-owner-cell">
+                      <span className="lt-assignee">{l.assignedTo?.name || 'Unassigned'}</span>
+                    </div>
+                  </td>
+                )}
                 <td className="lt-hide-tablet">
                   <div className={`lt-follow-status lt-fs-${getFollowupDueStatus(l.nextFollowupDate)}`}>
                     <div className="lt-fs-icon">

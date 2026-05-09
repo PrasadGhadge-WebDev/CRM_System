@@ -443,34 +443,16 @@ export default function CustomersList() {
                                     <Icon name="edit" size={14} />
                                   </button>
                                 )}
-                                
-                                <details className="crm-actions-overflow">
-                                  <summary className="modern-action-btn" title="More">
-                                    <Icon name="more-vertical" size={14} />
-                                  </summary>
-                                  <div className="overflow-menu-content shadow-soft">
-                                    {!isAccountant && (
-                                      <button className="overflow-item" onClick={() => setAssignModal({ open: true, customer })}>
-                                        <Icon name="refresh" size={14} />
-                                        <span>Assign Owner</span>
-                                      </button>
-                                    )}
-                                    <button className="overflow-item" onClick={() => navigate(`/payments?customerId=${id}`)}>
-                                      <Icon name="billing" size={14} />
-                                      <span>View Ledger</span>
-                                    </button>
-                                    <button className="overflow-item" onClick={() => navigate(`/payments/new?customer_id=${id}`)}>
-                                      <Icon name="dollar-sign" size={14} />
-                                      <span>Add Payment</span>
-                                    </button>
-                                    {canDelete && (
-                                      <button className="overflow-item danger" onClick={() => onDelete(id)}>
-                                        <Icon name="trash" size={14} />
-                                        <span>Remove</span>
-                                      </button>
-                                    )}
-                                  </div>
-                                </details>
+
+                                {isAdmin && (
+                                  <button
+                                    className="modern-action-btn danger"
+                                    onClick={() => onDelete(id)}
+                                    title="Delete"
+                                  >
+                                    <Icon name="trash" size={14} />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>

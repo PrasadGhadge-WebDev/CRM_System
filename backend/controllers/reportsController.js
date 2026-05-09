@@ -102,26 +102,33 @@ exports.getFinanceReport = asyncHandler(async (req, res) => {
 
   const { range, start, end } = req.query;
   const { startDate, endDate } = getDateRange(range, start, end);
-  const filter = { 
+  
+  // Base filter for payments and expenses
+  const paymentFilter = { 
+    company_id: req.user.company_id,
+    payment_date: { $gte: startDate, $lte: endDate }
+  };
+  
+  const expenseFilter = {
     company_id: req.user.company_id,
     date: { $gte: startDate, $lte: endDate }
   };
 
   const paymentStats = await Payment.aggregate([
-    { $match: filter },
-    { $group: { _id: '$status', total: { $sum: '$amount' }, count: { $sum: 1 } } }
+    { $match: paymentFilter },
+    { $group: { _id: '$status', total: { $sum: '$paid_amount' }, count: { $sum: 1 } } }
   ]);
 
   const expenseStats = await Expense.aggregate([
-    { $match: filter },
+    { $match: expenseFilter },
     { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } }
   ]);
 
   const revenueTrend = await Payment.aggregate([
-    { $match: { ...filter, status: 'Completed' } },
+    { $match: { ...paymentFilter, status: 'Paid', payment_type: { $ne: 'internal' } } },
     { $group: {
-      _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
-      total: { $sum: '$amount' }
+      _id: { $dateToString: { format: "%Y-%m-%d", date: "$payment_date" } },
+      total: { $sum: '$paid_amount' }
     }},
     { $sort: { "_id": 1 } }
   ]);
