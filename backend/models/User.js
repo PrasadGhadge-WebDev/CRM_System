@@ -77,8 +77,8 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,})+$/,
-        'Please add a valid email',
+        /^[a-zA-Z0-9.]+@[a-zA-Z0-9.]+\.[a-zA-Z]{2,}$/,
+        'Please add a valid email (letters, numbers, dots and @ only)',
       ],
     },
     phone: {

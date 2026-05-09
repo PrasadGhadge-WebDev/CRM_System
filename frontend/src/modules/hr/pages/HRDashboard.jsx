@@ -290,7 +290,7 @@ export default function HRDashboard() {
 
       <style>{`
         .hr-summary-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin: 24px 0; }
-        .hr-stat-card { padding: 16px; border-radius: 20px; display: flex; align-items: center; gap: 12px; }
+        .hr-stat-card { padding: 16px; border-radius: 20px; display: flex; align-items: center; gap: 12px; box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-sm); }
         .hr-stat-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         .hr-stat-info { display: flex; flex-direction: column; gap: 2px; }
         .hr-stat-info .label { font-size: 0.6rem; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }

@@ -9,10 +9,20 @@ const expenseSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    custom_id: {
+      type: String,
+      unique: true,
+      index: true,
+    },
     category: {
       type: String,
       required: true,
-      index: true, // e.g., 'Rent', 'Salary', 'Marketing'
+      index: true,
     },
     amount: {
       type: Number,
@@ -27,6 +37,22 @@ const expenseSchema = new mongoose.Schema(
       default: Date.now,
       index: true,
     },
+    vendor_name: {
+      type: String,
+      trim: true,
+    },
+    payment_method: {
+      type: String,
+      enum: ['Cash', 'UPI', 'Bank Transfer', 'Card', 'Cheque', 'Other'],
+      default: 'Cash',
+    },
+    transaction_id: {
+      type: String,
+      trim: true,
+    },
+    receipt_url: {
+      type: String,
+    },
     note: {
       type: String,
       trim: true,
@@ -34,16 +60,27 @@ const expenseSchema = new mongoose.Schema(
     created_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+      required: true,
+    },
+    paid_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
     },
     status: {
       type: String,
-      enum: ['Pending', 'Approved', 'Rejected'],
+      enum: ['Pending', 'Approved', 'Rejected', 'Completed', 'Failed'],
       default: 'Pending',
       index: true,
     },
     approved_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+    },
+    approved_date: {
+      type: Date,
+    },
+    payment_date: {
+      type: Date,
     },
   },
   {

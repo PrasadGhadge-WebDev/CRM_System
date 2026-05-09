@@ -26,6 +26,7 @@ const DealSchema = new mongoose.Schema(
     
     expected_close_date: { type: Date, index: true },
     actual_close_date: { type: Date },
+    last_followup_date: { type: Date },
     next_followup_date: { type: Date, index: true },
     
     assigned_to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
@@ -41,6 +42,12 @@ const DealSchema = new mongoose.Schema(
     description: { type: String, trim: true },
     notes: { type: String, trim: true },
     lost_reason: { type: String, trim: true },
+    priority: { type: String, enum: ['High', 'Medium', 'Low', 'Hot', 'Warm', 'Cold'], default: 'Medium', index: true },
+
+    // Financial Tracking (Step 4 & 5)
+    invoice_status: { type: String, enum: ['Pending', 'Invoiced', 'Cancelled'], default: 'Pending', index: true },
+    payment_status: { type: String, enum: ['Unpaid', 'Partial', 'Paid'], default: 'Unpaid', index: true },
+    paid_amount: { type: Number, default: 0 },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );

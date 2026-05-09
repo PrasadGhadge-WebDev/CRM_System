@@ -40,8 +40,9 @@ const INITIAL_LEAD = {
   follow_up_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   city: '',
   state: 'Maharashtra',
-  value: '',
+  dealAmount: 0,
   notes: '',
+  priority: 'Medium',
 }
 
 export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
@@ -52,6 +53,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
   
   const isHR = user?.role === 'HR'
   const isAccountant = user?.role === 'Accountant'
+  const isEmployee = user?.role === 'Employee'
   const isReadOnly = isHR || isAccountant
   const isEdit = mode === 'edit' || (!!id && id !== 'new')
 
@@ -95,6 +97,7 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
             ...data,
             status,
             source,
+            dealAmount: data.dealAmount || data.value || 0,
             assigned_to: data.assigned_to?._id || data.assigned_to?.id || data.assigned_to || ''
           }
           setModel(normalized)
@@ -314,11 +317,20 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                     <div className="input-icon-box"><FiTag /></div>
                     <input 
                       type="number"
-                      value={model.value} 
-                      onChange={e => setModel({ ...model, value: e.target.value })} 
+                      value={model.dealAmount} 
+                      onChange={e => setModel({ ...model, dealAmount: e.target.value })} 
                       placeholder="Estimated value..." 
                     />
                   </div>
+                </div>
+                <div className="sheet-field">
+                  <label>Priority</label>
+                  <SearchableSelect
+                    value={model.priority}
+                    onChange={val => setModel({ ...model, priority: val })}
+                    options={['Low', 'Medium', 'High'].map(name => ({ value: name, label: name }))}
+                    icon="star"
+                  />
                 </div>
               </div>
             </section>
@@ -365,16 +377,19 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field">
-                  <label>Lead Status {initialModel?.status === 'Converted' ? '(Archived - Converted)' : (user?.role === 'Employee' ? '(Read Only)' : '')}</label>
+                  <label>Lead Status {initialModel?.status === 'Converted' ? '(Archived - Converted)' : ''}</label>
                   <SearchableSelect
                     value={model.status}
                     onChange={val => setModel({ ...model, status: val })}
                     options={availableStatuses.length > 0 
-                      ? availableStatuses.map(s => ({ value: s.name, label: s.name }))
-                      : ['New', 'Contacted', 'Qualified', 'Lost', 'Converted'].map(name => ({ value: name, label: name }))
+                      ? (user?.role === 'Employee' 
+                         ? ['New', 'Contacted', 'Follow-up', 'Qualified', 'Converted'].map(n => ({ value: n, label: n }))
+                         : availableStatuses.map(s => ({ value: s.name, label: s.name }))
+                        )
+                      : ['New', 'Contacted', 'Follow-up', 'Qualified', 'Lost', 'Converted'].map(name => ({ value: name, label: name }))
                     }
                     icon="activity"
-                    disabled={user?.role === 'Employee' || initialModel?.status === 'Converted'}
+                    disabled={initialModel?.status === 'Converted'}
                   />
                 </div>
                 {user?.role !== 'Employee' && (

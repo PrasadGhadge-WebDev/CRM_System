@@ -18,6 +18,7 @@ const STAGES = ['New', 'Qualification', 'Proposal', 'Negotiation', 'Won', 'Lost'
 
 export default function DealModal({ deal, isOpen, onClose, onSave, customerId }) {
   const { user } = useAuth()
+  const isEmployee = user?.role === 'Employee'
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -35,7 +36,8 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
     price: 0,
     discount_percent: 0,
     notes: '',
-    lost_reason: ''
+    lost_reason: '',
+    priority: 'Medium'
   })
 
   const [customers, setCustomers] = useState([])
@@ -74,7 +76,8 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
             price: fullDeal.price || 0,
             discount_percent: fullDeal.discount_percent || 0,
             notes: fullDeal.notes || '',
-            lost_reason: fullDeal.lost_reason || ''
+            lost_reason: fullDeal.lost_reason || '',
+            priority: fullDeal.priority || 'Medium'
           })
         } else {
           setFormData({
@@ -93,7 +96,8 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
             price: 0,
             discount_percent: 0,
             notes: '',
-            lost_reason: ''
+            lost_reason: '',
+            priority: 'Medium'
           })
         }
       } catch (err) {
@@ -249,6 +253,7 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                       if (fieldErrors.value) setFieldErrors(prev => ({ ...prev, value: '' }))
                     }}
                     placeholder="0.00"
+                    disabled={isEmployee && !!deal?.id}
                   />
                   {fieldErrors.value && <span className="error-text">{fieldErrors.value}</span>}
                 </div>
@@ -311,7 +316,7 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                     options={employees.map(u => ({ value: u.id || u._id, label: u.name }))}
                     placeholder="Select owner..."
                     icon="user"
-                    disabled={!['Admin', 'Manager', 'Employee', 'Accountant'].includes(user?.role)}
+                    disabled={isEmployee || !['Admin', 'Manager'].includes(user?.role)}
                     error={!!fieldErrors.assigned_to}
                   />
                   {fieldErrors.assigned_to && <span className="error-text">{fieldErrors.assigned_to}</span>}
@@ -332,6 +337,22 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                     type="date" 
                     value={formData.next_followup_date} 
                     onChange={e => setFormData({ ...formData, next_followup_date: e.target.value })} 
+                  />
+                </div>
+                <div className="sheet-field">
+                  <label>Priority</label>
+                  <SearchableSelect
+                    value={formData.priority}
+                    onChange={val => setFormData({ ...formData, priority: val })}
+                    options={[
+                      { value: 'Hot', label: '🔥 Hot' },
+                      { value: 'High', label: '🔴 High' },
+                      { value: 'Medium', label: '🟡 Medium' },
+                      { value: 'Low', label: '🟢 Low' },
+                      { value: 'Warm', label: '🟠 Warm' },
+                      { value: 'Cold', label: '❄️ Cold' }
+                    ]}
+                    icon="flag"
                   />
                 </div>
                 <div className="sheet-field">
@@ -371,6 +392,7 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                     value={formData.price}
                     onChange={e => setFormData({ ...formData, price: Number(e.target.value) })}
                     placeholder="0.00"
+                    disabled={isEmployee && !!deal?.id}
                   />
                 </div>
                 <div className="sheet-field">
@@ -391,6 +413,7 @@ export default function DealModal({ deal, isOpen, onClose, onSave, customerId })
                     value={formData.discount_percent}
                     onChange={e => setFormData({ ...formData, discount_percent: Number(e.target.value) })}
                     placeholder="0"
+                    disabled={isEmployee && !!deal?.id}
                   />
                 </div>
               </div>

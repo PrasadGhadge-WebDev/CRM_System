@@ -51,7 +51,8 @@ export default function StatusDropdown({
   const transitionRules = {
     // Leads
     'New': ['Contacted', 'Lost', 'Junk'],
-    'Contacted': ['Qualified', 'Lost', 'Junk'],
+    'Contacted': ['Follow-up', 'Qualified', 'Lost', 'Junk'],
+    'Follow-up': ['Qualified', 'Contacted', 'Lost', 'Junk'],
     'Qualified': ['Converted', 'Lost'],
     
     // Support (Case-insensitive support)

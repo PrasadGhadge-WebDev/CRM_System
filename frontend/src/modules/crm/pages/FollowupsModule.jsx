@@ -4,6 +4,15 @@ import { activitiesApi } from '../../../services/activities'
 import { Icon } from '../../../layouts/icons'
 import PageHeader from '../../../components/PageHeader'
 import ModernSearchBar from '../../../components/ModernSearchBar'
+import { 
+  FiTarget, 
+  FiClock, 
+  FiCheckCircle, 
+  FiRefreshCw, 
+  FiActivity, 
+  FiChevronLeft, 
+  FiChevronRight 
+} from 'react-icons/fi'
 
 export default function FollowupsModule() {
   // Pagination & Filter State: Activity History
@@ -102,379 +111,391 @@ export default function FollowupsModule() {
   }, [fuPage, fuStatus, fuMode, q, dateRangeType, startDate, endDate])
 
   return (
-    <div className="followups-module-container stack">
-      <PageHeader
-        title="Follow-ups & Activities"
-        backTo="/dashboard"
-      />
+    <div className="followups-module-v3">
+      <div className="v3-container">
+        <PageHeader
+          title="Intelligence Hub"
+          description="Track every interaction and follow-up in real-time"
+          backTo={null}
+        />
 
-      <div className="unified-action-bar" style={{ marginBottom: '20px', padding: '0 20px' }}>
-        <div className="search-filter-group">
-          <ModernSearchBar 
-            value={q} 
-            onChange={e => { setQ(e.target.value); setActPage(1); setFuPage(1); }} 
-            placeholder="Search activities and follow-ups..." 
-          />
-
-          <select 
-            className="crm-input filter-select date-preset-select" 
-            value={dateRangeType} 
-            onChange={(e) => { setDateRangeType(e.target.value); setActPage(1); setFuPage(1); }}
-          >
-            <option value="all">Date: All</option>
-            <option value="today">Today</option>
-            <option value="yesterday">Yesterday</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="custom">Custom Range</option>
-          </select>
-
-          {dateRangeType === 'custom' && (
-            <div className="flex items-center gap-4 animate-fade-in">
-              <input
-                type="date"
-                className="crm-input date-mini"
-                value={startDate}
-                onChange={(e) => { setStartDate(e.target.value); setActPage(1); setFuPage(1); }}
-              />
-              <span className="muted" style={{ fontSize: '0.7rem' }}>to</span>
-              <input
-                type="date"
-                className="crm-input date-mini"
-                value={endDate}
-                onChange={(e) => { setEndDate(e.target.value); setActPage(1); setFuPage(1); }}
-              />
+        {/* 1. METRICS OVERVIEW */}
+        <div className="v3-stats-row">
+          <div className="v3-stat-card blue">
+            <div className="icon"><FiTarget /></div>
+            <div className="content">
+               <span className="label">Total Activities</span>
+               <span className="value">{actTotal}</span>
             </div>
-          )}
-
-          {(q || dateRangeType !== 'all' || actType || actStatus || fuMode || fuStatus) && (
-            <button 
-              className="btn-premium-mini reset-btn"
-              onClick={() => {
-                setQ(''); setActType(''); setActStatus('');
-                setFuMode(''); setFuStatus(''); setDateRangeType('all');
-                setStartDate(''); setEndDate(''); setActPage(1); setFuPage(1);
-              }}
-              style={{ height: '42px', width: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-              title="Reset Filters"
-            >
-              <Icon name="refresh" size={14} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="lead-v2-card full-width history-v2 premium-glass-panel mb-24">
-        <div className="card-v2-header flex-between flex-wrap gap-12">
-          <div className="flex-center-gap">
-            <Icon name="activity" />
-            <h3>LEAD ACTIVITY HISTORY</h3>
           </div>
-          <div className="header-controls-v3">
-             <div className="filter-chip-group">
-                <select className="glass-select-mini" value={actType} onChange={e => { setActType(e.target.value); setActPage(1); }}>
-                  <option value="">All Types</option>
-                  <option value="Lead Created">Lead Created</option>
-                  <option value="Meeting">Meeting</option>
-                  <option value="call">Call</option>
-                  <option value="follow-up">Follow-up</option>
+          <div className="v3-stat-card orange">
+            <div className="icon"><FiClock /></div>
+            <div className="content">
+               <span className="label">Pending Follow-ups</span>
+               <span className="value">{fuTotal}</span>
+            </div>
+          </div>
+          <div className="v3-stat-card green">
+            <div className="icon"><FiCheckCircle /></div>
+            <div className="content">
+               <span className="label">Success Rate</span>
+               <span className="value">84%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. COMMAND BAR */}
+        <div className="v3-command-bar premium-glass">
+          <div className="search-cluster">
+            <ModernSearchBar 
+              value={q} 
+              onChange={e => { setQ(e.target.value); setActPage(1); setFuPage(1); }} 
+              placeholder="Search by lead name, note, or subject..." 
+            />
+          </div>
+          
+          <div className="filter-cluster">
+            <div className="segmented-select">
+              <select 
+                className="minimal-select" 
+                value={dateRangeType} 
+                onChange={(e) => { setDateRangeType(e.target.value); setActPage(1); setFuPage(1); }}
+              >
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            {dateRangeType === 'custom' && (
+              <div className="custom-date-range animate-slide-in">
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                <span className="to">to</span>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+              </div>
+            )}
+
+            {(q || dateRangeType !== 'all') && (
+              <button className="v3-icon-btn reset" onClick={() => { setQ(''); setDateRangeType('all'); setStartDate(''); setEndDate(''); }}>
+                <FiRefreshCw />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 3. MAIN CONTENT GRID */}
+        <div className="v3-grid">
+          {/* ACTIVITY HISTORY TABLE */}
+          <div className="v3-panel">
+            <div className="panel-header">
+              <div className="title-cluster">
+                <FiActivity className="text-primary" />
+                <h3>Lead Activity History</h3>
+              </div>
+              <div className="filter-group">
+                <select className="pill-select" value={actType} onChange={e => { setActType(e.target.value); setActPage(1); }}>
+                  <option value="">All Events</option>
+                  <option value="call">Calls</option>
+                  <option value="Meeting">Meetings</option>
+                  <option value="follow-up">Follow-ups</option>
                 </select>
-                <select className="glass-select-mini" value={actStatus} onChange={e => { setActStatus(e.target.value); setActPage(1); }}>
-                  <option value="">All Status</option>
-                  <option value="completed">Completed</option>
+                <select className="pill-select" value={actStatus} onChange={e => { setActStatus(e.target.value); setActPage(1); }}>
+                  <option value="">Status</option>
+                  <option value="completed">Done</option>
                   <option value="planned">Planned</option>
                 </select>
-             </div>
-             <div className="header-meta-v3">
-               <span>{actTotal} Total</span>
-             </div>
-          </div>
-        </div>
-        <div className="card-v2-body overflow-x">
-           <table className="premium-table-v3">
-             <thead>
-               <tr>
-                 <th>Event</th>
-                 <th>Lead</th>
-                 <th>Description</th>
-                 <th>Date</th>
-                 <th>By</th>
-               </tr>
-             </thead>
-             <tbody>
-                {generalActivities.map(a => (
-                  <tr key={a.id}>
-                    <td className="w-150">
-                      <span className={`event-tag-v3 ${a.activity_type?.replace(' ', '-').toLowerCase()}`}>
-                        {a.activity_type}
-                      </span>
-                    </td>
-                    <td>
-                      {a.related_to ? (
-                        <Link to={`/leads/${a.related_to.id || a.related_to._id || a.related_to}`} className="lead-link">
-                          {a.related_to.name || a.related_to.title || 'View Lead'}
-                        </Link>
-                      ) : '-'}
-                    </td>
-                    <td className="note-cell">{a.description}</td>
-                    <td>
-                      <div className="date-wrap-v3">
-                        <span className="d-day">{new Date(a.activity_date || a.created_at).toLocaleDateString()}</span>
-                        <span className="d-time">{new Date(a.activity_date || a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="user-info-v3">
-                        <span className="u-name">{a.completed_by?.name || a.created_by?.name || 'System'}</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {generalActivities.length === 0 && (
-                  <tr><td colSpan="5" className="center-empty-v3">No activities found matching filters.</td></tr>
-                )}
-             </tbody>
-           </table>
-           
-           {actTotal > 5 && (
-             <div className="pagination-v3">
-                <button className="pag-btn" disabled={actPage <= 1} onClick={() => setActPage(p => p - 1)}>
-                  <Icon name="chevronLeft" size={16} />
-                </button>
-                <span className="pag-info">Page <strong>{actPage}</strong> of {Math.ceil(actTotal / 5)}</span>
-                <button className="pag-btn" disabled={actPage >= Math.ceil(actTotal / 5)} onClick={() => setActPage(p => p + 1)}>
-                  <Icon name="chevronRight" size={16} />
-                </button>
-             </div>
-           )}
-        </div>
-      </div>
+              </div>
+            </div>
 
-      <div className="lead-v2-card full-width history-v2 premium-glass-panel">
-        <div className="card-v2-header flex-between flex-wrap gap-12">
-          <div className="flex-center-gap">
-            <Icon name="activity" />
-            <h3>FOLLOW-UP HISTORY</h3>
-          </div>
-          <div className="header-controls-v3">
-             <div className="filter-chip-group">
-                <select className="glass-select-mini" value={fuMode} onChange={e => { setFuMode(e.target.value); setFuPage(1); }}>
-                  <option value="">All Modes</option>
-                  <option value="Call">Call</option>
-                  <option value="Meeting">Meeting</option>
-                  <option value="Email">Email</option>
-                  <option value="Demo">Demo</option>
-                  <option value="WhatsApp">WhatsApp</option>
-                </select>
-                <select className="glass-select-mini" value={fuStatus} onChange={e => { setFuStatus(e.target.value); setFuPage(1); }}>
-                  <option value="">All Status</option>
-                  <option value="completed">Completed</option>
-                  <option value="planned">Planned</option>
-                </select>
-             </div>
-             <div className="header-meta-v3">
-               <span>{fuTotal} Records</span>
-             </div>
-          </div>
-        </div>
-        <div className="card-v2-body overflow-x">
-           <table className="premium-table-v3">
-             <thead>
-               <tr>
-                 <th>Date</th>
-                 <th>Lead</th>
-                 <th>Mode</th>
-                 <th>Status</th>
-                 <th>Note</th>
-                 <th>Handled By</th>
-               </tr>
-             </thead>
-             <tbody>
-               {followUps.map(f => (
-                 <tr key={f.id}>
-                   <td className="date-cell">
-                      <div className="date-wrap-v3">
-                         <span className="d-day">
-                           {new Date(f.status === 'planned' ? (f.due_date || f.activity_date) : (f.activity_date || f.created_at)).toLocaleDateString()}
-                         </span>
-                         <span className="d-time">
-                           {new Date(f.status === 'planned' ? (f.due_date || f.activity_date) : (f.activity_date || f.created_at)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                         </span>
-                      </div>
-                   </td>
-                   <td>
-                      {f.related_to ? (
-                        <Link to={`/leads/${f.related_to.id || f.related_to._id || f.related_to}`} className="lead-link">
-                          {f.related_to.name || f.related_to.title || 'View Lead'}
-                        </Link>
-                      ) : '-'}
-                   </td>
-                   <td>
-                      <span className="mode-tag-v3">{f.follow_up_mode || f.activity_type}</span>
-                   </td>
-                   <td>
-                      {(() => {
-                        let displayStatus = f.status;
-                        const isOverdue = f.status === 'planned' && f.due_date && new Date(f.due_date) < new Date();
-                        if (isOverdue) displayStatus = 'overdue';
-                        
-                        return (
-                          <span className={`status-pill-v3 ${displayStatus}`}>
-                             <span className="dot" />
-                             {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
+            <div className="panel-body">
+               <table className="v3-premium-table">
+                 <thead>
+                   <tr>
+                     <th>Activity</th>
+                     <th>Lead Entity</th>
+                     <th>Summary</th>
+                     <th>Timestamp</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {generalActivities.map(a => (
+                     <tr key={a.id || a._id}>
+                       <td>
+                          <span className={`v3-tag ${a.activity_type?.toLowerCase()}`}>
+                            {a.activity_type || 'Update'}
                           </span>
-                        );
-                      })()}
-                   </td>
-                   <td className="note-cell">{f.description}</td>
-                   <td>
-                      {(() => {
-                        const person = f.status === 'completed' 
-                          ? (f.completed_by || f.created_by || f.assigned_to)
-                          : (f.assigned_to || f.created_by);
-                        return (
-                          <div className="user-info-v3">
-                             <span className="u-avatar">{(person?.name || 'U').charAt(0)}</span>
-                             <span className="u-name">{person?.name || 'System'}</span>
+                       </td>
+                       <td>
+                          {a.related_to ? (
+                            <Link to={`/leads/${a.related_to.id || a.related_to._id || a.related_to}`} className="v3-link">
+                              {a.related_to.name || 'Anonymous Lead'}
+                            </Link>
+                          ) : <span className="muted">-</span>}
+                       </td>
+                       <td className="note-cell">{a.description}</td>
+                       <td>
+                          <div className="v3-date">
+                             <span className="main">{new Date(a.activity_date || a.created_at).toLocaleDateString()}</span>
+                             <span className="sub">{new Date(a.activity_date || a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
-                        );
-                      })()}
-                   </td>
-                 </tr>
-               ))}
-               {followUps.length === 0 && (
-                 <tr><td colSpan="6" className="center-empty-v3">No follow-ups matching current filters.</td></tr>
+                       </td>
+                     </tr>
+                   ))}
+                   {generalActivities.length === 0 && (
+                     <tr><td colSpan="4" className="v3-empty">No activity records found.</td></tr>
+                   )}
+                 </tbody>
+               </table>
+               
+               {actTotal > 5 && (
+                 <div className="v3-pagination">
+                    <button className="pag-nav" disabled={actPage <= 1} onClick={() => setActPage(p => p - 1)}><FiChevronLeft /></button>
+                    <span className="pag-count">{actPage} / {Math.ceil(actTotal / 5)}</span>
+                    <button className="pag-nav" disabled={actPage >= Math.ceil(actTotal / 5)} onClick={() => setActPage(p => p + 1)}><FiChevronRight /></button>
+                 </div>
                )}
-             </tbody>
-           </table>
-           
-           {fuTotal > 5 && (
-             <div className="pagination-v3">
-                <button className="pag-btn" disabled={fuPage <= 1} onClick={() => setFuPage(p => p - 1)}>
-                  <Icon name="chevronLeft" size={16} />
-                </button>
-                <span className="pag-info">Page <strong>{fuPage}</strong> of {Math.ceil(fuTotal / 5)}</span>
-                <button className="pag-btn" disabled={fuPage >= Math.ceil(fuTotal / 5)} onClick={() => setFuPage(p => p + 1)}>
-                  <Icon name="chevronRight" size={16} />
-                </button>
-             </div>
-           )}
+            </div>
+          </div>
+
+          {/* FOLLOW-UP HISTORY TABLE */}
+          <div className="v3-panel">
+            <div className="panel-header">
+              <div className="title-cluster">
+                <FiClock className="text-warning" />
+                <h3>Follow-up Timeline</h3>
+              </div>
+              <div className="filter-group">
+                <select className="pill-select" value={fuMode} onChange={e => { setFuMode(e.target.value); setFuPage(1); }}>
+                  <option value="">Modes</option>
+                  <option value="Call">Call</option>
+                  <option value="Meeting">Meet</option>
+                  <option value="WhatsApp">WA</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="panel-body">
+               <table className="v3-premium-table">
+                 <thead>
+                   <tr>
+                     <th>Schedule</th>
+                     <th>Lead</th>
+                     <th>Status</th>
+                     <th>Details</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {followUps.map(f => (
+                     <tr key={f.id || f._id}>
+                       <td>
+                          <div className="v3-date">
+                             <span className="main">{new Date(f.status === 'planned' ? (f.due_date || f.activity_date) : (f.activity_date || f.created_at)).toLocaleDateString()}</span>
+                             <span className="sub">{new Date(f.status === 'planned' ? (f.due_date || f.activity_date) : (f.activity_date || f.created_at)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                       </td>
+                       <td>
+                          {f.related_to ? (
+                            <Link to={`/leads/${f.related_to.id || f.related_to._id || f.related_to}`} className="v3-link">
+                              {f.related_to.name}
+                            </Link>
+                          ) : '-'}
+                       </td>
+                       <td>
+                          {(() => {
+                            let status = f.status;
+                            const overdue = status === 'planned' && f.due_date && new Date(f.due_date) < new Date();
+                            return (
+                              <span className={`v3-pill ${overdue ? 'overdue' : status}`}>
+                                {overdue ? 'Overdue' : status}
+                              </span>
+                            )
+                          })()}
+                       </td>
+                       <td className="note-cell">{f.description}</td>
+                     </tr>
+                   ))}
+                   {followUps.length === 0 && (
+                     <tr><td colSpan="4" className="v3-empty">No follow-ups recorded.</td></tr>
+                   )}
+                 </tbody>
+               </table>
+               
+               {fuTotal > 5 && (
+                 <div className="v3-pagination">
+                    <button className="pag-nav" disabled={fuPage <= 1} onClick={() => setFuPage(p => p - 1)}><FiChevronLeft /></button>
+                    <span className="pag-count">{fuPage} / {Math.ceil(fuTotal / 5)}</span>
+                    <button className="pag-nav" disabled={fuPage >= Math.ceil(fuTotal / 5)} onClick={() => setFuPage(p => p + 1)}><FiChevronRight /></button>
+                 </div>
+               )}
+            </div>
+          </div>
         </div>
       </div>
+
       <style>{`
-        .followups-module-container {
-          padding: 24px;
+        .followups-module-v3 {
+          padding: 32px;
+          min-height: 100vh;
+          background: var(--bg);
         }
-        .lead-v2-card {
+        .v3-container {
+          max-width: 1400px;
+          margin: 0 auto;
+          display: flex;
+          flex-direction: column;
+          gap: 32px;
+        }
+        
+        /* Stats Cards */
+        .v3-stats-row {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 24px;
+        }
+        .v3-stat-card {
           background: var(--bg-surface);
-          border-radius: 12px;
           border: 1px solid var(--border);
-          overflow: hidden;
-        }
-        .premium-glass-panel {
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
-          backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .mb-24 { margin-bottom: 24px; }
-        .card-v2-header {
-          padding: 16px 20px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 20px;
+          padding: 24px;
           display: flex;
           align-items: center;
+          gap: 20px;
+          box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-sm);
+          transition: 0.3s;
         }
-        .flex-between { justify-content: space-between; }
-        .flex-wrap { flex-wrap: wrap; }
-        .gap-12 { gap: 12px; }
-        .flex-center-gap { display: flex; align-items: center; gap: 14px; }
-        .card-v2-header h3 { font-size: 0.9rem; font-weight: 800; margin: 0; color: var(--text); letter-spacing: 0.05em; text-transform: uppercase;}
-        
-        .header-controls-v3 { display: flex; align-items: center; gap: 16px; }
-        .filter-chip-group { display: flex; gap: 8px; }
-        .glass-select-mini {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: var(--text);
-          font-size: 0.75rem;
-          font-weight: 700;
-          padding: 4px 12px;
-          border-radius: 50px;
-          cursor: pointer;
-          outline: none;
-        }
-        .glass-select-mini:focus { border-color: var(--primary); }
-        .header-meta-v3 { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; background: rgba(255, 255, 255, 0.05); padding: 4px 12px; border-radius: 50px; }
-
-        .overflow-x { overflow-x: auto; }
-        
-        .premium-table-v3 { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
-        .premium-table-v3 th { text-align: left; padding: 12px 16px; font-size: 0.7rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; }
-        .premium-table-v3 tr { background: rgba(255, 255, 255, 0.02); transition: all 0.2s; }
-        .premium-table-v3 tr:hover { background: rgba(255, 255, 255, 0.05); transform: scale(1.002); }
-        .premium-table-v3 td { padding: 16px; font-size: 0.88rem; border-top: 1px solid rgba(255, 255, 255, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-        .premium-table-v3 td:first-child { border-left: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px 0 0 12px; }
-        .premium-table-v3 td:last-child { border-right: 1px solid rgba(255, 255, 255, 0.05); border-radius: 0 12px 12px 0; }
-
-        .date-wrap-v3 { display: flex; flex-direction: column; gap: 2px; }
-        .d-day { font-weight: 700; color: var(--text); }
-        .d-time { font-size: 0.75rem; color: var(--text-dimmed); }
-
-        .mode-tag-v3 { background: rgba(59, 130, 246, 0.08); color: var(--primary); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: capitalize; border: 1px solid rgba(59, 130, 246, 0.1); }
-        
-        .status-pill-v3 { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 50px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid transparent; }
-        .status-pill-v3 .dot { width: 6px; height: 6px; border-radius: 50%; }
-        
-        .status-pill-v3.planned { background: rgba(59, 130, 246, 0.08); color: var(--primary); border-color: rgba(59, 130, 246, 0.2); }
-        .status-pill-v3.planned .dot { background: var(--primary); box-shadow: 0 0 8px var(--primary); }
-
-        .status-pill-v3.overdue { background: rgba(239, 68, 68, 0.08); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); }
-        .status-pill-v3.overdue .dot { background: #ef4444; box-shadow: 0 0 10px #ef4444; animation: pulse-red 2s infinite; }
-        
-        @keyframes pulse-red {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.5); opacity: 0.5; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        
-        .status-pill-v3.completed { background: rgba(148, 163, 184, 0.08); color: var(--text-muted); border-color: rgba(148, 163, 184, 0.2); }
-        .status-pill-v3.completed .dot { background: var(--text-muted); }
-
-        .note-cell { color: var(--text-dimmed); font-size: 0.85rem; line-height: 1.5; max-width: 300px; }
-        
-        .user-info-v3 { display: flex; align-items: center; gap: 10px; }
-        .u-avatar { width: 28px; height: 28px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 900; }
-        .u-name { font-weight: 600; font-size: 0.85rem; color: var(--text); }
-
-        .center-empty-v3 { text-align: center; padding: 40px; color: var(--text-dimmed); font-size: 0.9rem; font-style: italic; }
-
-        .pagination-v3 { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 24px 0 8px; }
-        .pag-btn {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: var(--text);
-          width: 32px; height: 32px;
+        .v3-stat-card:hover { transform: translateY(-4px); border-color: var(--primary); box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-md); }
+        .v3-stat-card .icon {
+          width: 56px; height: 56px; border-radius: 16px;
           display: flex; align-items: center; justify-content: center;
-          border-radius: 50%;
-          cursor: pointer;
-          transition: all 0.2s;
+          font-size: 24px;
         }
-        .pag-btn:hover:not(:disabled) { background: var(--primary); color: white; transform: scale(1.1); }
-        .pag-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .pag-info { font-size: 0.85rem; color: var(--text-muted); }
-        .pag-info strong { color: var(--text); }
+        .v3-stat-card.blue .icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        .v3-stat-card.orange .icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+        .v3-stat-card.green .icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+        
+        .v3-stat-card .content { display: flex; flex-direction: column; }
+        .v3-stat-card .label { font-size: 0.8rem; font-weight: 700; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
+        .v3-stat-card .value { font-size: 1.8rem; font-weight: 800; color: var(--text); }
 
-        .event-tag-v3 {
-           font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;
-           padding: 4px 10px; border-radius: 4px;
+        /* Command Bar */
+        .v3-command-bar {
+          padding: 16px 24px;
+          border-radius: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+          flex-wrap: wrap;
         }
-        .event-tag-v3.lead-created { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
-        .event-tag-v3.call { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-        .event-tag-v3.meeting { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-        .event-tag-v3.follow-up { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .premium-glass {
+          background: rgba(255, 255, 255, 0.03);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow: 0 12px 40px -12px rgba(0,0,0,0.3);
+        }
+        .search-cluster { flex: 1; min-width: 300px; }
+        .filter-cluster { display: flex; align-items: center; gap: 16px; }
+        .minimal-select {
+          background: transparent; border: 1px solid var(--border);
+          color: var(--text); padding: 8px 16px; border-radius: 12px;
+          font-weight: 600; font-size: 0.9rem; cursor: pointer; outline: none;
+        }
+        .v3-icon-btn {
+          width: 40px; height: 40px; border-radius: 12px;
+          background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border);
+          color: var(--text-muted); cursor: pointer; transition: 0.2s;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .v3-icon-btn:hover { background: var(--bg-hover); color: var(--primary); border-color: var(--primary); }
 
-        .w-150 { width: 150px; }
-        .lead-link { color: var(--primary); text-decoration: none; font-weight: 600; }
-        .lead-link:hover { text-decoration: underline; }
+        /* Grid & Panels */
+        .v3-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 32px;
+        }
+        .v3-panel {
+          background: var(--bg-surface);
+          border: 1px solid var(--border);
+          border-radius: 24px;
+          overflow: hidden;
+          box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-sm);
+        }
+        .panel-header {
+          padding: 24px 28px;
+          border-bottom: 1px solid var(--border);
+          display: flex; align-items: center; justify-content: space-between;
+          background: rgba(255, 255, 255, 0.01);
+        }
+        .title-cluster { display: flex; align-items: center; gap: 16px; }
+        .title-cluster h3 { font-size: 1.1rem; font-weight: 800; margin: 0; color: var(--text); }
+        .filter-group { display: flex; gap: 12px; }
+        .pill-select {
+          background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border);
+          color: var(--text-muted); padding: 4px 14px; border-radius: 50px;
+          font-size: 0.75rem; font-weight: 700; cursor: pointer; outline: none;
+        }
+        .pill-select:focus { border-color: var(--primary); color: var(--text); }
+
+        /* Premium Table */
+        .v3-premium-table { width: 100%; border-collapse: collapse; }
+        .v3-premium-table th {
+          text-align: left; padding: 16px 28px; font-size: 0.7rem; font-weight: 800;
+          color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.1em;
+          border-bottom: 1px solid var(--border);
+        }
+        .v3-premium-table td { padding: 20px 28px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .v3-premium-table tr:last-child td { border-bottom: none; }
+        .v3-premium-table tr:hover { background: rgba(255, 255, 255, 0.02); }
+
+        .v3-tag {
+          padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 800;
+          text-transform: capitalize; border: 1px solid transparent;
+        }
+        .v3-tag.call { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: rgba(59, 130, 246, 0.2); }
+        .v3-tag.meeting { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
+        .v3-tag.follow-up { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2); }
+
+        .v3-link { color: var(--primary); font-weight: 700; text-decoration: none; }
+        .v3-link:hover { text-decoration: underline; }
+        .note-cell { color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; max-width: 400px; }
+
+        .v3-date { display: flex; flex-direction: column; gap: 2px; }
+        .v3-date .main { font-weight: 700; color: var(--text); }
+        .v3-date .sub { font-size: 0.75rem; color: var(--text-dimmed); }
+
+        .v3-pill {
+          padding: 4px 12px; border-radius: 50px; font-size: 0.7rem; font-weight: 800;
+          text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid transparent;
+        }
+        .v3-pill.completed { background: rgba(255, 255, 255, 0.05); color: var(--text-dimmed); }
+        .v3-pill.planned { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: rgba(59, 130, 246, 0.2); }
+        .v3-pill.overdue { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); animation: v3-pulse 2s infinite; }
+        
+        @keyframes v3-pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.6; }
+          100% { opacity: 1; }
+        }
+
+        .v3-empty { text-align: center; padding: 60px; color: var(--text-dimmed); font-style: italic; }
+        .v3-pagination { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 24px; border-top: 1px solid var(--border); }
+        .pag-nav {
+          width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+          background: transparent; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .pag-nav:hover:not(:disabled) { background: var(--primary); border-color: var(--primary); color: white; }
+        .pag-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+        .pag-count { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); }
+
+        @media (max-width: 900px) {
+          .followups-module-v3 { padding: 16px; }
+          .v3-command-bar { flex-direction: column; align-items: stretch; }
+          .panel-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+        }
       `}</style>
     </div>
   )

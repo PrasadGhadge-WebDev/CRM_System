@@ -82,7 +82,7 @@ const paymentSchema = new mongoose.Schema(
   }
 );
 
-paymentSchema.pre('save', function(next) {
+paymentSchema.pre('save', async function() {
   // Always update pending amount
   this.pending_amount = Math.max(0, this.total_amount - this.paid_amount);
   
@@ -98,8 +98,6 @@ paymentSchema.pre('save', function(next) {
       this.status = 'Pending';
     }
   }
-  
-  next();
 });
 
 

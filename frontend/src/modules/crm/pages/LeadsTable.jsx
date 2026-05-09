@@ -205,7 +205,6 @@ export default function LeadsTable({
               </th>
               <th className="lt-sortable" onClick={() => handleSort('name')}>Lead</th>
               <th className="lt-sortable" onClick={() => handleSort('status')}>Status</th>
-              <th className="lt-sortable" onClick={() => handleSort('priority')}>Priority</th>
               <th className="lt-sortable lt-hide-tablet" onClick={() => handleSort('assignedTo')}>Owner</th>
               <th className="lt-sortable lt-hide-tablet" onClick={() => handleSort('nextFollowupDate')}>Next Follow-up</th>
               <th className="lt-text-right">Actions</th>
@@ -245,11 +244,7 @@ export default function LeadsTable({
                     color={getStatusColor(l.status)} 
                   />
                 </td>
-                <td>
-                  <span className="lt-priority-tag" style={{ color: getPriorityColor(l.priority), background: `${getPriorityColor(l.priority)}10`, borderColor: `${getPriorityColor(l.priority)}25` }}>
-                    {l.priority || 'Warm'}
-                  </span>
-                </td>
+
                 <td className="lt-hide-tablet">
                   <div className="lt-owner-cell">
                     <span className="lt-assignee">{l.assignedTo?.name || 'Unassigned'}</span>
@@ -316,7 +311,7 @@ export default function LeadsTable({
           <div key={l._id || l.id} className={`lt-card ${selectedIds.includes(l.id || l._id) ? 'lt-row-sel' : ''}`} onClick={() => navigate(`/leads/${l.id || l._id}`)}>
             <div className="lt-card-top">
               <input type="checkbox" checked={selectedIds.includes(l.id || l._id)} onChange={(e) => { e.stopPropagation(); toggleSelect(l.id || l._id); }} />
-              <span className="lt-priority-tag-mini" style={{ color: getPriorityColor(l.priority) }}>● {l.priority}</span>
+
               <div className="lt-card-actions">
                 <button onClick={(e) => { e.stopPropagation(); navigate(`/leads/${l.id || l._id}/edit`); }}><Icon name="edit" size={14} /></button>
                 <button onClick={(e) => { e.stopPropagation(); handleFollowUp(l); }}><Icon name="phone" size={14} /></button>

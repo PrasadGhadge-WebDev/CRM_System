@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+﻿import { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -76,7 +76,7 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
 
   const [model, setModel] = useState(emptyUser)
   const [initialModel, setInitialModel] = useState(null)
-  const [managers, setManagers] = useState([])
+  const [staff, setStaff] = useState([])
   const [availableRoles, setAvailableRoles] = useState([])
   const roleChoices = Array.isArray(availableRoles) ? availableRoles : []
   const visibleRoleChoices = isHR
@@ -90,10 +90,10 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
   const loadData = useCallback(async () => {
     try {
       const [mRes, rRes] = await Promise.all([
-        usersApi.list({ role: 'Manager', limit: 'all' }),
+        usersApi.list({ role: 'Admin,Manager', limit: 'all' }),
         rolesApi.list()
       ])
-      setManagers(mRes.items || [])
+      setStaff(mRes.items || [])
       setAvailableRoles(Array.isArray(rRes) ? rRes : [])
     } catch (err) {
       console.error('Failed to load setup data', err)
@@ -163,7 +163,6 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
       if (!normalized) err = 'Email is required'
     } else if (field === 'password') {
       if (normalized && normalized.length < 6) err = 'Min 6 characters'
-      // Also check if it matches confirmPassword if already entered
       if (model.confirmPassword && normalized !== model.confirmPassword) {
         setFieldErrors(p => ({ ...p, confirmPassword: 'Passwords do not match' }))
       } else {
@@ -172,7 +171,26 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
     } else if (field === 'confirmPassword') {
       if (normalized && normalized !== model.password) err = 'Passwords do not match'
     } else if (field === 'role') {
-      if (!normalized) err = 'Role is required'
+      if (!normalized) {
+        err = 'Role is required'
+      } else {
+        // Smart Auto Logic
+        if (['Manager', 'Accountant', 'HR'].includes(normalized)) {
+          const firstAdmin = staff.find(u => u.role === 'Admin')
+          if (firstAdmin) {
+            setModel(prev => ({ ...prev, manager_id: firstAdmin.id || firstAdmin._id, role: normalized }))
+          }
+        } else if (normalized === 'Employee') {
+          if (!model.manager_id) {
+            const firstManager = staff.find(u => u.role === 'Manager')
+            if (firstManager) {
+              setModel(prev => ({ ...prev, manager_id: firstManager.id || firstManager._id, role: normalized }))
+            }
+          }
+        } else if (normalized === 'Admin') {
+          setModel(prev => ({ ...prev, manager_id: '', role: normalized }))
+        }
+      }
     }
     setFieldErrors(p => ({ ...p, [field]: err }))
   }
@@ -266,11 +284,11 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
         <form className="crm-modal-sheet-body custom-scrollbar" onKeyDown={handleKeyDown} onSubmit={handleSubmit}>
           <div className="sheet-content-container">
             
-            {/* 🔹 Basic Info */}
+            {/* ðŸ”¹ User Profile & Access */}
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <FiUser />
-                <span>Basic Info</span>
+                <span>Identity & Access</span>
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field full-width">
@@ -320,25 +338,97 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
                   </div>
                   {fieldErrors.phone && <span className="error-text">{fieldErrors.phone}</span>}
                 </div>
+
+                {!isEmployeeView && (
+                  <div className="sheet-field">
+                    <label>Role</label>
+                    <div className={`crm-input-group ${fieldErrors.role ? 'error' : ''}`}>
+                      <div className="input-icon-box"><FiShield /></div>
+                      <select value={model.role} onChange={e => handleChange('role', e.target.value)}>
+                        <option value="">Select Role</option>
+                        {visibleRoleChoices.map(role => (
+                          <option key={role.id || role._id || role.name} value={role.name}>{role.name}</option>
+                        ))}
+                        {visibleRoleChoices.length === 0 && (
+                          ['Admin', 'Manager', 'Employee', 'HR', 'Accountant'].map(roleName => (
+                            <option key={roleName} value={roleName}>{roleName}</option>
+                          ))
+                        )}
+                      </select>
+                    </div>
+                    {fieldErrors.role && <span className="error-text">{fieldErrors.role}</span>}
+                  </div>
+                )}
+
+                {!isEmployeeView && (
+                  <div className="sheet-field">
+                    <label>Department</label>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiBriefcase /></div>
+                      <select value={model.department} onChange={e => handleChange('department', e.target.value)}>
+                        <option value="">Select Department</option>
+                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {!isEmployeeView && model.role && model.role !== 'Admin' && (
+                  <div className="sheet-field">
+                    <label>Reporting To ðŸ”¥</label>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiUser /></div>
+                      <select value={model.manager_id} onChange={e => handleChange('manager_id', e.target.value)}>
+                        <option value="">Select Reporting Person</option>
+                        {staff
+                          .filter(u => {
+                            if (model.role === 'Employee') return u.role === 'Manager';
+                            if (['Manager', 'Accountant', 'HR'].includes(model.role)) return u.role === 'Admin';
+                            return false;
+                          })
+                          .map(m => (
+                            <option key={m.id || m._id} value={m.id || m._id}>
+                              {m.name || m.username} ({m.role})
+                            </option>
+                          ))
+                        }
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {!isEmployeeView && (
+                  <div className="sheet-field">
+                    <label>Status</label>
+                    <div className="crm-input-group">
+                      <div className="input-icon-box"><FiActivity /></div>
+                      <select value={model.status} onChange={e => handleChange('status', e.target.value)}>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="pending">Pending</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 
-            {/* 🔹 Login Details */}
+            {/* ðŸ”¹ Security Details */}
             {!isEmployeeView && (isAdmin || isHR) && (
               <section className="form-sheet-section">
                 <div className="form-sheet-section-header">
                   <FiLock />
-                  <span>Login Details</span>
+                  <span>Security</span>
                 </div>
                 <div className="form-sheet-grid">
                   <div className="sheet-field full-width">
-                    <label>Email</label>
+                    <label>Login Username (Email)</label>
                     <div className={`crm-input-group ${fieldErrors.username ? 'error' : ''}`}>
                       <div className="input-icon-box"><FiMail /></div>
                       <input
                         value={model.username}
                         onChange={e => handleChange('username', e.target.value)}
-                        placeholder="Enter email"
+                        placeholder="Enter username"
                         autoComplete="off"
                       />
                     </div>
@@ -363,65 +453,14 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
               </section>
             )}
 
-            {/* 🔹 Role & Access */}
-            {!isEmployeeView && (
-              <section className="form-sheet-section">
-                <div className="form-sheet-section-header">
-                  <FiShield />
-                  <span>Role & Access</span>
-                </div>
-                <div className="form-sheet-grid">
-                  <div className="sheet-field">
-                    <label>Role</label>
-                    <div className={`crm-input-group ${fieldErrors.role ? 'error' : ''}`}>
-                      <div className="input-icon-box"><FiShield /></div>
-                      <select value={model.role} onChange={e => handleChange('role', e.target.value)}>
-                        <option value="">Select Role</option>
-                        {visibleRoleChoices.map(role => (
-                          <option key={role.id || role._id || role.name} value={role.name}>{role.name}</option>
-                        ))}
-                        {visibleRoleChoices.length === 0 && (
-                          ['Admin', 'Manager', 'Employee', 'HR', 'Accountant'].map(roleName => (
-                            <option key={roleName} value={roleName}>{roleName}</option>
-                          ))
-                        )}
-                      </select>
-                    </div>
-                    {fieldErrors.role && <span className="error-text">{fieldErrors.role}</span>}
-                  </div>
-                  <div className="sheet-field">
-                    <label>Status</label>
-                    <div className="crm-input-group">
-                      <div className="input-icon-box"><FiActivity /></div>
-                      <select value={model.status} onChange={e => handleChange('status', e.target.value)}>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="pending">Pending</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* 🔹 Work Info */}
+            {/* ðŸ”¹ Extra Work Info (Optional/Secondary) */}
             {!isEmployeeView && (
               <section className="form-sheet-section">
                 <div className="form-sheet-section-header">
                   <FiBriefcase />
-                  <span>Work Info</span>
+                  <span>Additional Work Details</span>
                 </div>
                 <div className="form-sheet-grid">
-                  <div className="sheet-field">
-                    <label>Department</label>
-                    <div className="crm-input-group">
-                      <div className="input-icon-box"><FiBriefcase /></div>
-                      <select value={model.department} onChange={e => handleChange('department', e.target.value)}>
-                        <option value="">Select Department</option>
-                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                    </div>
-                  </div>
                   <div className="sheet-field">
                     <label>Designation</label>
                     <div className="crm-input-group">
@@ -440,23 +479,11 @@ export default function UserForm({ mode, userId, onSuccess, onCancel }) {
                       <input type="date" value={model.joining_date} onChange={e => handleChange('joining_date', e.target.value)} />
                     </div>
                   </div>
-                  {isAdmin && (
-                    <div className="sheet-field">
-                      <label>Reporting Manager</label>
-                      <div className="crm-input-group">
-                        <div className="input-icon-box"><FiUser /></div>
-                        <select value={model.manager_id} onChange={e => handleChange('manager_id', e.target.value)}>
-                          <option value="">None (Top Level)</option>
-                          {managers.map(m => <option key={m.id || m._id} value={m.id || m._id}>{m.name || m.username}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </section>
             )}
 
-            {/* 🔹 Extra (Profile Photo) */}
+            {/* ðŸ”¹ Extra (Profile Photo) */}
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
                 <FiImage />

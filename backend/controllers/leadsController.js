@@ -143,8 +143,8 @@ exports.listLeads = asyncHandler(async (req, res, next) => {
     return res.fail('Accountants do not have access to the Leads module', 403);
   }
 
-  const pageNum = Math.max(1, Number(page) || 1);
-  const limitNum = Math.min(100, Math.max(1, Number(limit) || 20));
+  const pageNum = Math.max(1, Math.floor(Number(page) || 1));
+  const limitNum = Math.min(100, Math.max(1, Math.floor(Number(limit) || 20)));
   const sort = { [sortField]: sortOrder === 'desc' ? -1 : 1 };
 
   const search = buildSearchQuery(q);
@@ -293,7 +293,10 @@ exports.listLeads = asyncHandler(async (req, res, next) => {
     Lead.aggregate(summaryPipeline)
   ]);
 
-  await Lead.populate(items, { path: 'assignedTo', select: 'name email role' });
+  await Lead.populate(items, [
+    { path: 'assignedTo', select: 'name email role' },
+    { path: 'createdBy', select: 'name email role' }
+  ]);
 
   // Transform statusCounts array into a readable object
   const stats = {
@@ -581,6 +584,16 @@ exports.getLead = asyncHandler(async (req, res, next) => {
   if (!lead) {
     return res.fail('Lead not found', 404);
   }
+
+  // RBAC for Employees
+  if (req.user?.role === 'Employee') {
+    const assignedId = lead.assignedTo?._id || lead.assignedTo;
+    const currentUserId = req.user._id || req.user.id;
+    if (String(assignedId) !== String(currentUserId)) {
+      return res.fail('Unauthorized access: This lead is not assigned to you', 403);
+    }
+  }
+
   res.ok(lead);
 });
 
@@ -619,12 +632,18 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
 
     // Role-based security for Employees
     if (req.user?.role === 'Employee') {
-      if (!oldLead.assignedTo || String(oldLead.assignedTo) !== String(req.user.id)) {
-        return res.fail('You can only update leads assigned to you', 403);
+      const assignedId = oldLead.assignedTo?._id || oldLead.assignedTo;
+      const currentUserId = req.user._id || req.user.id;
+      if (String(assignedId) !== String(currentUserId)) {
+        return res.fail('Unauthorized access: You can only update leads assigned to you', 403);
       }
 
-      // Employees can only update specific fields
-      const allowed = ['status', 'followUpDate', 'notes', 'city', 'state', 'pincode', 'priority', 'alternate_phone', 'company', 'interested_product', 'budget_range', 'remarks_internal'];
+      // Employees can update status, follow-up, priority and basic contact info
+      const allowed = [
+        'status', 'followUpDate', 'notes', 'city', 'state', 'pincode', 'priority', 
+        'alternate_phone', 'company', 'interested_product', 'budget_range', 'remarks_internal',
+        'name', 'firstName', 'lastName', 'email', 'phone', 'source', 'dealAmount'
+      ];
       for (const key of Object.keys(payload)) {
         if (!allowed.includes(key)) delete payload[key];
       }
@@ -662,12 +681,6 @@ exports.updateLead = asyncHandler(async (req, res, next) => {
       return res.ok(lead, 'Lead converted to Customer profile successfully');
     }
 
-    if (payload.status === 'Lost') {
-      const oldLead = await Lead.findOne({ _id: cleanId, company_id: req.user.company_id });
-      if (!oldLead) return res.fail('Lead not found', 404);
-      await moveDocumentToTrash({ entityType: 'lead', document: oldLead, deletedBy: req.user.id });
-      return res.ok(null, 'Lead marked as Lost and moved to trash');
-    }
 
     if (payload.status === 'Junk') {
       if (req.user.role !== 'Admin') return res.fail('Only Admins can mark leads as Junk (Permanent Delete)', 403);

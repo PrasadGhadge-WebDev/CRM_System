@@ -130,19 +130,253 @@ export default function Dashboard() {
     { label: 'Generate Invoice', icon: <FiFileText />, bgClass: 'qa-yellow', textColor: 'var(--warning)', path: '/invoices/new' },
   ]
 
-  const stats = [
-    { label: 'Total Employees', value: metrics?.users?.total || 128, trend: '+8.2%', icon: <FiUsers />, bgClass: 'stat-blue', iconColor: 'var(--primary)' },
-    { label: 'Total Customers', value: metrics?.customers?.total || 1245, trend: '+12.5%', icon: <FiUserCheck />, bgClass: 'stat-green', iconColor: 'var(--success)' },
-    { label: 'Total Leads', value: metrics?.leads?.total || 2350, trend: '+15.3%', icon: <FiTarget />, bgClass: 'stat-purple', iconColor: '#8b5cf6' },
-    { label: 'Total Deals', value: metrics?.deals?.total || 320, trend: '+10.1%', icon: <FiBriefcase />, bgClass: 'stat-orange', iconColor: '#f97316' },
-    { label: 'Total Revenue', value: formatCurrency(metrics?.summary?.totalRevenue || 4860000), trend: '+18.7%', icon: <FiTrendingUp />, bgClass: 'stat-yellow', iconColor: 'var(--warning)' },
-    { label: 'Pending Payments', value: formatCurrency(metrics?.financials?.unpaidValue || 1240000), trend: '-4.3%', icon: <FiCreditCard />, bgClass: 'stat-red', iconColor: 'var(--danger)', negative: true },
+  const isEmployee = user?.role === 'Employee'
+
+  const employeeStats = useMemo(() => {
+    if (!metrics?.employee) return []
+    return [
+      { label: 'My Leads', value: metrics.employee.leadsTotal || 0, icon: <FiTarget />, bgClass: 'stat-blue', iconColor: 'var(--primary)' },
+      { label: 'Deals In Progress', value: metrics.employee.dealsInProgress || 0, icon: <FiBriefcase />, bgClass: 'stat-purple', iconColor: '#8b5cf6' },
+      { label: 'Follow-ups Today', value: metrics.employee.followupsToday || 0, icon: <FiClock />, bgClass: 'stat-orange', iconColor: '#f97316' },
+      { label: 'Tasks Planned', value: metrics.employee.tasksPlanned || 0, icon: <FiCheckCircle />, bgClass: 'stat-green', iconColor: 'var(--success)' },
+      { label: 'My Tickets', value: metrics.employee.ticketsTotal || 0, icon: <FiAlertCircle />, bgClass: 'stat-red', iconColor: 'var(--danger)' },
+    ]
+  }, [metrics])
+
+  const stats = isEmployee ? employeeStats : [
+    { label: 'Total Employees', value: metrics?.users?.total || 0, trend: '+8.2%', icon: <FiUsers />, bgClass: 'stat-blue', iconColor: 'var(--primary)' },
+    { label: 'Total Customers', value: metrics?.customers?.total || 0, trend: '+12.5%', icon: <FiUserCheck />, bgClass: 'stat-green', iconColor: 'var(--success)' },
+    { label: 'Total Leads', value: metrics?.leads?.total || 0, trend: '+15.3%', icon: <FiTarget />, bgClass: 'stat-purple', iconColor: '#8b5cf6' },
+    { label: 'Total Deals', value: metrics?.deals?.total || 0, trend: '+10.1%', icon: <FiBriefcase />, bgClass: 'stat-orange', iconColor: '#f97316' },
+    { label: 'Total Revenue', value: formatCurrency(metrics?.summary?.totalRevenue || 0), trend: '+18.7%', icon: <FiTrendingUp />, bgClass: 'stat-yellow', iconColor: 'var(--warning)' },
+    { label: 'Pending Payments', value: formatCurrency(metrics?.financials?.unpaidValue || 0), trend: '-4.3%', icon: <FiCreditCard />, bgClass: 'stat-red', iconColor: 'var(--danger)', negative: true },
   ]
+
+  if (loading && !metrics) return <div className="center padding40"><div className="spinner-medium" /></div>
+
+  if (isEmployee && metrics?.employee) {
+    const { employee } = metrics
+    const empStats = [
+      { label: 'Assigned Leads', value: employee.leads.total, sub: `${employee.leads.new} New`, icon: <FiTarget />, bgClass: 'stat-blue', iconColor: 'var(--primary)' },
+      { label: 'Active Deals', value: employee.deals.active, sub: `${employee.deals.won} Won`, icon: <FiBriefcase />, bgClass: 'stat-purple', iconColor: '#8b5cf6' },
+      { label: 'Pending Payments', value: employee.payments.pending, sub: 'Follow-up needed', icon: <FiCreditCard />, bgClass: 'stat-red', iconColor: 'var(--danger)' },
+      { label: 'Open Tickets', value: employee.tickets.open, sub: 'Support tasks', icon: <FiAlertCircle />, bgClass: 'stat-orange', iconColor: '#f97316' },
+    ]
+
+    return (
+      <div className="dashboard-container-v3">
+        {/* 1. TOP SUMMARY CARDS */}
+        <div className="metrics-row-v3 employee-metrics">
+          {empStats.map((s, i) => (
+            <div key={i} className="metric-card-v3">
+              <div className="card-top">
+                <div className={`icon-box ${s.bgClass}`} style={{ color: s.iconColor }}>
+                  {s.icon}
+                </div>
+                <span className="label">{s.label}</span>
+              </div>
+              <div className="value">{s.value}</div>
+              <div className="trend muted" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{s.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* 2. MIDDLE SECTION: LEADS, DEALS, PAYMENTS */}
+        <div className="dashboard-three-col-v3">
+           {/* RECENT LEADS */}
+           <div className="section-card-v3">
+              <div className="crm-flex-between mb-16">
+                <h3>🧲 Recent Leads</h3>
+                <button className="btn-link text-xs" onClick={() => navigate('/leads')}>View All</button>
+              </div>
+              <div className="v3-list">
+                {employee.leadsRecent?.length > 0 ? employee.leadsRecent.map((lead, i) => (
+                  <div key={i} className="v3-list-item clickable" onClick={() => navigate(`/leads/${lead._id}`)}>
+                    <div className="item-main">
+                      <div className="item-title">{lead.name}</div>
+                      <div className="item-sub">{lead.status}</div>
+                    </div>
+                    <div className="item-side text-right">
+                       <div className="text-xs muted">Follow-up</div>
+                       <div className="text-xs font-bold">{lead.nextFollowupDate ? new Date(lead.nextFollowupDate).toLocaleDateString() : 'N/A'}</div>
+                    </div>
+                  </div>
+                )) : <div className="muted center padding20">No recent leads</div>}
+              </div>
+           </div>
+
+           {/* DEAL PROGRESS */}
+           <div className="section-card-v3">
+              <div className="crm-flex-between mb-16">
+                <h3>💼 Deal Progress</h3>
+                <button className="btn-link text-xs" onClick={() => navigate('/deals')}>View All</button>
+              </div>
+              <div className="v3-list">
+                {employee.dealsRecent?.length > 0 ? employee.dealsRecent.map((deal, i) => (
+                  <div key={i} className="v3-list-item clickable" onClick={() => navigate(`/deals/${deal._id}`)}>
+                    <div className="item-main">
+                      <div className="item-title">{deal.name}</div>
+                      <div className="item-sub">{deal.customer_id?.name || 'Customer'}</div>
+                    </div>
+                    <div className="item-side text-right">
+                       <div className="text-xs font-bold text-success">₹{deal.value?.toLocaleString()}</div>
+                       <div className="item-sub">{deal.stage}</div>
+                    </div>
+                  </div>
+                )) : <div className="muted center padding20">No active deals</div>}
+              </div>
+           </div>
+
+           {/* PAYMENT FOLLOW-UP */}
+           <div className="section-card-v3">
+              <div className="crm-flex-between mb-16">
+                <h3>💰 Payment Follow-up</h3>
+                <button className="btn-link text-xs" onClick={() => navigate('/payments')}>View All</button>
+              </div>
+              <div className="v3-list">
+                {employee.payments.recent?.length > 0 ? employee.payments.recent.map((pay, i) => (
+                  <div key={i} className="v3-list-item clickable" onClick={() => navigate(`/payments/${pay._id}`)}>
+                    <div className="item-main">
+                      <div className="item-title">{pay.customer_id?.name || 'Customer'}</div>
+                      <div className="item-sub">{pay.status}</div>
+                    </div>
+                    <div className="item-side text-right">
+                       <div className="text-xs font-bold text-danger">₹{pay.total_amount?.toLocaleString()}</div>
+                       <div className="text-xs muted">Due: {pay.payment_date ? new Date(pay.payment_date).toLocaleDateString() : 'N/A'}</div>
+                    </div>
+                  </div>
+                )) : <div className="muted center padding20">No pending payments</div>}
+              </div>
+           </div>
+        </div>
+
+        {/* 3. BOTTOM SECTION: TASKS, TICKETS, PERFORMANCE */}
+        <div className="dashboard-three-col-v3">
+           {/* TODAY'S TASKS */}
+           <div className="section-card-v3">
+              <h3>📅 Today's Tasks</h3>
+              <div className="v3-list mt-12">
+                {employee.tasks.today?.length > 0 ? employee.tasks.today.map((task, i) => (
+                  <div key={i} className="v3-list-item">
+                    <div className="alert-icon-v3 alert-green"><FiCheckCircle size={14} /></div>
+                    <div className="item-main ml-12">
+                      <div className="item-title">{task.description || task.activity_type}</div>
+                      <div className="item-sub">{task.activity_date ? new Date(task.activity_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today'}</div>
+                    </div>
+                  </div>
+                )) : <div className="muted center padding20">No tasks for today</div>}
+              </div>
+           </div>
+
+           {/* RECENT TICKETS */}
+           <div className="section-card-v3">
+              <h3>🎫 Recent Tickets</h3>
+              <div className="v3-list mt-12">
+                {employee.tickets.recent?.length > 0 ? employee.tickets.recent.map((ticket, i) => (
+                  <div key={i} className="v3-list-item clickable" onClick={() => navigate(`/tickets/${ticket._id}`)}>
+                    <div className="item-main">
+                      <div className="item-title">#{ticket.ticket_id} - {ticket.subject}</div>
+                      <div className="item-sub">{ticket.status} • {ticket.priority}</div>
+                    </div>
+                    <FiChevronRight className="muted" />
+                  </div>
+                )) : <div className="muted center padding20">No recent tickets</div>}
+              </div>
+           </div>
+
+           {/* PERFORMANCE SNAPSHOT */}
+           <div className="section-card-v3">
+              <h3>📈 Performance Snapshot</h3>
+              <div className="performance-grid mt-16">
+                 <div className="perf-item">
+                    <div className="perf-label">Monthly Conversions</div>
+                    <div className="perf-value">{employee.performance.conversions}</div>
+                 </div>
+                 <div className="perf-item">
+                    <div className="perf-label">Closed Deals</div>
+                    <div className="perf-value">{employee.performance.closedDeals}</div>
+                 </div>
+                 <div className="perf-item">
+                    <div className="perf-label">Follow-up Count</div>
+                    <div className="perf-value">{employee.performance.followupCount}</div>
+                 </div>
+              </div>
+              
+              {/* NOTIFICATIONS / ALERTS */}
+              <div className="notifications-mini mt-20">
+                 <div className="alert-banner-mini alert-red animate-pulse">
+                    <FiAlertCircle />
+                    <span>You have {employee.payments.overdue || 0} overdue payments</span>
+                 </div>
+                 <div className="alert-banner-mini alert-blue mt-8">
+                    <FiTarget />
+                    <span>{employee.leads.new} new leads assigned today</span>
+                 </div>
+              </div>
+           </div>
+        </div>
+
+        <style>{`
+          .mb-16 { margin-bottom: 16px; }
+          .mt-12 { margin-top: 12px; }
+          .mt-16 { margin-top: 16px; }
+          .mt-20 { margin-top: 20px; }
+          .ml-12 { margin-left: 12px; }
+          .text-xs { font-size: 0.75rem; }
+          .v3-list { display: flex; flex-direction: column; gap: 8px; }
+          .v3-list-item { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 10px; 
+            background: var(--bg-surface); 
+            border: 1px solid var(--border-subtle); 
+            border-radius: 12px; 
+            transition: all 0.2s;
+          }
+          .v3-list-item.clickable:hover { 
+            border-color: var(--primary); 
+            background: var(--bg-card); 
+            transform: translateX(4px);
+          }
+          .item-main { flex: 1; }
+          .item-title { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+          .item-sub { font-size: 0.75rem; color: var(--text-dimmed); margin-top: 2px; }
+          
+          .performance-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 12px; 
+          }
+          .perf-item { 
+            background: var(--bg-surface); 
+            padding: 12px; 
+            border-radius: 12px; 
+            border: 1px solid var(--border-subtle);
+          }
+          .perf-label { font-size: 0.65rem; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; }
+          .perf-value { font-size: 1.25rem; font-weight: 900; color: var(--text); margin-top: 4px; }
+          
+          .alert-banner-mini {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+          }
+          .alert-banner-mini.alert-red { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+          .alert-banner-mini.alert-blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        `}</style>
+      </div>
+    )
+  }
 
   return (
     <div className="dashboard-container-v3">
       {/* 1. TOP METRICS ROW */}
-      <div className="metrics-row-v3">
+      <div className={`metrics-row-v3 ${isEmployee ? 'employee-metrics' : ''}`}>
         {stats.map((s, i) => (
           <div key={i} className="metric-card-v3">
             <div className="card-top">
@@ -152,25 +386,28 @@ export default function Dashboard() {
               <span className="label">{s.label}</span>
             </div>
             <div className="value">{loading ? '...' : s.value}</div>
-            <div className={`trend ${s.negative ? 'down' : 'up'}`}>
-              {s.negative ? '↓' : '↑'} {s.trend} from last month
-            </div>
+            {s.trend && (
+              <div className={`trend ${s.negative ? 'down' : 'up'}`}>
+                {s.negative ? '↓' : '↑'} {s.trend} from last month
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      {/* 2. CHARTS ROW */}
+      {/* 2. MAIN GRID */}
       <div className="dashboard-grid-v3">
+        {/* Performance Chart */}
         <div className="section-card-v3">
           <div className="crm-flex-between" style={{ marginBottom: '20px' }}>
-             <h3>Monthly Revenue</h3>
+             <h3>{isEmployee ? 'My Performance' : 'Monthly Revenue'}</h3>
              <select className="input-premium small" style={{ width: 'auto', padding: '4px 12px' }}>
                 <option>This Year</option>
              </select>
           </div>
           <div style={{ width: '100%', height: '240px', minHeight: '240px' }}>
              <ResponsiveContainer width="100%" height={240} minHeight={240}>
-                <AreaChart data={revenueTrend}>
+                <AreaChart data={isEmployee ? (metrics?.leads?.trend || revenueTrend) : (metrics?.deals?.revenueTrend || revenueTrend)}>
                   <defs>
                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
@@ -178,12 +415,11 @@ export default function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} tickFormatter={(v) => `${v}L`} />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} />
                   <Tooltip 
                     contentStyle={{ borderRadius: '12px', border: 'none', background: 'var(--bg-card)', boxShadow: 'var(--shadow-lg)', color: 'var(--text)' }}
                     itemStyle={{ color: 'var(--text)' }}
-                    formatter={(v) => [`₹${v} L`, 'Revenue']}
                   />
                   <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                 </AreaChart>
@@ -191,191 +427,141 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="section-card-v3">
-          <div className="crm-flex-between" style={{ marginBottom: '20px' }}>
-             <h3>Leads vs Conversions</h3>
-             <select className="input-premium small" style={{ width: 'auto', padding: '4px 12px' }}>
-                <option>This Year</option>
-             </select>
+        {/* Alerts or Leads Chart */}
+        {!isEmployee ? (
+          <div className="section-card-v3">
+            <div className="crm-flex-between" style={{ marginBottom: '20px' }}>
+              <h3>Leads vs Conversions</h3>
+              <select className="input-premium small" style={{ width: 'auto', padding: '4px 12px' }}>
+                  <option>This Year</option>
+              </select>
+            </div>
+            <div style={{ width: '100%', height: '240px', minHeight: '240px' }}>
+              <ResponsiveContainer width="100%" height={240} minHeight={240}>
+                  <BarChart data={conversionData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', background: 'var(--bg-card)', boxShadow: 'var(--shadow-lg)', color: 'var(--text)' }} itemStyle={{ color: 'var(--text)' }} />
+                    <Legend iconType="circle" verticalAlign="top" align="center" wrapperStyle={{ paddingBottom: '20px' }} />
+                    <Bar dataKey="Leads" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={10} />
+                    <Bar dataKey="Conversions" fill="var(--success)" radius={[4, 4, 0, 0]} barSize={10} />
+                  </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div style={{ width: '100%', height: '240px', minHeight: '240px' }}>
-             <ResponsiveContainer width="100%" height={240} minHeight={240}>
-                <BarChart data={conversionData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-dimmed)', fontSize: 12 }} tickFormatter={(v) => v >= 1000 ? `${v/1000}K` : v} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', background: 'var(--bg-card)', boxShadow: 'var(--shadow-lg)', color: 'var(--text)' }} itemStyle={{ color: 'var(--text)' }} />
-                  <Legend iconType="circle" verticalAlign="top" align="center" wrapperStyle={{ paddingBottom: '20px' }} />
-                  <Bar dataKey="Leads" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={10} />
-                  <Bar dataKey="Conversions" fill="var(--success)" radius={[4, 4, 0, 0]} barSize={10} />
-                </BarChart>
-             </ResponsiveContainer>
+        ) : (
+          <div className="section-card-v3">
+             <h3>Quick Access</h3>
+             <div className="quick-actions-grid-v3">
+                {quickActions.map((qa, i) => (
+                  <div key={i} className={`quick-action-btn-v3 ${qa.bgClass}`} onClick={() => navigate(qa.path)}>
+                    <div className="icon" style={{ color: qa.textColor }}>{qa.icon}</div>
+                    <span className="text">{qa.label}</span>
+                  </div>
+                ))}
+             </div>
           </div>
-
-        </div>
+        )}
       </div>
 
-      {/* 3. PERFORMANCE & SUMMARY ROW */}
+      {/* 3. THREE COL ROW */}
       <div className="dashboard-three-col-v3">
-        {/* Employee Performance */}
+        {/* Priority Items or Top Performers */}
         <div className="section-card-v3">
-          <h3>Employee Performance</h3>
-          <table className="v3-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Name</th>
-                <th>Leads Handled</th>
-                <th>Conversions</th>
-                <th>Performance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((emp, i) => (
-                <tr key={emp.id}>
-                  <td>{i + 1}</td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                       <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--bg-surface)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>{emp.name.charAt(0)}</div>
-                       {emp.name}
+          <h3>{isEmployee ? 'Priority Items' : 'Top Performers'}</h3>
+          {isEmployee ? (
+            <div className="follow-up-list">
+              {(metrics?.employee?.priorityItems || []).length > 0 ? (
+                metrics.employee.priorityItems.map((item, i) => (
+                  <div key={i} className="alert-item-v3" style={{ borderBottom: '1px solid var(--border-subtle)', padding: '12px 0' }}>
+                    <div className={`alert-icon-v3 ${item.type === 'lead' ? 'alert-blue' : 'alert-red'}`} style={{ color: item.type === 'lead' ? 'var(--primary)' : 'var(--danger)' }}>
+                      {item.type === 'lead' ? <FiTarget /> : <FiAlertCircle />}
                     </div>
-                  </td>
-                  <td>{emp.handled}</td>
-                  <td>{emp.conv}</td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: 700, width: '30px' }}>{emp.perf}%</span>
-                      <div className="v3-progress-bar">
-                        <div className="v3-progress-fill" style={{ width: `${emp.perf}%` }} />
-                      </div>
+                    <div className="alert-content-v3" onClick={() => navigate(item.type === 'lead' ? `/leads/${item._id || item.id}` : `/tickets/${item._id || item.id}`)} style={{ cursor: 'pointer' }}>
+                      <div className="alert-title-v3" style={{ fontSize: '0.85rem', fontWeight: 600 }}>{item.name || item.subject}</div>
+                      <div className="alert-sub-v3">{item.type === 'lead' ? `Follow-up: ${item.follow_up_date ? new Date(item.follow_up_date).toLocaleDateString() : 'Pending'}` : `Ticket: #${item.ticket_id}`}</div>
                     </div>
-                  </td>
+                  </div>
+                ))
+              ) : <div className="muted center padding20">No priority items</div>}
+            </div>
+          ) : (
+            <table className="v3-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Revenue</th>
+                  <th>Perf</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {(user?.role === 'Admin' || user?.role === 'HR') && (
-            <button className="btn-link full-width margin-top-12" onClick={() => navigate('/users')}>View All Employees</button>
+              </thead>
+              <tbody>
+                {(metrics?.topPerformers || employees).map((emp, i) => (
+                  <tr key={emp.id || emp._id}>
+                    <td>{i + 1}</td>
+                    <td>{emp.name}</td>
+                    <td>{formatCurrency(emp.revenue || 0)}</td>
+                    <td>{emp.count || 0} Deals</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
 
-        {/* Follow-up Summary */}
+        {/* Follow-up Summary or Recent Deals */}
         <div className="section-card-v3">
-          <h3>Follow-up Summary</h3>
-          <div className="follow-up-grid-v3">
-            <div className="follow-up-stat-box-v3 alert-blue">
-              <Icon name="calendar" />
-              <span className="count" style={{ color: 'var(--primary)' }}>32</span>
-              <span className="label">Today's</span>
+          <h3>{isEmployee ? 'Active Deals' : 'Follow-up Summary'}</h3>
+          {isEmployee ? (
+            <div className="follow-up-list">
+               {(metrics?.employee?.activeDeals || []).length > 0 ? (
+                 metrics.employee.activeDeals.map((deal, i) => (
+                   <div key={i} className="alert-item-v3" onClick={() => navigate(`/deals/${deal._id || deal.id}`)} style={{ cursor: 'pointer' }}>
+                      <div className="alert-icon-v3 alert-purple" style={{ color: '#8b5cf6' }}><FiBriefcase /></div>
+                      <div className="alert-content-v3">
+                        <div className="alert-title-v3">{deal.name}</div>
+                        <div className="alert-sub-v3">{deal.customer_id?.name || 'Customer'} - ₹{deal.value?.toLocaleString()}</div>
+                      </div>
+                      <FiChevronRight className="muted" />
+                   </div>
+                 ))
+               ) : <div className="muted center padding20">No active deals</div>}
             </div>
-            <div className="follow-up-stat-box-v3 alert-orange">
-              <Icon name="clock" />
-              <span className="count" style={{ color: '#f97316' }}>58</span>
-              <span className="label">Upcoming</span>
+          ) : (
+            <div className="follow-up-grid-v3">
+              <div className="follow-up-stat-box-v3 alert-blue">
+                <Icon name="calendar" />
+                <span className="count" style={{ color: 'var(--primary)' }}>{metrics?.activities?.pending || 0}</span>
+                <span className="label">Today's</span>
+              </div>
+              <div className="follow-up-stat-box-v3 alert-orange">
+                <Icon name="clock" />
+                <span className="count" style={{ color: '#f97316' }}>{metrics?.leads?.overdueCount || 0}</span>
+                <span className="label">Overdue</span>
+              </div>
             </div>
-            <div className="follow-up-stat-box-v3 alert-red">
-              <Icon name="alert" />
-              <span className="count" style={{ color: 'var(--danger)' }}>07</span>
-              <span className="label">Missed</span>
-            </div>
-          </div>
-          
-          <div className="follow-up-list">
-             <div style={{ padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Follow-up with Tech Solutions</div>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Today, 10:00 AM</div>
-             </div>
-             <div style={{ padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Proposal discussion with ABC Corp</div>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Today, 01:00 PM</div>
-             </div>
-             <div style={{ padding: '12px 0' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Demo follow-up with Global Pvt Ltd</div>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Tomorrow, 11:00 AM</div>
-             </div>
-          </div>
-          <button className="btn-link full-width margin-top-12" onClick={() => navigate('/leads')}>View All Follow-ups</button>
+          )}
+          <button className="btn-link full-width margin-top-12" onClick={() => navigate(isEmployee ? '/deals' : '/leads')}>View Details</button>
         </div>
 
         {/* Alerts & Notifications */}
         <div className="section-card-v3">
-          <h3>Alerts & Notifications</h3>
-          <div className="alerts-list">
-            {alerts.map(a => (
-              <div key={a.id} className="alert-item-v3">
-                <div className={`alert-icon-v3 ${a.bgClass}`} style={{ color: a.iconColor }}>
-                  {a.icon}
-                </div>
-                <div className="alert-content-v3">
-                  <div className="alert-title-v3">{a.title}</div>
-                  <div className="alert-sub-v3">{a.sub}</div>
-                </div>
-                <div className="alert-badge-v3">{a.count}</div>
-              </div>
-            ))}
-          </div>
-          <button className="btn-link full-width margin-top-24" onClick={() => navigate('/notifications')}>View All Alerts</button>
-        </div>
-      </div>
-
-      {/* 4. BOTTOM ACTIVITY & ACTIONS ROW */}
-      <div className="dashboard-two-col-bottom-v3">
-        {/* Recent Activity */}
-        <div className="section-card-v3">
-           <h3>Recent Activity</h3>
-           <div className="activity-list">
-              {(metrics?.activities?.recent || []).slice(0, 4).map((act, i) => (
+          <h3>Recent Activities</h3>
+          <div className="activity-list">
+              {(metrics?.activities?.recent || []).slice(0, 5).map((act, i) => (
                 <div key={i} className="alert-item-v3">
                    <div className={`alert-icon-v3 ${i%2===0 ? 'alert-green' : 'alert-blue'}`} style={{ color: i%2===0 ? 'var(--success)' : 'var(--primary)' }}>
                       <FiCheckCircle />
                    </div>
                    <div className="alert-content-v3">
                       <div className="alert-title-v3">{act.description || act.activity_type}</div>
-                      <div className="alert-sub-v3">by {act.user_id?.name || 'System'}</div>
+                      <div className="alert-sub-v3">{new Date(act.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
                    </div>
-                   <div className="alert-sub-v3">{new Date(act.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                 </div>
               ))}
-              {(!metrics?.activities?.recent?.length) && (
-                <>
-                   <div className="alert-item-v3">
-                      <div className="alert-icon-v3 alert-green" style={{ color: 'var(--success)' }}><FiTarget /></div>
-                      <div className="alert-content-v3">
-                         <div className="alert-title-v3">New lead "Tech Solutions" has been added by Rahul Sharma.</div>
-                      </div>
-                      <div className="alert-sub-v3">10 min ago</div>
-                   </div>
-                   <div className="alert-item-v3">
-                      <div className="alert-icon-v3 alert-purple" style={{ color: '#8b5cf6' }}><FiBriefcase /></div>
-                      <div className="alert-content-v3">
-                         <div className="alert-title-v3">Deal "Website Development" has been closed won.</div>
-                      </div>
-                      <div className="alert-sub-v3">1 hour ago</div>
-                   </div>
-                    <div className="alert-item-v3">
-                       <div className="alert-icon-v3 alert-yellow" style={{ color: 'var(--warning)' }}><FiTrendingUp /></div>
-                       <div className="alert-content-v3">
-                          <div className="alert-title-v3">Payment of ₹85,000 received from ABC Corp.</div>
-                       </div>
-                       <div className="alert-sub-v3">2 hours ago</div>
-                    </div>
-                </>
-              )}
-           </div>
-           <button className="btn-link full-width margin-top-12" onClick={() => navigate('/activities')}>View All Activities</button>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="section-card-v3">
-           <h3>Quick Actions</h3>
-           <div className="quick-actions-grid-v3">
-              {quickActions.map((qa, i) => (
-                <div key={i} className={`quick-action-btn-v3 ${qa.bgClass}`} onClick={() => navigate(qa.path)}>
-                   <div className="icon" style={{ color: qa.textColor }}>{qa.icon}</div>
-                   <span className="text">{qa.label}</span>
-                </div>
-              ))}
-           </div>
+          </div>
+          <button className="btn-link full-width margin-top-12" onClick={() => navigate('/activities')}>See All History</button>
         </div>
       </div>
     </div>

@@ -9,6 +9,20 @@ import PageHeader from '../../../components/PageHeader.jsx'
 import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
 import StatusDropdown from '../../crm/components/StatusDropdown.jsx'
 
+const ACCOUNTANT_ACTIONS_STYLE = `
+  .modern-action-btn { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+  .modern-action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); }
+  .modern-action-btn.success:hover { background: #dcfce7; color: #10b981; border-color: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15); }
+  .crm-actions-overflow { position: relative; }
+  .crm-actions-overflow summary { list-style: none; outline: none; }
+  .crm-actions-overflow summary::-webkit-details-marker { display: none; }
+  .overflow-menu-content { position: absolute; right: 0; top: calc(100% + 8px); background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 8px; z-index: 1000; min-width: 220px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); backdrop-filter: blur(20px); }
+  .overflow-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; color: var(--text); font-size: 0.82rem; font-weight: 700; border: none; background: transparent; cursor: pointer; text-align: left; width: 100%; transition: all 0.2s; white-space: nowrap; }
+  .overflow-item:hover { background: var(--bg-surface); color: var(--primary); }
+  .overflow-item.danger:hover { background: #fee2e2; color: #ef4444; }
+`;
+
+
 function stopRowNavigation(event) {
   event.stopPropagation()
 }
@@ -99,6 +113,7 @@ export default function InvoicesList() {
 
   return (
     <div className="stack">
+      <style>{ACCOUNTANT_ACTIONS_STYLE}</style>
       <section className="crm-fullscreen-shell">
         <div className="users-page-header">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -106,18 +121,20 @@ export default function InvoicesList() {
               <h1 className="users-title">Invoices Management</h1>
               <p className="users-subtitle">Track and manage customer billing and payment statuses</p>
             </div>
-            <button
-              className="btn-premium action-vibrant"
-              onClick={() => navigate('/invoices/new')}
-            >
-              <Icon name="plus" size={16} />
-              <span>Add Invoice</span>
-            </button>
+            {canAdd && (
+              <button
+                className="btn-premium action-vibrant"
+                onClick={() => navigate('/invoices/new')}
+              >
+                <Icon name="plus" size={16} />
+                <span>Add Invoice</span>
+              </button>
+            )}
           </div>
         </div>
 
         <div className="crm-stats-bar-compact overflow-x-auto pb-8">
-          <div className="stat-pill-mini clickable" onClick={() => { setStatus(''); setPage(1); }} style={{ borderBottom: status === '' ? '2px solid var(--primary)' : '' }}>
+          <div className={`stat-pill-mini clickable ${status === '' ? 'is-active' : ''}`} onClick={() => { setStatus(''); setPage(1); }}>
             <span className="stat-pill-label">ALL INVOICES</span>
             <span className="stat-pill-value total">{summary.total}</span>
           </div>
@@ -148,7 +165,8 @@ export default function InvoicesList() {
 
             <select className="crm-input filter-select" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}>
               <option value="">All Invoices</option>
-              <option value="Unpaid">Unpaid</option>
+              <option value="Draft">Draft</option>
+              <option value="Sent">Sent</option>
               <option value="Partially Paid">Partial</option>
               <option value="Paid">Paid</option>
               <option value="Overdue">Overdue</option>
@@ -267,11 +285,12 @@ export default function InvoicesList() {
                               <StatusDropdown 
                                 status={inv.status} 
                                 options={[
-                                  { name: 'Unpaid', color: '#ef4444' },
+                                  { name: 'Draft', color: '#64748b' },
+                                  { name: 'Sent', color: '#3b82f6' },
                                   { name: 'Partially Paid', color: '#f59e0b' },
                                   { name: 'Paid', color: '#10b981' },
                                   { name: 'Overdue', color: '#7f1d1d' },
-                                  { name: 'Cancelled', color: '#64748b' }
+                                  { name: 'Cancelled', color: '#94a3b8' }
                                 ]} 
                                 onChange={(newStatus) => onUpdateStatus(inv.id, newStatus)}
                                 disabled={!canEdit}
@@ -280,29 +299,62 @@ export default function InvoicesList() {
                             <td><span className="text-xs muted font-numeric">{new Date(inv.invoice_date).toLocaleDateString()}</span></td>
                             <td className="text-right" onClick={stopRowNavigation}>
                               <div className="crm-action-group" style={{ justifyContent: 'flex-end', gap: '8px' }}>
-                                {inv.status !== 'Paid' && (
-                                  <button 
-                                    className="crm-action-btn glass-btn" 
-                                    title="Receive Payment" 
-                                    onClick={() => navigate(`/payments/new?customer_id=${inv.customer_id?.id || inv.customer_id?._id || inv.customer_id}&invoice_id=${inv.id || inv._id}`)}
-                                    style={{ color: 'var(--success)', borderColor: 'var(--success)' }}
-                                  >
-                                    <Icon name="dollar-sign" size={14} />
-                                  </button>
-                                )}
-                                <button className="crm-action-btn glass-btn" title="View & Print Bill" onClick={() => navigate(`/invoices/${inv.id}`)}>
-                                  <Icon name="download" size={14} />
+                                {/* 🧾 Invoice */}
+                                <button 
+                                  className="modern-action-btn" 
+                                  title="View Invoice" 
+                                  onClick={() => navigate(`/invoices/${inv.id}`)}
+                                >
+                                  <Icon name="billing" size={14} />
                                 </button>
-                                {canEdit && (
-                                  <button className="crm-action-btn glass-btn" title="Edit Bill" onClick={() => navigate(`/invoices/${inv.id}/edit`)}>
-                                    <Icon name="edit" size={14} />
+
+                                {/* 💳 Payment */}
+                                {inv.status !== 'Paid' && (user?.role === 'Admin' || user?.role === 'Accountant') && (
+                                  <button 
+                                    className="modern-action-btn success" 
+                                    title="Record Payment" 
+                                    onClick={() => navigate(`/payments/new?customer_id=${inv.customer_id?.id || inv.customer_id?._id || inv.customer_id}&invoice_id=${inv.id || inv._id}`)}
+                                  >
+                                    <Icon name="wallet" size={14} />
                                   </button>
                                 )}
-                                {canDelete && (
-                                  <button className="crm-action-btn danger-btn" title="Delete" onClick={() => handleDelete(inv.id)}>
-                                    <Icon name="trash" size={14} />
+
+                                {/* 📄 Receipt */}
+                                {(inv.paid_amount || 0) > 0 && (
+                                  <button 
+                                    className="modern-action-btn success" 
+                                    title="View Receipt" 
+                                    onClick={() => navigate(`/payments?invoice_id=${inv.id}`)}
+                                  >
+                                    <Icon name="reports" size={14} />
                                   </button>
                                 )}
+                                
+                                <details className="crm-actions-overflow">
+                                  <summary className="modern-action-btn" title="More">
+                                    <Icon name="more-vertical" size={14} />
+                                  </summary>
+                                  <div className="overflow-menu-content shadow-soft">
+                                    <button className="overflow-item" onClick={() => navigate(`/payments?invoice_id=${inv.id}`)}>
+                                      <Icon name="activity" size={14} />
+                                      <span>Payment History</span>
+                                    </button>
+                                    <button className="overflow-item" onClick={() => navigate(`/invoices/${inv.id}`)}>
+                                      <Icon name="edit" size={14} />
+                                      <span>Finance Notes</span>
+                                    </button>
+                                    <button className="overflow-item" onClick={() => navigate(`/invoices/${inv.id}`)}>
+                                      <Icon name="download" size={14} />
+                                      <span>Download PDF</span>
+                                    </button>
+                                    {canDelete && (
+                                      <button className="overflow-item danger" onClick={() => handleDelete(inv.id)}>
+                                        <Icon name="trash" size={14} />
+                                        <span>Delete</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                </details>
                               </div>
                             </td>
                           </tr>
@@ -345,8 +397,15 @@ export default function InvoicesList() {
          .btn-clear-filters:hover { text-decoration: underline; }
 
          .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; justify-content: space-between; }
-         .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 10px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 130px; box-shadow: var(--shadow-sm); }
-         .stat-pill-label { font-size: 10px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
+         .stat-pill-mini { --stat-accent: var(--card-accent); background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-surface) 12%); border: 1px solid var(--border-strong); padding: 14px 18px; border-radius: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px; box-shadow: inset 4px 0 0 var(--stat-accent), 0 10px 24px rgba(var(--text-rgb), 0.06); transition: all 0.25s ease; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(1) { --stat-accent: #3b82f6; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(2) { --stat-accent: #10b981; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(3) { --stat-accent: #ef4444; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(4) { --stat-accent: #8b5cf6; }
+         .stat-pill-mini.clickable { cursor: pointer; }
+         .stat-pill-mini:hover { transform: translateY(-2px); border-color: var(--stat-accent); box-shadow: inset 4px 0 0 var(--stat-accent), 0 14px 30px color-mix(in srgb, var(--stat-accent) 20%, rgba(var(--text-rgb), 0.08)); }
+         .stat-pill-mini.is-active { background: color-mix(in srgb, var(--bg-card) 82%, var(--stat-accent) 18%); border-color: var(--stat-accent); }
+         .stat-pill-label { font-size: 11px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.08em; }
          .stat-pill-value { font-size: 20px; font-weight: 900; }
          .stat-pill-value.total { color: var(--text); }
          .stat-pill-value.active { color: var(--success); }

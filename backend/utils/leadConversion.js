@@ -129,6 +129,16 @@ async function performLeadToDealConversion(leadId, companyId, userId, dealData =
   }
 
   const deal = await Deal.create(payload);
+  
+  // Update lead to show it's been converted to a deal
+  await Lead.updateOne(
+    { _id: leadId },
+    { 
+      isConvertedToDeal: true, 
+      convertedDealId: deal._id,
+      lastActivityAt: new Date()
+    }
+  );
 
   return { customerId, dealId: deal._id, deal };
 }

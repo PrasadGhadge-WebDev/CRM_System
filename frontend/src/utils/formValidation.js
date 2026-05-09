@@ -14,7 +14,7 @@ export function normalizeEmail(value) {
 
 export function isValidEmail(value) {
   if (!value) return true
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim())
+  return /^[a-zA-Z0-9.]+@[a-zA-Z0-9.]+\.[a-zA-Z]{2,}$/.test(String(value).trim())
 }
 
 export function isValidUrl(value) {

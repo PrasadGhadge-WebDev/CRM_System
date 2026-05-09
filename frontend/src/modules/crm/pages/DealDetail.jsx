@@ -256,7 +256,12 @@ export default function DealDetail() {
           { id: 'activity', label: 'History', icon: 'reports' },
           { id: 'notes', label: 'Notes', icon: 'notes' },
           { id: 'payments', label: 'Payments', icon: 'activity' }
-        ].map(tab => (
+        ].filter(tab => {
+          if (isAccountant) {
+            return tab.id === 'info' || tab.id === 'payments'
+          }
+          return true
+        }).map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -391,14 +396,20 @@ export default function DealDetail() {
         isOpen={isEditModalOpen}
         deal={deal}
         onClose={() => setIsEditModalOpen(false)}
-        onSave={() => loadDealData()}
+        onSave={() => {
+          setIsEditModalOpen(false)
+          loadDealData()
+        }}
       />
 
       <BillingModal
         isOpen={isBillingModalOpen}
         deal={deal}
         onClose={() => setIsBillingModalOpen(false)}
-        onSave={() => loadDealData()}
+        onSave={() => {
+          setIsBillingModalOpen(false)
+          loadDealData()
+        }}
       />
 
       <TransactionModal
@@ -406,7 +417,10 @@ export default function DealDetail() {
         invoice={invoices[0]}
         deal={deal}
         onClose={() => setIsTransactionModalOpen(false)}
-        onSave={() => loadDealData()}
+        onSave={() => {
+          setIsTransactionModalOpen(false)
+          loadDealData()
+        }}
       />
 
       <style>{`

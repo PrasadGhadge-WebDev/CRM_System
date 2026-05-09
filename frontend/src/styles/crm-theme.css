@@ -14,9 +14,9 @@
 .crmContent :is(.card, .crmPanel, .card-premium, .info-card-premium, .preview-card-premium, .detail-card, .crm-detail-card, .lead-hero-shell, .note, .alert, .tableWrap, .glass-panel, .intel-form-card, .intel-card) {
   background: var(--bg-intelligence) !important;
   border: 1px solid var(--border) !important;
-  box-shadow: var(--shadow-md) !important;
+  box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-md) !important;
   backdrop-filter: none !important;
-  border-radius: 20px !important;
+  border-radius: var(--radius-md) !important;
   padding: 24px !important;
 }
 
@@ -29,7 +29,7 @@
 .crmContent :is(.btn, .btn-premium, .btn-premium-large) {
   border: 1px solid var(--border) !important;
   padding: 10px 20px !important;
-  border-radius: 12px !important;
+  border-radius: var(--radius-sm) !important;
   font-weight: 700 !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
@@ -93,7 +93,7 @@
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;

@@ -1,9 +1,8 @@
 import { useEffect, useCallback, useState } from 'react'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { Icon } from '../../../layouts/icons.jsx'
 import Pagination from '../../../components/Pagination.jsx'
-import PageHeader from '../../../components/PageHeader.jsx'
 import { customersApi } from '../../../services/customers.js'
 import { statusesApi } from '../../../services/statuses.js'
 import { confirmToast } from '../../../utils/confirmToast.jsx'
@@ -13,10 +12,27 @@ import { useAuth } from '../../../context/AuthContext.jsx'
 import { usersApi } from '../../../services/users.js'
 import SearchableSelect from '../components/SearchableSelect.jsx'
 import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
-import StatusDropdown from '../components/StatusDropdown.jsx'
+import LeadAssignModal from '../components/LeadAssignModal.jsx'
 
 function stopRowNavigation(event) {
   event.stopPropagation()
+}
+
+function getCustomerFinancialSnapshot(customer) {
+  const latestDeal = customer?.latest_deal || null
+  const dealValue = Number(latestDeal?.value ?? customer?.total_deal_value ?? 0) || 0
+  const paidAmount = Number(latestDeal?.paid_amount ?? customer?.paid_amount ?? 0) || 0
+  const pendingAmountFromDeal = latestDeal?.value != null
+    ? Math.max(0, dealValue - paidAmount)
+    : null
+  const pendingAmount = pendingAmountFromDeal ?? Math.max(0, Number(customer?.pending_amount ?? (dealValue - paidAmount) ?? 0) || 0)
+  const paymentStatus = latestDeal?.payment_status || customer?.payment_status || (pendingAmount === 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending')
+
+  return {
+    paidAmount,
+    pendingAmount,
+    paymentStatus,
+  }
 }
 
 export default function CustomersList() {
@@ -27,22 +43,21 @@ export default function CustomersList() {
   const isAdmin = currentUser?.role === 'Admin'
   const isManager = currentUser?.role === 'Manager'
   const isEmployee = currentUser?.role === 'Employee'
+  const isAccountant = currentUser?.role === 'Accountant'
   const isAdminOrManager = isAdmin || isManager
 
   const canModify = isAdmin || isManager || isEmployee
-  const isAccountant = currentUser?.role === 'Accountant'
   const canDelete = isAdmin
-  const canImportExport = isAdmin || isManager
-  const canViewReports = isAdmin || isManager || (currentUser?.role === 'Accountant')
 
   const [items, setItems] = useState([])
   const [total, setTotal] = useState(0)
   const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
   const [summary, setSummary] = useState({ total: 0, byStatus: {} })
   const [statusOptions, setStatusOptions] = useState([])
+  const [selectedCustomers, setSelectedCustomers] = useState([])
+  const [assignModal, setAssignModal] = useState({ open: false, customer: null })
 
   useToastFeedback({ error })
 
@@ -120,6 +135,17 @@ export default function CustomersList() {
     statusesApi.list('customer').then(res => setStatusOptions(res || []))
   }, [loadCustomers])
 
+  const handleSelectAll = (checked) =>
+    setSelectedCustomers(checked ? items.map((item) => String(item.id || item._id)) : [])
+
+  const handleSelectCustomer = (id, checked) => {
+    if (checked) {
+      setSelectedCustomers((prev) => [...new Set([...prev, String(id)])])
+    } else {
+      setSelectedCustomers((prev) => prev.filter((item) => String(item) !== String(id)))
+    }
+  }
+
   async function onDelete(id) {
     if (!canDelete) return toast.error('Admin permission required')
     const confirmed = await confirmToast('Move this customer to trash?', { confirmLabel: 'Move to Trash', type: 'danger' })
@@ -127,22 +153,23 @@ export default function CustomersList() {
     try { await customersApi.remove(id); toast.success('Customer moved to trash'); loadCustomers(); } catch { toast.error('Delete failed') }
   }
 
-  async function onExport() {
-    setBusy(true)
+  async function handleAssignSubmit(employeeId, reason) {
+    const ids = assignModal.customer ? [assignModal.customer.id || assignModal.customer._id] : selectedCustomers
     try {
-      const blob = await customersApi.exportCsv({ q: debouncedQ })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a'); a.href = url; a.download = 'customers.csv'; a.click();
-    } catch { toast.error('Export failed') } finally { setBusy(false) }
-  }
-
-  async function onUpdateStatus(id, newStatus) {
-    try {
-      await customersApi.update(id, { status: newStatus })
-      toast.success(`Status updated to ${newStatus}`)
-      setItems(prev => prev.map(item => (item.id === id || item._id === id) ? { ...item, status: newStatus } : item))
+      if (ids.length === 1) {
+        await customersApi.update(ids[0], { assigned_to: employeeId, assignment_reason: reason })
+      } else {
+        // Bulk assign logic if supported by API, otherwise loop
+        for (const id of ids) {
+           await customersApi.update(id, { assigned_to: employeeId, assignment_reason: reason })
+        }
+      }
+      toast.success('Assignment updated successfully')
+      setAssignModal({ open: false, customer: null })
+      setSelectedCustomers([])
+      loadCustomers()
     } catch (err) {
-      toast.error(err.message || 'Update failed')
+      toast.error(err.message || 'Assignment failed')
     }
   }
 
@@ -186,19 +213,18 @@ export default function CustomersList() {
         </div>
 
         <div className="crm-stats-bar-compact overflow-x-auto pb-8">
-          <div className="stat-pill-mini clickable" onClick={() => setFilters(f => ({ ...f, status: '', page: 1 }))} style={{ borderBottom: filters.status === '' ? '2px solid var(--primary)' : '' }}>
+          <div className={`stat-pill-mini clickable ${filters.status === '' ? 'is-active' : ''}`} onClick={() => setFilters(f => ({ ...f, status: '', page: 1 }))}>
             <span className="stat-pill-label">ALL CLIENTS</span>
             <span className="stat-pill-value total">{summary.total}</span>
           </div>
           {Object.entries(summary.byStatus).map(([name, count]) => (
             <div 
               key={name} 
-              className="stat-pill-mini clickable" 
+              className={`stat-pill-mini clickable ${filters.status === name ? 'is-active' : ''}`} 
               onClick={() => setFilters(f => ({ ...f, status: name, page: 1 }))}
-              style={{ borderBottom: filters.status === name ? '2px solid var(--primary)' : '' }}
             >
               <span className="stat-pill-label">{name.toUpperCase()}</span>
-              <span className="stat-pill-value">{count}</span>
+              <span className={`stat-pill-value ${String(name).toLowerCase()}`}>{count}</span>
             </div>
           ))}
         </div>
@@ -208,9 +234,8 @@ export default function CustomersList() {
             <ModernSearchBar
               value={filters.q}
               onChange={e => setFilters(f => ({ ...f, q: e.target.value, page: 1 }))}
-              placeholder="Search by name, phone, city, status, company, GST, website..."
+              placeholder="Search by name, phone, city, status, company, GST..."
             />
-
 
             <SearchableSelect
               value={filters.status}
@@ -254,6 +279,17 @@ export default function CustomersList() {
               icon="calendar"
             />
 
+            {selectedCustomers.length > 0 && isAdminOrManager && (
+              <button
+                className="btn-premium-mini bulk-assign-btn"
+                onClick={() => setAssignModal({ open: true, customer: null })}
+              >
+                <Icon name="user" size={14} />
+                <span>Assign Clients</span>
+                <span className="selection-count">{selectedCustomers.length}</span>
+              </button>
+            )}
+
             {filters.dateRangeType === 'custom' && (
               <div className="flex items-center gap-4 animate-fade-in">
                 <input 
@@ -271,25 +307,6 @@ export default function CustomersList() {
                 />
               </div>
             )}
-
-
-            {(filters.q || filters.status || filters.assigned_to || filters.dateRangeType !== 'all') && (
-              <button 
-                className="btn-premium-mini reset-btn"
-                onClick={() => {
-                  setFilters({
-                    q: '', status: '', city: '', assigned_to: '',
-                    startDate: '', endDate: '', dateRangeType: 'all',
-                    sortField: 'created_at', sortOrder: 'desc',
-                    page: 1, limit: 20
-                  })
-                }}
-                style={{ height: '42px', width: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                title="Reset Filters"
-              >
-                <Icon name="refresh" size={14} />
-              </button>
-            )}
           </div>
         </div>
 
@@ -302,29 +319,30 @@ export default function CustomersList() {
           </div>
         ) : (
           <>
-            <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div className="crm-table-wrap shadow-soft">
               <div className="crm-table-scroll">
                 <table className="crm-table">
                   <thead style={{ background: 'var(--bg-surface)' }}>
                     <tr>
+                      <th style={{ width: '50px' }}>
+                        <input
+                          type="checkbox"
+                          checked={items.length > 0 && selectedCustomers.length === items.length}
+                          onChange={(e) => handleSelectAll(e.target.checked)}
+                        />
+                      </th>
                       <th style={{ minWidth: '200px' }} className="sortable" onClick={() => handleSort('name')}>
-                        NAME <Icon name={getSortIcon('name')} size={12} />
-                      </th>
-                      <th style={{ minWidth: '150px' }} className="sortable" onClick={() => handleSort('phone')}>
-                        PHONE <Icon name={getSortIcon('phone')} size={12} />
-                      </th>
-                      <th style={{ minWidth: '170px' }} className="sortable" onClick={() => handleSort('assigned_to')}>
-                        ASSIGNED TO <Icon name={getSortIcon('assigned_to')} size={12} />
+                        CUSTOMER NAME <Icon name={getSortIcon('name')} size={12} />
                       </th>
                       <th style={{ width: '130px' }} className="sortable" onClick={() => handleSort('status')}>
                         STATUS <Icon name={getSortIcon('status')} size={12} />
                       </th>
-                      <th style={{ minWidth: '150px' }} className="sortable" onClick={() => handleSort('created_at')}>
-                        CREATED DATE <Icon name={getSortIcon('created_at')} size={12} />
+                      <th style={{ minWidth: '180px' }}>CONTACT</th>
+                      <th style={{ minWidth: '170px' }} className="sortable" onClick={() => handleSort('assigned_to')}>
+                        ASSIGNED TO <Icon name={getSortIcon('assigned_to')} size={12} />
                       </th>
-                      <th style={{ minWidth: '180px' }} className="sortable" onClick={() => handleSort('last_interaction_date')}>
-                        LAST INTERACTION <Icon name={getSortIcon('last_interaction_date')} size={12} />
-                      </th>
+                      <th style={{ minWidth: '160px' }}>ASSIGNED DEAL</th>
+                      <th style={{ minWidth: '150px' }}>PENDING & STATUS</th>
                       <th className="text-right" style={{ width: '100px' }}>ACTIONS</th>
                     </tr>
                   </thead>
@@ -332,57 +350,86 @@ export default function CustomersList() {
                     {items.length > 0 ? (
                       items.map(customer => {
                         const id = customer.id || customer._id
+                        const isSelected = selectedCustomers.includes(String(id))
+                        const financials = getCustomerFinancialSnapshot(customer)
                         return (
                           <tr
                             key={String(id)}
-                            className="crm-table-row crm-clickable-row"
-                            tabIndex={0}
+                            className={`crm-table-row crm-clickable-row ${isSelected ? 'selected-row' : ''}`}
                             onClick={() => openCustomerDetails(id)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault()
-                                openCustomerDetails(id)
-                              }
-                            }}
                           >
-                            <td>
-                              <div className="customersIdentityCell">
-                                <div className="customersPrimaryText">{customer.name}</div>
-                                <div className="customersSecondaryText">{customer.company_name || 'Individual'}</div>
-                              </div>
-                            </td>
-                            <td>
-                              <div className="contactMain">{customer.phone || '—'}</div>
-                              <div className="contactSub">{customer.email || '—'}</div>
-                            </td>
-                            <td>
-                              <div className="customersOwnerCell">
-                                <span className="ownerName">{customer.assigned_to?.name || 'Unassigned'}</span>
-                                <span className="ownerRole">{customer.assigned_to?.role || 'Staff'}</span>
-                              </div>
-                            </td>
                             <td onClick={stopRowNavigation}>
-                              <StatusDropdown 
-                                status={customer.status} 
-                                options={statusOptions.length > 0 
-                                  ? statusOptions.map(s => ({ name: s.name, color: s.color }))
-                                  : (Object.keys(summary.byStatus).length > 0 
-                                      ? Object.keys(summary.byStatus).map(name => ({ name, color: 'var(--primary)' }))
-                                      : ['Active', 'Inactive', 'Lost', 'Repeat'].map(name => ({ name, color: 'var(--primary)' }))
-                                    )
-                                } 
-                                onChange={(newStatus) => onUpdateStatus(id, newStatus)}
-                                disabled={!isAdminOrManager}
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => handleSelectCustomer(id, e.target.checked)}
                               />
                             </td>
                             <td>
-                              <div className="customersSecondaryText">
-                                {customer.created_at ? new Date(customer.created_at).toLocaleDateString() : '—'}
+                              <div className="leadsIdentityCell">
+                                <div className="leadsPrimaryText">{customer.name}</div>
+                                <div className="leadsSecondaryText" style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                                  JOINED: {customer.created_at ? new Date(customer.created_at).toLocaleDateString('en-GB') : '—'}
+                                </div>
                               </div>
                             </td>
                             <td>
-                              <div className="customersSecondaryText">
-                                {customer.last_interaction ? new Date(customer.last_interaction).toLocaleDateString() : '—'}
+                               <div className="leadsIdentityCell">
+                                 <div className="customersTypeBadge" style={{ 
+                                    background: customer.status === 'Active' ? 'var(--success-soft)' : 
+                                                customer.status === 'Inactive' ? 'var(--danger-soft)' : 'var(--bg-surface)',
+                                    color: customer.status === 'Active' ? 'var(--success)' : 
+                                           customer.status === 'Inactive' ? 'var(--danger)' : 'var(--text-dimmed)',
+                                    width: 'fit-content'
+                                  }}>
+                                    {customer.status || 'Active'}
+                                  </div>
+                                  <div className="leadsSecondaryText" style={{ fontSize: '0.65rem', marginTop: '4px', whiteSpace: 'nowrap' }}>
+                                    LAST: {customer.last_interaction ? new Date(customer.last_interaction).toLocaleDateString('en-GB') : 'NEVER'}
+                                  </div>
+                               </div>
+                            </td>
+                            <td>
+                              <div className="leadsContactCell">
+                                <div className="contactMain">{customer.phone || '—'}</div>
+                                <div className="contactQuickActions">
+                                   <a href={`tel:${customer.phone}`} className="action-icon-mini phone" onClick={stopRowNavigation} title="Call"><Icon name="phone" size={12} /></a>
+                                   <a href={`https://wa.me/${customer.phone?.replace(/\D/g, '')}`} target="_blank" className="action-icon-mini whatsapp" onClick={stopRowNavigation} title="WhatsApp"><Icon name="whatsapp" size={12} /></a>
+                                   <a href={`mailto:${customer.email}`} className="action-icon-mini email" onClick={stopRowNavigation} title="Email"><Icon name="mail" size={12} /></a>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="leadsOwnerCell">
+                                <span className="ownerName">{customer.assigned_to?.name || 'Unassigned'}</span>
+                                <span className="ownerRole">{customer.assigned_to?.role || 'Support'}</span>
+                              </div>
+                            </td>
+                            <td>
+                              {customer.latest_deal ? (
+                                <div className="leadsIdentityCell">
+                                  <div className="leadsPrimaryText" style={{ color: 'var(--primary)' }}>{customer.latest_deal.name}</div>
+                                  <div className="leadsSecondaryText">{customer.latest_deal.stage}</div>
+                                </div>
+                              ) : (
+                                <span className="leadsSecondaryText" style={{ opacity: 0.5 }}>No Active Deal</span>
+                              )}
+                            </td>
+                            <td>
+                              <div className="leadsIdentityCell">
+                                <div className="leadsPrimaryText" style={{ color: financials.pendingAmount > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 800 }}>
+                                  ₹{financials.pendingAmount.toLocaleString()}
+                                </div>
+                                <div className="customersTypeBadge" style={{ 
+                                  background: financials.pendingAmount === 0 ? 'var(--success-soft)' : 
+                                              (financials.paidAmount > 0) ? 'var(--warning-soft)' : 'var(--danger-soft)',
+                                  color: financials.pendingAmount === 0 ? 'var(--success)' : 
+                                         (financials.paidAmount > 0) ? 'var(--warning)' : 'var(--danger)',
+                                  width: 'fit-content',
+                                  marginTop: '4px'
+                                }}>
+                                  {financials.paymentStatus}
+                                </div>
                               </div>
                             </td>
                             <td className="text-right" onClick={stopRowNavigation}>
@@ -391,20 +438,39 @@ export default function CustomersList() {
                                   <button
                                     className="modern-action-btn"
                                     onClick={() => navigate(`/customers/${id}/edit`)}
-                                    title="Edit Customer"
+                                    title="Edit"
                                   >
                                     <Icon name="edit" size={14} />
                                   </button>
                                 )}
-                                {canDelete && (
-                                  <button
-                                    className="modern-action-btn danger"
-                                    onClick={() => onDelete(id)}
-                                    title="Delete"
-                                  >
-                                    <Icon name="trash" size={14} />
-                                  </button>
-                                )}
+                                
+                                <details className="crm-actions-overflow">
+                                  <summary className="modern-action-btn" title="More">
+                                    <Icon name="more-vertical" size={14} />
+                                  </summary>
+                                  <div className="overflow-menu-content shadow-soft">
+                                    {!isAccountant && (
+                                      <button className="overflow-item" onClick={() => setAssignModal({ open: true, customer })}>
+                                        <Icon name="refresh" size={14} />
+                                        <span>Assign Owner</span>
+                                      </button>
+                                    )}
+                                    <button className="overflow-item" onClick={() => navigate(`/payments?customerId=${id}`)}>
+                                      <Icon name="billing" size={14} />
+                                      <span>View Ledger</span>
+                                    </button>
+                                    <button className="overflow-item" onClick={() => navigate(`/payments/new?customer_id=${id}`)}>
+                                      <Icon name="dollar-sign" size={14} />
+                                      <span>Add Payment</span>
+                                    </button>
+                                    {canDelete && (
+                                      <button className="overflow-item danger" onClick={() => onDelete(id)}>
+                                        <Icon name="trash" size={14} />
+                                        <span>Remove</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                </details>
                               </div>
                             </td>
                           </tr>
@@ -412,7 +478,7 @@ export default function CustomersList() {
                       })
                     ) : (
                       <tr>
-                        <td colSpan={7}>
+                        <td colSpan={8}>
                           <div className="emptyState" style={{ padding: '80px 0' }}>
                             <h3>No customers found</h3>
                             <p className="muted">Expand your filters or add a new client to the database.</p>
@@ -429,117 +495,135 @@ export default function CustomersList() {
         )}
       </section>
 
-      <style>{`
-        .tableAvatarFallback { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, var(--primary-soft), rgba(59, 130, 246, 0.2)); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.1); }
-        .customersIdentityCell { display: flex; flex-direction: column; gap: 2px; }
-        .customersPrimaryText { color: var(--text); font-size: 0.95rem; font-weight: 700; }
-        .customersSecondaryText { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-        
-        .customersContactCell { display: flex; flex-direction: column; gap: 2px; }
-        .contactMain { color: var(--text); font-size: 0.85rem; font-weight: 700; }
-        .contactSub { color: var(--text-muted); font-size: 0.75rem; font-weight: 500; }
+      <LeadAssignModal
+        isOpen={assignModal.open}
+        selectedCount={assignModal.customer ? 1 : selectedCustomers.length}
+        employees={employees}
+        onClose={() => setAssignModal({ open: false, customer: null })}
+        onAssign={handleAssignSubmit}
+      />
 
-        .customersOwnerCell { display: flex; flex-direction: column; gap: 2px; }
+      <style>{`
+        .leadsIdentityCell { display: flex; flex-direction: column; gap: 2px; }
+        .leadsPrimaryText { color: var(--text); font-size: 0.95rem; font-weight: 700; }
+        .leadsSecondaryText { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        
+        .leadsContactCell { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+        .contactMain { color: var(--text); font-size: 0.85rem; font-weight: 800; white-space: nowrap; }
+        .contactQuickActions { display: flex; gap: 6px; }
+        .action-icon-mini { 
+          width: 28px; 
+          height: 28px; 
+          border-radius: 8px; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          background: var(--bg-surface); 
+          color: var(--text-dimmed); 
+          border: 1px solid var(--border-subtle);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .action-icon-mini.phone { color: #3b82f6; background: #eff6ff; border-color: #bfdbfe; }
+        .action-icon-mini.whatsapp { color: #22c55e; background: #f0fdf4; border-color: #bbf7d0; }
+        .action-icon-mini.email { color: #ef4444; background: #fef2f2; border-color: #fecaca; }
+        
+        .action-icon-mini:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .action-icon-mini.phone:hover { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .action-icon-mini.whatsapp:hover { background: #22c55e; color: white; border-color: #22c55e; }
+        .action-icon-mini.email:hover { background: #ef4444; color: white; border-color: #ef4444; }
+
+        .leadsOwnerCell { display: flex; flex-direction: column; gap: 2px; }
         .ownerName { color: var(--text); font-size: 0.85rem; font-weight: 700; }
         .ownerRole { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
 
         .customersTypeBadge { 
           padding: 4px 10px;
-          background: var(--bg-surface);
           border-radius: 8px;
           font-size: 0.65rem; 
           font-weight: 800; 
-          color: var(--text-muted); 
           letter-spacing: 0.05em; 
           text-transform: uppercase;
-          border: 1px solid var(--border);
+          border: 1px solid transparent;
         }
-        .crm-clickable-row { cursor: pointer; transition: all 0.2s; }
-        .crm-clickable-row:hover { background: var(--bg-surface) !important; }
-        .crm-clickable-row:focus { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+        .crm-table-row { cursor: pointer; transition: all 0.2s; }
+        .crm-table-row:hover { background: rgba(59, 130, 246, 0.03) !important; }
+        .crm-table-row.selected-row { background: var(--primary-soft) !important; }
         
-        .crm-action-group { display: flex; gap: 10px; justify-content: flex-end; }
-        .modern-action-btn { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-        .modern-action-btn:hover { background: var(--bg-card); color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px var(--primary-soft); }
-        .modern-action-btn.danger:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15); }
+        .crm-action-group { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+        .modern-action-btn { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .modern-action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); }
 
-        /* Glass Filter Effect */
-        .modern-filter-panel { 
-           background: var(--bg-card); 
-           backdrop-filter: blur(10px); 
-           border: 1px solid var(--border); 
-           border-radius: 24px; 
-           padding: 24px;
-           margin-bottom: 24px;
-        }
-
-        .crm-status-pill-modern {
-           padding: 4px 12px;
-           border-radius: 8px;
-           font-size: 0.65rem;
-           font-weight: 700;
-           text-transform: uppercase;
-           letter-spacing: 0.05em;
-           display: inline-flex;
-           align-items: center;
-           gap: 6px;
-           background: var(--bg-surface);
-           color: var(--text-muted);
-           border: 1px solid var(--border-strong);
-        }
-        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
-
-        .status-active { color: #10b981; border-color: #bbf7d0; background: #f0fdf4; }
-        .status-active .status-dot { background: #10b981; box-shadow: 0 0 6px #10b981; }
-
-        .status-inactive { color: #64748b; border-color: #e2e8f0; background: #f8fafc; }
-        .status-inactive .status-dot { background: #64748b; }
-
-        .status-lost { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
-        .status-lost .status-dot { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
-
-        .status-repeat { color: #8b5cf6; border-color: #ddd6fe; background: #f5f3ff; }
-        .status-repeat .status-dot { background: #8b5cf6; box-shadow: 0 0 6px #8b5cf6; }
-
-         .users-page-header { margin-bottom: 8px; }
-         .users-title { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
-         .users-subtitle { font-size: 0.85rem; color: var(--text-dimmed); font-weight: 500; }
-
-         .unified-action-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 8px; flex-wrap: wrap; }
-         .search-filter-group { display: flex; align-items: center; gap: 16px; flex: 1; justify-content: space-between; }
-         .filter-select { max-width: 150px; }
-         .btn-clear-filters { background: none; border: none; color: var(--primary); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
-         .btn-clear-filters:hover { text-decoration: underline; }
-
-         .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; justify-content: space-between; }
-         .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 10px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 130px; box-shadow: var(--shadow-sm); }
-         .stat-pill-label { font-size: 10px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
-         .stat-pill-value { font-size: 20px; font-weight: 900; }
-         .stat-pill-value.total { color: var(--text); }
-         .stat-pill-value.active { color: var(--success); }
-         .stat-pill-value.inactive { color: var(--danger); }
-         .stat-pill-value.pending { color: var(--warning); }
-
-         .crm-input { width: 100%; background: var(--bg-surface) !important; border: 1px solid var(--border-strong) !important; border-radius: 10px !important; padding: 8px 14px !important; color: var(--text) !important; font-size: 0.85rem !important; transition: all 0.2s; }
-
+        .crm-actions-overflow { position: relative; }
+        .crm-actions-overflow summary { list-style: none; outline: none; }
+        .crm-actions-overflow summary::-webkit-details-marker { display: none; }
          
-         .add-user-btn { background: var(--primary) !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 0 20px !important; font-weight: 700 !important; height: 38px; display: flex; align-items: center; gap: 6px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2); font-size: 0.85rem; flex-shrink: 0; }
-         .add-user-btn:hover { background: var(--primary-hover) !important; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4); }
-
-         .crm-table th { padding: 12px 16px !important; border-bottom: 2px solid var(--border-strong) !important; }
-         .crm-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--border-strong) !important; }
+        .overflow-menu-content { 
+          position: absolute; 
+          right: 0; 
+          top: calc(100% + 8px); 
+          background: var(--bg-card); 
+          border: 1px solid var(--border); 
+          border-radius: 16px; 
+          padding: 8px; 
+          z-index: 1000; 
+          min-width: 200px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+          backdrop-filter: blur(20px);
+        }
          
-         .crm-table th.sortable { cursor: pointer; transition: background 0.2s; position: relative; padding-right: 24px !important; }
-         .crm-table th.sortable:hover { background: var(--bg-card) !important; }
-         .crm-table th.sortable i { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); opacity: 0.5; }
-         .crm-table th.sortable:hover i { opacity: 1; color: var(--primary); }
+        .overflow-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 14px;
+          border-radius: 10px;
+          color: var(--text);
+          font-size: 0.82rem;
+          font-weight: 700;
+          text-decoration: none;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          text-align: left;
+          width: 100%;
+          transition: all 0.2s;
+        }
+        .overflow-item:hover { background: var(--bg-surface); color: var(--primary); }
+        .overflow-item.danger:hover { background: #fee2e2; color: #ef4444; }
 
-         @media (max-width: 1000px) {
-            .crm-stats-bar-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-            .stat-pill-mini { min-width: 0; padding: 10px; }
-            .stat-pill-value { font-size: 1.1rem; }
-            .add-user-btn { width: 100%; justify-content: center; }
-         }
+        .users-page-header { margin-bottom: 8px; }
+        .users-title { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+        .users-subtitle { font-size: 0.85rem; color: var(--text-dimmed); font-weight: 500; }
+
+        .unified-action-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 8px; flex-wrap: wrap; }
+        .search-filter-group { display: flex; align-items: center; gap: 16px; flex: 1; justify-content: space-between; }
+
+        .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; justify-content: space-between; }
+        .stat-pill-mini { --stat-accent: var(--card-accent); background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-surface) 12%); border: 1px solid var(--border-strong); padding: 14px 18px; border-radius: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px; box-shadow: inset 4px 0 0 var(--stat-accent), 0 10px 24px rgba(var(--text-rgb), 0.06); transition: all 0.25s ease; }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(1) { --stat-accent: #3b82f6; }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(2) { --stat-accent: #10b981; }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(3) { --stat-accent: #f59e0b; }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(4) { --stat-accent: #8b5cf6; }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(5) { --stat-accent: #ef4444; }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(6) { --stat-accent: #14b8a6; }
+        .stat-pill-mini.clickable { cursor: pointer; }
+        .stat-pill-mini:hover { transform: translateY(-2px); border-color: var(--stat-accent); box-shadow: inset 4px 0 0 var(--stat-accent), 0 14px 30px color-mix(in srgb, var(--stat-accent) 20%, rgba(var(--text-rgb), 0.08)); }
+        .stat-pill-mini.is-active { background: color-mix(in srgb, var(--bg-card) 82%, var(--stat-accent) 18%); border-color: var(--stat-accent); }
+        .stat-pill-label { font-size: 11px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.08em; }
+        .stat-pill-value { font-size: 20px; font-weight: 900; }
+
+        .bulk-assign-btn { background: #10b981 !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 0 16px !important; font-weight: 700 !important; height: 38px; display: flex; align-items: center; gap: 8px; transition: all 0.3s; font-size: 0.85rem; flex-shrink: 0; }
+        .bulk-assign-btn:hover { background: #059669 !important; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        .selection-count { background: rgba(255, 255, 255, 0.2); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; margin-left: 4px; font-weight: 800; }
+
+        @media (max-width: 1000px) {
+          .crm-stats-bar-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+          .stat-pill-mini { min-width: 0; padding: 10px; }
+        }
       `}</style>
     </div>
   )

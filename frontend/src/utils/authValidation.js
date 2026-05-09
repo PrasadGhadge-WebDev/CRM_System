@@ -1,4 +1,4 @@
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_REGEX = /^[a-zA-Z0-9.]+@[a-zA-Z0-9.]+\.[a-zA-Z]{2,}$/
 const PHONE_REGEX = /^\d{10}$/
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/
 const FULL_NAME_REGEX = /^[A-Za-z\s'-]+$/

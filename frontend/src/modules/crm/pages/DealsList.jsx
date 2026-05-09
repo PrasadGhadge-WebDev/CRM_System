@@ -15,6 +15,9 @@ import { useToastFeedback } from '../../../utils/useToastFeedback.js'
 import DealsKanban from './DealsKanban.jsx'
 import DealModal from '../components/DealModal.jsx'
 import StatusDropdown from '../components/StatusDropdown.jsx'
+import FollowupModal from '../../../components/FollowupModal.jsx'
+import LeadAssignModal from '../components/LeadAssignModal.jsx'
+import LeadNoteModal from '../components/LeadNoteModal.jsx'
 
 const STAGE_OPTIONS = [
   { name: 'New', color: '#6366f1' },
@@ -76,6 +79,9 @@ export default function DealsList() {
   })
   
   const [formModal, setFormModal] = useState({ open: false, deal: null })
+  const [followupModal, setFollowupModal] = useState({ open: false, deal: null })
+  const [assignModal, setAssignModal] = useState({ open: false, deal: null })
+  const [noteModal, setNoteModal] = useState({ open: false, deal: null })
 
   useToastFeedback({ error })
   const debouncedQ = useDebouncedValue(q, 500)
@@ -289,19 +295,18 @@ export default function DealsList() {
         </div>
 
         <div className="crm-stats-bar-compact overflow-x-auto pb-8">
-          <div className="stat-pill-mini clickable" onClick={() => setStage('')} style={{ borderBottom: stage === '' ? '2px solid var(--primary)' : '' }}>
+          <div className={`stat-pill-mini clickable ${stage === '' ? 'is-active' : ''}`} onClick={() => setStage('')}>
             <span className="stat-pill-label">ALL DEALS</span>
             <span className="stat-pill-value total">{summary.total}</span>
           </div>
           {Object.entries(summary.byStage).map(([name, count]) => (
             <div 
               key={name} 
-              className="stat-pill-mini clickable" 
+              className={`stat-pill-mini clickable ${stage === name ? 'is-active' : ''}`} 
               onClick={() => { setStage(name); setPage(1); }}
-              style={{ borderBottom: stage === name ? '2px solid var(--primary)' : '' }}
             >
               <span className="stat-pill-label">{name.toUpperCase()}</span>
-              <span className="stat-pill-value">{count}</span>
+              <span className={`stat-pill-value ${String(name).toLowerCase()}`}>{count}</span>
             </div>
           ))}
           <div className="stat-pill-mini">
@@ -323,21 +328,63 @@ export default function DealsList() {
               placeholder="Search by name, ID, description, stage, priority, lifecycle, payment status..."
             />
 
-            <SearchableSelect
-              value={stage}
-              onChange={(val) => { setStage(val); setPage(1); }}
-              options={[{ value: '', label: 'All Stages' }, ...STAGE_OPTIONS.map(s => ({ value: s.name, label: s.name }))]}
-              placeholder="All Stages"
-              icon="activity"
-            />
+            {isAccountant && (
+              <>
+                <SearchableSelect
+                  value={searchParams.get('payment_status') || ''}
+                  onChange={(val) => { 
+                    const next = new URLSearchParams(searchParams);
+                    if (val) next.set('payment_status', val); else next.delete('payment_status');
+                    setSearchParams(next);
+                    setPage(1);
+                  }}
+                  options={[
+                    { value: '', label: 'Payment: All' },
+                    { value: 'Paid', label: 'Paid' },
+                    { value: 'Partial', label: 'Partial' },
+                    { value: 'Unpaid', label: 'Unpaid' }
+                  ]}
+                  placeholder="Payment Status"
+                  icon="billing"
+                />
+                <SearchableSelect
+                  value={searchParams.get('invoice_status') || ''}
+                  onChange={(val) => { 
+                    const next = new URLSearchParams(searchParams);
+                    if (val) next.set('invoice_status', val); else next.delete('invoice_status');
+                    setSearchParams(next);
+                    setPage(1);
+                  }}
+                  options={[
+                    { value: '', label: 'Invoice: All' },
+                    { value: 'Invoiced', label: 'Invoiced' },
+                    { value: 'Pending', label: 'Pending' }
+                  ]}
+                  placeholder="Invoice Status"
+                  icon="reports"
+                />
+              </>
+            )}
 
-            <SearchableSelect
-              value={assignedTo}
-              onChange={(val) => { setAssignedTo(val); setPage(1); }}
-              options={[{ value: '', label: 'All Assigned To' }, ...employees.map(emp => ({ value: emp.id, label: emp.name }))]}
-              placeholder="All Assigned To"
-              icon="user"
-            />
+            {!isAccountant && (
+              <>
+                <SearchableSelect
+                  value={stage}
+                  onChange={(val) => { setStage(val); setPage(1); }}
+                  options={[{ value: '', label: 'All Stages' }, ...STAGE_OPTIONS.map(s => ({ value: s.name, label: s.name }))]}
+                  placeholder="All Stages"
+                  icon="activity"
+                />
+
+                <SearchableSelect
+                  value={assignedTo}
+                  onChange={(val) => { setAssignedTo(val); setPage(1); }}
+                  options={[{ value: '', label: 'All Assigned To' }, ...employees.map(emp => ({ value: emp.id, label: emp.name }))]}
+                  placeholder="All Assigned To"
+                  icon="user"
+                />
+              </>
+            )}
 
             <SearchableSelect
               value={dateRange}
@@ -348,6 +395,7 @@ export default function DealsList() {
                 { value: 'yesterday', label: 'Yesterday' },
                 { value: 'week', label: 'This Week' },
                 { value: 'month', label: 'This Month' },
+                { value: 'overdue', label: 'Overdue' },
                 { value: 'custom', label: 'Custom Range' }
               ]}
               placeholder="Date: All"
@@ -429,13 +477,29 @@ export default function DealsList() {
                         <table className="crm-table">
                           <thead>
                             <tr>
-                              <th style={{ minWidth: '180px' }}>Deal Name</th>
-                              <th style={{ minWidth: '160px' }}>Customer</th>
-                              <th style={{ minWidth: '120px' }} className="text-right">Value</th>
-                              <th style={{ minWidth: '130px' }} className="text-center">Stage</th>
-                              <th style={{ minWidth: '120px' }}>Assigned To</th>
-                              <th style={{ minWidth: '130px' }}>Last Updated</th>
-                              <th style={{ minWidth: '80px' }} className="text-right">Actions</th>
+                              <th style={{ minWidth: '180px' }}>DEAL NAME</th>
+                              <th style={{ minWidth: '160px' }}>CUSTOMER</th>
+                              {isAccountant ? (
+                                <>
+                                  <th style={{ minWidth: '120px' }}>DEAL VALUE</th>
+                                  <th style={{ minWidth: '130px' }} className="text-center">INVOICE STATUS</th>
+                                  <th style={{ minWidth: '130px' }}>PAYMENT STATUS</th>
+                                  <th style={{ minWidth: '120px' }}>PAID AMOUNT</th>
+                                  <th style={{ minWidth: '130px' }}>PENDING AMOUNT</th>
+                                  <th style={{ minWidth: '120px' }}>DUE DATE</th>
+                                  <th style={{ minWidth: '120px' }}>METHOD</th>
+                                  <th style={{ minWidth: '140px' }}>ASSIGNED TO</th>
+                                </>
+                              ) : (
+                                <>
+                                  <th style={{ minWidth: '120px' }}>VALUE</th>
+                                  <th style={{ minWidth: '120px' }}>STAGE</th>
+                                  <th style={{ minWidth: '140px' }}>ASSIGNED TO</th>
+                                  <th style={{ minWidth: '130px' }}>EXPECTED CLOSE</th>
+                                  <th style={{ minWidth: '130px' }}>LAST ACTIVITY</th>
+                                </>
+                              )}
+                              <th style={{ minWidth: '150px' }} className="text-right">ACTIONS</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -448,70 +512,208 @@ export default function DealsList() {
                               >
                                 <td style={{ padding: '12px 16px' }}>
                                   <div className="usersPrimaryText" style={{ fontWeight: 700 }}>{item.name}</div>
+                                  <div className="text-xs muted uppercase" style={{ marginTop: '2px' }}>{item.readable_id || 'DL-PENDING'}</div>
                                 </td>
                                 <td style={{ padding: '12px 16px' }}>
                                   <div className="usersPrimaryText" style={{ fontWeight: 700, color: 'var(--text)' }}>
                                     {item.customer_id?.name || '—'}
                                   </div>
-                                  {item.customer_id?.phone && (
-                                    <div className="usersEmailText" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
-                                      {item.customer_id.phone}
-                                    </div>
-                                  )}
+                                  <div className="text-xs muted uppercase">{item.customer_id?.company || 'Personal'}</div>
                                 </td>
-                                <td className="text-right" style={{ padding: '12px 16px' }}>
-                                  <div className="usersPrimaryText" style={{ fontWeight: 800, color: 'var(--text-dark)' }}>
-                                    ₹{item.value?.toLocaleString('en-IN') || '0'}
-                                  </div>
-                                </td>
-                                <td className="text-center" style={{ padding: '12px 16px' }} onClick={stopRowNavigation}>
-                                  <StatusDropdown 
-                                    status={item.stage} 
-                                    options={STAGE_OPTIONS} 
-                                    onChange={(newStage) => onUpdateStage(item.id, newStage)}
-                                    disabled={!canAssign}
-                                    bypassRules={true}
-                                  />
-                                </td>
-                                <td style={{ padding: '12px 16px' }}>
-                                  <div className="usersPrimaryText" style={{ fontWeight: 700, color: 'var(--text)' }}>
-                                    {item.assigned_to?.name || 'Unassigned'}
-                                  </div>
-                                  {item.assigned_to?.phone && (
-                                    <div className="usersEmailText" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
-                                      {item.assigned_to.phone}
-                                    </div>
-                                  )}
-                                </td>
-                                <td style={{ padding: '12px 16px' }}>
-                                  <div className="usersEmailText" style={{ fontSize: '0.85rem' }}>
-                                    {new Date(item.updated_at || item.created_at).toLocaleDateString('en-GB', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      year: 'numeric'
-                                    })}
-                                  </div>
-                                </td>
+                                {isAccountant ? (
+                                  <>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <div className="usersPrimaryText" style={{ fontWeight: 800 }}>
+                                        ₹{item.value?.toLocaleString('en-IN') || '0'}
+                                      </div>
+                                    </td>
+                                    <td className="text-center" style={{ padding: '12px 16px' }}>
+                                      <span className={`status-badge-mini ${item.invoice_status === 'Invoiced' ? 'success' : 'warning'}`} style={{ 
+                                        background: item.invoice_status === 'Invoiced' ? '#dcfce7' : '#fef9c3',
+                                        color: item.invoice_status === 'Invoiced' ? '#15803d' : '#a16207',
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 800,
+                                        textTransform: 'uppercase'
+                                      }}>
+                                        {item.invoice_status || (item.stage === 'Won' ? 'Invoiced' : 'Pending')}
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <span className={`status-badge-mini ${item.payment_status === 'Paid' ? 'success' : item.payment_status === 'Partial' ? 'warning' : 'danger'}`} style={{ 
+                                        background: item.payment_status === 'Paid' ? '#dcfce7' : item.payment_status === 'Partial' ? '#fef9c3' : '#fee2e2',
+                                        color: item.payment_status === 'Paid' ? '#15803d' : item.payment_status === 'Partial' ? '#a16207' : '#b91c1c',
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 800,
+                                        textTransform: 'uppercase'
+                                      }}>
+                                        {item.payment_status || 'Unpaid'}
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <div className="usersPrimaryText" style={{ fontWeight: 700, color: '#10b981' }}>
+                                        ₹{item.paid_amount?.toLocaleString('en-IN') || '0'}
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <div className="usersPrimaryText" style={{ fontWeight: 800, color: (item.value - (item.paid_amount || 0)) > 0 ? '#ef4444' : '#10b981' }}>
+                                        ₹{(item.value - (item.paid_amount || 0)).toLocaleString('en-IN')}
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <div className="usersPrimaryText" style={{ 
+                                        fontSize: '0.85rem', 
+                                        fontWeight: 700,
+                                        color: (item.expected_close_date && new Date(item.expected_close_date) < new Date() && item.payment_status !== 'Paid') ? '#ef4444' : 'inherit'
+                                      }}>
+                                        {item.expected_close_date ? new Date(item.expected_close_date).toLocaleDateString('en-GB') : '—'}
+                                      </div>
+                                      {item.expected_close_date && new Date(item.expected_close_date) < new Date() && item.payment_status !== 'Paid' && (
+                                        <div style={{ fontSize: '0.6rem', color: '#ef4444', fontWeight: 900, textTransform: 'uppercase', marginTop: '2px' }}>● Overdue</div>
+                                      )}
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <div className="usersPrimaryText" style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-dimmed)' }}>{item.payment_method || '—'}</div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <div className="usersPrimaryText" style={{ fontSize: '0.85rem', fontWeight: 600 }}>{item.assigned_to?.name || 'Unassigned'}</div>
+                                    </td>
+                                  </>
+                                ) : (
+                                  <>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <div className="usersPrimaryText" style={{ fontWeight: 800 }}>
+                                        ₹{item.value?.toLocaleString('en-IN') || '0'}
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: STAGE_OPTIONS.find(s => s.name === item.stage)?.color || 'var(--primary)' }}></div>
+                                        <span className="usersPrimaryText" style={{ fontSize: '0.85rem' }}>{item.stage}</span>
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <div className="usersPrimaryText" style={{ fontSize: '0.85rem' }}>{item.assigned_to?.name || 'Unassigned'}</div>
+                                      <div className="text-xs muted">{item.assigned_to?.email || ''}</div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <div className="usersPrimaryText" style={{ fontSize: '0.85rem' }}>
+                                        {item.expected_close_date ? new Date(item.expected_close_date).toLocaleDateString('en-GB') : '—'}
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                      <div className="usersPrimaryText" style={{ fontSize: '0.85rem' }}>
+                                        {item.last_followup_date ? new Date(item.last_followup_date).toLocaleDateString('en-GB') : 'No activity'}
+                                      </div>
+                                    </td>
+                                  </>
+                                )}
                                 <td className="text-right" style={{ padding: '12px 16px' }} onClick={stopRowNavigation}>
                                   <div className="crm-action-group" style={{ justifyContent: 'flex-end' }}>
-                                    {canCreate && (
-                                      <button
-                                        className="modern-action-btn"
-                                        onClick={() => handleOpenEditModal(item)}
-                                        title="Edit"
-                                      >
-                                        <Icon name="edit" size={16} />
-                                      </button>
+                                    {!isAccountant && (
+                                      <>
+                                        <button
+                                          className="modern-action-btn"
+                                          onClick={() => handleOpenEditModal(item)}
+                                          title="Edit Deal"
+                                        >
+                                          <Icon name="edit" size={14} />
+                                        </button>
+
+                                        <button
+                                          className="modern-action-btn"
+                                          onClick={() => setFollowupModal({ open: true, deal: item })}
+                                          title="Schedule Follow-up"
+                                        >
+                                          <Icon name="phone" size={14} />
+                                        </button>
+                                      </>
                                     )}
-                                    {canDelete && (
-                                      <button
-                                        className="modern-action-btn danger"
-                                        onClick={() => handleDeleteDeal(item)}
-                                        title="Delete"
-                                      >
-                                        <Icon name="trash" size={16} />
-                                      </button>
+
+                                    {isAccountant && (
+                                      <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button 
+                                          className="modern-action-btn" 
+                                          style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #15803d' }}
+                                          onClick={() => navigate(`/invoices/new?dealId=${item.id}`)}
+                                          title="Create Invoice"
+                                        >
+                                          <Icon name="billing" size={14} />
+                                        </button>
+                                        <button 
+                                          className="modern-action-btn" 
+                                          style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #15803d' }}
+                                          onClick={() => navigate(`/payments/new?customer_id=${item.customer_id?.id || item.customer_id?._id}&deal_id=${item.id}`)}
+                                          title="Add Payment"
+                                        >
+                                          <Icon name="wallet" size={14} />
+                                        </button>
+                                      </div>
                                     )}
+
+                                    <details className="crm-actions-overflow">
+                                      <summary className="modern-action-btn" title="More Actions">
+                                        <Icon name="more-vertical" size={14} />
+                                      </summary>
+                                      <div className="overflow-menu-content shadow-soft">
+                                        {isAccountant ? (
+                                          <>
+                                            <button className="overflow-item" onClick={() => navigate(`/invoices/new?dealId=${item.id}`)}>
+                                              <Icon name="billing" size={14} />
+                                              <span>Create Invoice</span>
+                                            </button>
+                                            <button className="overflow-item" onClick={() => navigate(`/payments/new?customer_id=${item.customer_id?.id || item.customer_id?._id}&deal_id=${item.id}`)}>
+                                              <Icon name="reports" size={14} />
+                                              <span>Download Receipt</span>
+                                            </button>
+                                            <button className="overflow-item" onClick={() => navigate(`/invoices?deal_id=${item.id}`)}>
+                                              <Icon name="billing" size={14} />
+                                              <span>Download Invoice</span>
+                                            </button>
+                                            <button className="overflow-item" onClick={() => navigate(`/payments?deal_id=${item.id}`)}>
+                                              <Icon name="activity" size={14} />
+                                              <span>Payment History</span>
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <button className="overflow-item" onClick={() => navigate(`/invoices/new?dealId=${item.id}`)}>
+                                              <Icon name="billing" size={14} />
+                                              <span>Invoice</span>
+                                            </button>
+                                            <button className="overflow-item" onClick={() => navigate(`/payments/new?customer_id=${item.customer_id?.id || item.customer_id?._id}&deal_id=${item.id}`)}>
+                                              <Icon name="dollar-sign" size={14} />
+                                              <span>Payment</span>
+                                            </button>
+                                            <button className="overflow-item" onClick={() => setNoteModal({ open: true, deal: item })}>
+                                              <Icon name="notes" size={14} />
+                                              <span>Notes</span>
+                                            </button>
+                                            <button className="overflow-item" onClick={() => toast.info('Document upload coming soon')}>
+                                              <Icon name="download" size={14} />
+                                              <span>Upload Docs</span>
+                                            </button>
+                                            <button className="overflow-item" onClick={() => setAssignModal({ open: true, deal: item })}>
+                                              <Icon name="user" size={14} />
+                                              <span>Assign</span>
+                                            </button>
+                                            <button className="overflow-item" onClick={() => handleOpenEditModal(item)}>
+                                              <Icon name="activity" size={14} />
+                                              <span>Change Stage</span>
+                                            </button>
+                                          </>
+                                        )}
+                                        {canDelete && (
+                                          <button className="overflow-item danger" onClick={() => handleDeleteDeal(item)}>
+                                            <Icon name="trash" size={14} />
+                                            <span>Delete</span>
+                                          </button>
+                                        )}
+                                      </div>
+                                    </details>
                                   </div>
                                 </td>
                               </tr>
@@ -540,23 +742,77 @@ export default function DealsList() {
                             />
                           </div>
                           <div className="card-body">
-                            <div className="card-stat">
-                              <span className="stat-label">Value</span>
-                              <span className="stat-value">₹{item.value?.toLocaleString('en-IN') || '0'}</span>
-                            </div>
-                            <div className="card-stat">
-                              <span className="stat-label">Assigned To</span>
-                              <div className="stat-value" style={{ fontSize: '0.8rem', fontWeight: 700, textAlign: 'right' }}>
-                                {item.assigned_to?.name || 'Unassigned'}
-                                {item.assigned_to?.phone && <div style={{ fontSize: '0.7rem', opacity: 0.7, fontWeight: 500 }}>{item.assigned_to.phone}</div>}
-                              </div>
-                            </div>
+                            {isAccountant ? (
+                              <>
+                                <div className="card-stat">
+                                  <span className="stat-label">Deal Value</span>
+                                  <span className="stat-value">₹{item.value?.toLocaleString('en-IN') || '0'}</span>
+                                </div>
+                                <div className="card-stat">
+                                  <span className="stat-label">Pending</span>
+                                  <span className="stat-value" style={{ color: 'var(--danger)' }}>₹{(item.value - (item.paid_amount || 0)).toLocaleString('en-IN')}</span>
+                                </div>
+                                <div className="card-stat">
+                                  <span className="stat-label">Status</span>
+                                  <span className="stat-value" style={{ fontSize: '0.75rem' }}>{item.payment_status || 'Unpaid'}</span>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="card-stat">
+                                  <span className="stat-label">Value</span>
+                                  <span className="stat-value">₹{item.value?.toLocaleString('en-IN') || '0'}</span>
+                                </div>
+                                <div className="card-stat">
+                                  <span className="stat-label">Assigned To</span>
+                                  <div className="stat-value" style={{ fontSize: '0.8rem', fontWeight: 700, textAlign: 'right' }}>
+                                    {item.assigned_to?.name || 'Unassigned'}
+                                  </div>
+                                </div>
+                                <div className="card-stat">
+                                  <span className="stat-label">Priority</span>
+                                  <span className={`priority-badge ${item.priority?.toLowerCase() || 'medium'}`} style={{ transform: 'scale(0.8)', transformOrigin: 'right' }}>
+                                    {item.priority || 'Medium'}
+                                  </span>
+                                </div>
+                              </>
+                            )}
                           </div>
                           <div className="card-footer" onClick={stopRowNavigation}>
-                            <span className="update-date">Updated: {new Date(item.updated_at || item.created_at).toLocaleDateString('en-GB')}</span>
+                            <span className="update-date">Ref: {item.readable_id}</span>
                             <div className="card-actions">
-                              <button className="icon-btn" onClick={() => handleOpenEditModal(item)}><Icon name="edit" size={14} /></button>
-                              <button className="icon-btn danger" onClick={() => handleDeleteDeal(item)}><Icon name="trash" size={14} /></button>
+                              {!isAccountant ? (
+                                <>
+                                  <button className="icon-btn" onClick={() => handleOpenEditModal(item)} title="Edit"><Icon name="edit" size={14} /></button>
+                                  <button className="icon-btn" onClick={() => setFollowupModal({ open: true, deal: item })} title="Follow-up"><Icon name="phone" size={14} /></button>
+                                  {canDelete && <button className="icon-btn danger" onClick={() => handleDeleteDeal(item)} title="Delete"><Icon name="trash" size={14} /></button>}
+                                </>
+                                ) : (
+                                  <>
+                                    <button className="icon-btn success" onClick={() => navigate(`/payments/new?customer_id=${item.customer_id?.id || item.customer_id?._id}&deal_id=${item.id}`)} title="Add Payment">
+                                      <Icon name="wallet" size={14} />
+                                    </button>
+                                    <details className="crm-actions-overflow">
+                                      <summary className="icon-btn" title="More">
+                                        <Icon name="more-vertical" size={14} />
+                                      </summary>
+                                      <div className="overflow-menu-content shadow-soft" style={{ bottom: '100%', top: 'auto', right: 0, marginBottom: '8px' }}>
+                                        <button className="overflow-item" onClick={() => navigate(`/invoices/new?dealId=${item.id}`)}>
+                                          <Icon name="billing" size={14} />
+                                          <span>Create Invoice</span>
+                                        </button>
+                                        <button className="overflow-item" onClick={() => navigate(`/payments?deal_id=${item.id}`)}>
+                                          <Icon name="download" size={14} />
+                                          <span>Download Receipt</span>
+                                        </button>
+                                        <button className="overflow-item" onClick={() => navigate(`/payments?deal_id=${item.id}`)}>
+                                          <Icon name="reports" size={14} />
+                                          <span>Payment History</span>
+                                        </button>
+                                      </div>
+                                    </details>
+                                  </>
+                                )}
                             </div>
                           </div>
                         </div>
@@ -587,7 +843,102 @@ export default function DealsList() {
         }}
       />
 
+      <FollowupModal
+        isOpen={followupModal.open}
+        lead={followupModal.deal}
+        onClose={() => setFollowupModal({ open: false, deal: null })}
+        onSave={() => {
+          setFollowupModal({ open: false, deal: null })
+          loadDeals()
+        }}
+      />
+
+      <LeadAssignModal
+        isOpen={assignModal.open}
+        onClose={() => setAssignModal({ open: false, deal: null })}
+        onAssign={async (userId) => {
+          try {
+            await dealsApi.update(assignModal.deal.id, { assigned_to: userId })
+            toast.success('Deal reassigned successfully')
+            setAssignModal({ open: false, deal: null })
+            loadDeals()
+          } catch (err) {
+            toast.error('Reassignment failed')
+          }
+        }}
+        employees={employees}
+      />
+
+      <LeadNoteModal
+        isOpen={noteModal.open}
+        onClose={() => setNoteModal({ open: false, deal: null })}
+        onSave={async (note) => {
+          try {
+            // Assuming dealsApi has a way to add notes or using general notesApi
+            toast.success('Note added (feature in progress)')
+            setNoteModal({ open: false, deal: null })
+          } catch (err) {
+            toast.error('Failed to add note')
+          }
+        }}
+        lead={noteModal.deal}
+      />
+
       <style>{`
+          .modern-action-btn { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+          .modern-action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); }
+          .modern-action-btn.success:hover { background: #dcfce7; color: #10b981; border-color: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15); }
+          
+          .success-btn { background: #dcfce7; color: #10b981; border: 1px solid #10b981; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+          .success-btn:hover { background: #10b981; color: white; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+          
+          .crm-actions-overflow { position: relative; }
+          .crm-actions-overflow summary { list-style: none; outline: none; }
+          .crm-actions-overflow summary::-webkit-details-marker { display: none; }
+          
+          .overflow-menu-content {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 8px);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px;
+            z-index: 100;
+            min-width: 180px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            box-shadow: var(--shadow-lg);
+            text-align: left;
+          }
+
+          .overflow-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: var(--text-dimmed);
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: transparent;
+            border: none;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+
+          .overflow-item:hover {
+            background: var(--bg-hover);
+            color: var(--primary);
+          }
+
+          .overflow-item.danger:hover {
+            color: var(--danger);
+            background: color-mix(in srgb, var(--danger) 10%, transparent);
+          }
+
           .crm-table th {
              padding: 12px 16px !important;
              background: var(--bg-surface) !important;
@@ -643,6 +994,21 @@ export default function DealsList() {
             .card-actions { display: flex; gap: 8px; }
             .icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: center; }
             .icon-btn.danger { color: #ef4444; }
+
+            .priority-badge {
+              padding: 4px 10px;
+              border-radius: 6px;
+              font-size: 0.7rem;
+              font-weight: 800;
+              text-transform: uppercase;
+              display: inline-block;
+            }
+            .priority-badge.hot { background: #fee2e2; color: #ef4444; }
+            .priority-badge.high { background: #ffedd5; color: #f97316; }
+            .priority-badge.medium { background: #fef9c3; color: #ca8a04; }
+            .priority-badge.low { background: #dcfce7; color: #10b981; }
+            .priority-badge.warm { background: #fff7ed; color: #ea580c; }
+            .priority-badge.cold { background: #f1f5f9; color: #64748b; }
           }
 
          .users-page-header { margin-bottom: 12px; }
@@ -679,8 +1045,15 @@ export default function DealsList() {
          .btn-clear-filters:hover { text-decoration: underline; }
 
           .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 20px; justify-content: space-between; }
-          .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 12px 20px; border-radius: 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 150px; box-shadow: var(--shadow-sm); }
-         .stat-pill-label { font-size: 11px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
+          .stat-pill-mini { --stat-accent: var(--card-accent); background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-surface) 12%); border: 1px solid var(--border-strong); padding: 14px 18px; border-radius: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 150px; box-shadow: inset 4px 0 0 var(--stat-accent), 0 10px 24px rgba(var(--text-rgb), 0.06); transition: all 0.25s ease; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(1) { --stat-accent: #3b82f6; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(2) { --stat-accent: #10b981; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(3) { --stat-accent: #f59e0b; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(4) { --stat-accent: #8b5cf6; }
+         .stat-pill-mini.clickable { cursor: pointer; }
+         .stat-pill-mini:hover { transform: translateY(-2px); border-color: var(--stat-accent); box-shadow: inset 4px 0 0 var(--stat-accent), 0 14px 30px color-mix(in srgb, var(--stat-accent) 20%, rgba(var(--text-rgb), 0.08)); }
+         .stat-pill-mini.is-active { background: color-mix(in srgb, var(--bg-card) 82%, var(--stat-accent) 18%); border-color: var(--stat-accent); }
+         .stat-pill-label { font-size: 11px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.08em; }
          .stat-pill-value { font-size: 22px; font-weight: 900; }
          .stat-pill-value.total { color: var(--text); }
          .stat-pill-value.active { color: #10b981; }

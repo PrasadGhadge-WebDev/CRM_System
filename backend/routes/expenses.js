@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const upload = require('../middleware/upload');
 const {
   listExpenses,
   createExpense,
@@ -12,18 +13,18 @@ const {
 const { protect, authorize } = require('../middleware/auth');
 
 router.use(protect);
-router.use(authorize('Admin', 'Accountant', 'Manager'));
+router.use(authorize('Admin', 'Accountant', 'Manager', 'Employee'));
 
 router.get('/reports', getExpenseReports);
 router.get('/export', exportExpensesExcel);
 
 router.route('/')
   .get(listExpenses)
-  .post(createExpense);
+  .post(upload.single('receipt'), createExpense);
 
 router.route('/:id')
   .get(getExpense)
-  .put(updateExpense)
+  .put(upload.single('receipt'), updateExpense)
   .delete(deleteExpense);
 
 module.exports = router;

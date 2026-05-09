@@ -18,7 +18,7 @@
   background: var(--bg-card);
   padding: 16px;
   border-radius: 12px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -28,7 +28,7 @@
 
 .metric-card-v3:hover {
   transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-lg);
   border-color: var(--primary);
 }
 
@@ -97,7 +97,7 @@
   background: var(--bg-card);
   border-radius: 16px;
   padding: 20px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-sm);
   border: 1px solid var(--border-subtle);
   transition: border-color 0.3s ease;
 }
@@ -310,4 +310,3 @@ body.dark .alert-yellow, body.dark .stat-yellow, body.dark .qa-yellow { backgrou
   }
   .metrics-row-v3 { grid-template-columns: repeat(2, 1fr); }
 }
-

@@ -18,6 +18,7 @@ import { customersApi } from '../../../services/customers.js'
 import { usersApi } from '../../../services/users.js'
 import { Icon } from '../../../layouts/icons.jsx'
 import RichTextEditor from '../../../components/RichTextEditor.jsx'
+import { useAuth } from '../../../context/AuthContext.jsx'
 
 const INITIAL_DEAL = {
   name: '',
@@ -36,6 +37,7 @@ const INITIAL_DEAL = {
   discount_percent: 0,
   notes: '',
   lost_reason: '',
+  priority: 'Medium'
 }
 
 export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
@@ -98,6 +100,7 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
           next_followup_date: data.next_followup_date ? new Date(data.next_followup_date).toISOString().split('T')[0] : '',
           customer_id: data.customer_id?._id || data.customer_id?.id || data.customer_id || '',
           assigned_to: data.assigned_to?._id || data.assigned_to?.id || data.assigned_to || '',
+          priority: data.priority || 'Medium'
         }
         setModel(normalized)
         setInitialModel(normalized)
@@ -274,6 +277,20 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
                   <div className="crm-input-group">
                     <div className="input-icon-box"><FiCalendar /></div>
                     <input type="date" value={model.expected_close_date} onChange={e => setModel({ ...model, expected_close_date: e.target.value })} />
+                  </div>
+                </div>
+                <div className="sheet-field">
+                  <label>Priority</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiFlag /></div>
+                    <select value={model.priority} onChange={e => setModel({ ...model, priority: e.target.value })}>
+                      <option value="Hot">🔥 Hot</option>
+                      <option value="High">🔴 High</option>
+                      <option value="Medium">🟡 Medium</option>
+                      <option value="Low">🟢 Low</option>
+                      <option value="Warm">🟠 Warm</option>
+                      <option value="Cold">❄️ Cold</option>
+                    </select>
                   </div>
                 </div>
               </div>

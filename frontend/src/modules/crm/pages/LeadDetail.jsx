@@ -127,6 +127,7 @@ export default function LeadDetail() {
     String(lead?.assignedTo?.id || lead?.assignedTo?._id || '') === String(currentUser?.id || currentUser?._id || '')
   const canEdit = currentUser?.role === 'Admin' || currentUser?.role === 'Manager' || isOwner
   const canDelete = currentUser?.role === 'Admin'
+  const isEmployee = currentUser?.role === 'Employee'
 
   async function onDelete() {
     if (!canDelete) return toast.error('Only Admins can delete leads')
@@ -137,7 +138,7 @@ export default function LeadDetail() {
     if (!confirmed) return
 
     try {
-      await leadsApi.remove(id)
+      await leadsApi.delete(id) // Using delete instead of remove to match leadsApi service
       toast.success('Lead moved to trash')
       navigate('/leads', { replace: true })
     } catch (e) {
@@ -166,7 +167,6 @@ export default function LeadDetail() {
   const nextFollowupLabel = lead?.nextFollowupDate ? formatShortDate(lead.nextFollowupDate, '—') : '—'
 
   const isAdminOrManager = currentUser?.role === 'Admin' || currentUser?.role === 'Manager'
-  const isEmployee = currentUser?.role === 'Employee'
 
   const isAssignedToMe = String(lead?.assignedTo?.id || lead?.assignedTo?._id || '') === String(currentUser?.id || '')
   const canFollowup = isAdminOrManager || (isEmployee && isAssignedToMe)
@@ -221,7 +221,6 @@ export default function LeadDetail() {
         const custId = typeof rawId === 'object' ? (rawId.id || rawId._id) : rawId
         setConvertedCustomerId(custId)
         setIsDealModalOpen(true)
-        toast.success('Lead converted successfully!')
       } catch (e) {
         toast.error('Lead conversion failed')
       }
@@ -275,7 +274,7 @@ export default function LeadDetail() {
               <span>Add Follow-up</span>
             </button>
           )}
-          {canEdit && !isConverted && (
+          {canEdit && (
             <button className="crm-btn-premium" onClick={onConvertToDeal} style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
               <Icon name="activity" />
               <span>Convert to Deal</span>
@@ -331,11 +330,16 @@ export default function LeadDetail() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Icon name="mail" size={14} />
                 <span>{lead.email || 'No email'}</span>
+                {lead.email && <a href={`mailto:${lead.email}`} className="action-icon-mini email ml-4" title="Email"><Icon name="mail" size={12} /></a>}
               </div>
               {lead.phone && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Icon name="phone" size={14} />
                   <span>{lead.phone}</span>
+                  <div className="flex gap-8 ml-4">
+                    <a href={`tel:${lead.phone}`} className="action-icon-mini" title="Call"><Icon name="phone" size={12} /></a>
+                    <a href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`} target="_blank" className="action-icon-mini whatsapp" title="WhatsApp"><Icon name="whatsapp" size={12} /></a>
+                  </div>
                 </div>
               )}
             </div>
@@ -385,7 +389,13 @@ export default function LeadDetail() {
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Priority</label>
-                <div style={{ color: lead.priority === 'High' ? 'var(--danger)' : 'var(--text)', fontWeight: 700 }}>{displayValue(lead.priority)}</div>
+                <div className="priority-badge" style={{ 
+                  background: `${getPriorityColor(lead.priority)}15`, 
+                  color: getPriorityColor(lead.priority),
+                  borderColor: `${getPriorityColor(lead.priority)}30`
+                }}>
+                  {lead.priority || 'Medium'}
+                </div>
               </div>
             </div>
             {lead.followupNote && (
@@ -472,7 +482,7 @@ export default function LeadDetail() {
         onClose={() => setIsDealModalOpen(false)}
         onSave={(newDeal) => {
           setIsDealModalOpen(false)
-          toast.success('Deal created and linked successfully')
+          // Removed redundant toast as DealModal already handles it
           navigate('/deals')
         }}
       />
@@ -483,9 +493,43 @@ export default function LeadDetail() {
             grid-template-columns: 1fr !important;
           }
         }
+        .priority-badge { 
+          display: inline-flex; 
+          padding: 2px 10px; 
+          border-radius: 6px; 
+          font-size: 0.7rem; 
+          font-weight: 800; 
+          text-transform: uppercase; 
+          border: 1px solid transparent;
+        }
+        .action-icon-mini { 
+          width: 24px; 
+          height: 24px; 
+          border-radius: 6px; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          background: var(--bg-surface); 
+          color: var(--text-dimmed); 
+          border: 1px solid var(--border-subtle);
+          transition: all 0.2s;
+        }
+        .action-icon-mini:hover { color: var(--primary); border-color: var(--primary); background: var(--bg-card); }
+        .action-icon-mini.whatsapp:hover { color: #25d366; border-color: #25d366; }
+        .action-icon-mini.email:hover { color: #ea4335; border-color: #ea4335; }
+        .ml-4 { margin-left: 4px; }
       `}</style>
     </div>
   )
+}
+
+function getPriorityColor(p) {
+  switch(p) {
+    case 'High': return '#ef4444';
+    case 'Medium': return '#f59e0b';
+    case 'Low': return '#3b82f6';
+    default: return 'var(--text-dimmed)';
+  }
 }
 
 function formatDate(value, fallback = 'Not available') {

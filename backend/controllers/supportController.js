@@ -70,9 +70,16 @@ exports.getTickets = asyncHandler(async (req, res) => {
   filter.$and = filter.$and || [];
 
   if (req.user.role === 'Employee' || req.user.role === 'Support' || req.user.role === 'Support Agent') {
+    // 1. Get my customers to allow viewing their tickets
+    const myCustomerIds = await Customer.find({ 
+      company_id: req.user.company_id, 
+      assigned_to: req.user.id 
+    }).distinct('_id');
+
     filter.$and.push({
       $or: [
         { assigned_to: req.user.id },
+        { customer_id: { $in: myCustomerIds } },
         { assigned_to: null, category: { $in: ['Technical', 'General', 'Software Bug', 'Bug', 'Feature', 'Feature Request'] } }
       ]
     });

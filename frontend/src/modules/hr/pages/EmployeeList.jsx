@@ -198,14 +198,17 @@ export default function EmployeeList() {
         .users-title { font-size: 2rem; font-weight: 900; color: var(--text); margin: 0; }
         .users-subtitle { color: var(--text-dimmed); font-size: 0.95rem; margin: 4px 0 0 0; }
         
-        .crm-stats-bar-compact { display: flex; gap: 16px; margin-bottom: 24px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px; }
-        .stat-pill-mini { display: flex; flex-direction: column; min-width: 120px; }
+        .crm-stats-bar-compact { display: flex; gap: 16px; margin-bottom: 24px; padding-bottom: 16px; }
+        .stat-pill-mini { --stat-accent: var(--card-accent); display: flex; flex-direction: column; min-width: 120px; background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-surface) 12%); border: 1px solid var(--border-strong); padding: 14px 18px; border-radius: 16px; gap: 6px; box-shadow: inset 4px 0 0 var(--stat-accent), 0 10px 24px rgba(var(--text-rgb), 0.06); transition: all 0.25s ease; }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(1) { --stat-accent: #3b82f6; }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(2) { --stat-accent: #10b981; }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(3) { --stat-accent: #ef4444; }
         .stat-pill-label { font-size: 0.65rem; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
         .stat-pill-value { font-size: 1.2rem; font-weight: 900; color: var(--text); }
         .stat-pill-value.success { color: #10b981; }
         .stat-pill-value.danger { color: #ef4444; }
-        .stat-pill-mini.clickable { cursor: pointer; transition: transform 0.2s; }
-        .stat-pill-mini.clickable:hover { transform: translateY(-2px); }
+        .stat-pill-mini.clickable { cursor: pointer; transition: all 0.25s ease; }
+        .stat-pill-mini.clickable:hover { transform: translateY(-2px); border-color: var(--stat-accent); box-shadow: inset 4px 0 0 var(--stat-accent), 0 14px 30px color-mix(in srgb, var(--stat-accent) 20%, rgba(var(--text-rgb), 0.08)); }
 
         .unified-action-bar { margin-bottom: 24px; }
         .search-filter-group { display: flex; gap: 16px; align-items: center; }

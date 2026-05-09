@@ -76,7 +76,10 @@ exports.listDeals = asyncHandler(async (req, res) => {
   if (req.user.role === 'Employee') {
     filter.assigned_to = req.user.id;
   } else if (req.user.role === 'Accountant') {
-    filter.stage = 'Won';
+    filter.$or = [
+      { stage: 'Won' },
+      { payment_status: { $in: ['Unpaid', 'Partial'] } }
+    ];
   } else if (assigned_to) {
     filter.assigned_to = assigned_to;
   }
@@ -209,11 +212,19 @@ exports.getDeal = asyncHandler(async (req, res) => {
   const isAccountant = req.user.role === 'Accountant';
   
   if (isHR) return res.fail('Access denied', 403);
-  if (isEmployee && String(deal.assigned_to?._id || deal.assigned_to) !== req.user.id) {
-    return res.fail('Unauthorized access', 403);
+  if (isEmployee) {
+    const assignedId = deal.assigned_to?._id || deal.assigned_to;
+    const currentUserId = req.user._id || req.user.id;
+    if (String(assignedId) !== String(currentUserId)) {
+      return res.fail('Unauthorized access: This deal is not assigned to you', 403);
+    }
   }
-  if (isAccountant && deal.stage !== 'Won') {
-    return res.fail('Accountants only view Won deals', 403);
+  if (isAccountant) {
+    const isWon = deal.stage === 'Won';
+    const hasPendingPayment = ['Unpaid', 'Partial'].includes(deal.payment_status);
+    if (!isWon && !hasPendingPayment) {
+      return res.fail('Accountants only view Won or payment-pending deals', 403);
+    }
   }
 
   res.ok(deal);

@@ -27,7 +27,7 @@ async function syncCustomerFinancials(customerId, companyId, userId) {
     isDeleted: { $ne: true }
   });
 
-  const totalPaidAmount = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  const totalPaidAmount = payments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
 
   // 3. Calculate Pending
   const pendingAmount = Math.max(0, totalDealValue - totalPaidAmount);
@@ -70,6 +70,40 @@ async function syncCustomerFinancials(customerId, companyId, userId) {
   return updatedCustomer;
 }
 
+/**
+ * Synchronizes a deal's financial metrics based on its linked payments.
+ */
+async function syncDealFinancials(dealId, companyId) {
+  if (!dealId) return;
+
+  const payments = await Payment.find({
+    deal_id: dealId,
+    company_id: companyId,
+    status: { $in: ['Paid', 'Partial'] },
+    isDeleted: { $ne: true }
+  });
+
+  const totalPaid = payments.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
+  
+  const deal = await Deal.findOne({ _id: dealId, company_id: companyId });
+  if (!deal) return;
+
+  let paymentStatus = 'Unpaid';
+  if (deal.value > 0) {
+    if (totalPaid >= deal.value) {
+      paymentStatus = 'Paid';
+    } else if (totalPaid > 0) {
+      paymentStatus = 'Partial';
+    }
+  }
+
+  return await Deal.findByIdAndUpdate(dealId, {
+    paid_amount: totalPaid,
+    payment_status: paymentStatus
+  }, { new: true });
+}
+
 module.exports = {
-  syncCustomerFinancials
+  syncCustomerFinancials,
+  syncDealFinancials
 };

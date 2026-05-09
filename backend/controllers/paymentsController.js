@@ -4,12 +4,13 @@ const Counter = require('../models/Counter');
 const mongoose = require('mongoose');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { moveDocumentToTrash } = require('../utils/trash');
+const { syncCustomerFinancials, syncDealFinancials } = require('../utils/financialsSync');
 
 async function getNextPaymentNumber(companyId) {
   const counter = await Counter.findOneAndUpdate(
     { company_id: companyId, model: 'Payment', field: 'paymentNumber' },
     { $inc: { seq: 1 } },
-    { new: true, upsert: true }
+    { returnDocument: 'after', upsert: true }
   );
   if (!counter.prefix || counter.prefix === 'LD-') {
      counter.prefix = 'PAY-';
@@ -41,10 +42,14 @@ exports.listPayments = asyncHandler(async (req, res) => {
 
   // Role-Based Visibility
   if (req.user.role === 'Employee') {
-    // Employees see only assigned customer payments or their own
+    // Employees see assigned customer payments, their own created payments, or payments they collected
+    const Customer = require('../models/Customer');
+    const assignedCustomers = await Customer.distinct('_id', { assigned_to: req.user.id, isDeleted: { $ne: true } });
+    
     filter.$or = [
       { created_by: req.user.id },
-      { collected_by: req.user.id }
+      { collected_by: req.user.id },
+      { customer_id: { $in: assignedCustomers } }
     ];
   } else if (req.user.role === 'Manager') {
     // Managers see everything for monitoring but can't delete
@@ -140,9 +145,9 @@ exports.listPayments = asyncHandler(async (req, res) => {
 exports.createPayment = asyncHandler(async (req, res) => {
   const payload = req.body;
 
-  // HR block
-  if (req.user.role === 'HR') {
-    return res.fail('HR Personnel cannot manage payments', 403);
+  // Employee/HR block for creation
+  if (['Employee', 'HR'].includes(req.user.role)) {
+    return res.fail('You are not authorized to create payments. Please contact an Accountant or Admin.', 403);
   }
 
   payload.company_id = req.user.company_id;
@@ -158,33 +163,43 @@ exports.createPayment = asyncHandler(async (req, res) => {
     payload.pending_amount = Math.max(0, payload.total_amount - payload.paid_amount);
   }
 
-  const payment = await Payment.create(payload);
+  try {
+    const payment = await Payment.create(payload);
 
-  // Sync with Invoice
-  if (payment.invoice_id) {
-    const invoice = await Invoice.findOne({ _id: payment.invoice_id, company_id: req.user.company_id });
-    if (invoice) {
-      // Add this payment to invoice's paid_amount
-      invoice.paid_amount = (invoice.paid_amount || 0) + payment.paid_amount;
-      
-      if (invoice.paid_amount >= invoice.total_amount) {
-        invoice.status = 'Paid';
-        invoice.paid_date = new Date();
-      } else if (invoice.paid_amount > 0) {
-        invoice.status = 'Partially Paid';
-      }
-      
-      await invoice.save();
-      
-      // If invoice is Paid and has a deal, close the deal
-      if (invoice.status === 'Paid' && invoice.deal_id) {
-        const Deal = require('../models/Deal');
-        await Deal.findByIdAndUpdate(invoice.deal_id, { status: 'Closed', actual_close_date: new Date() });
+    // Sync with Invoice
+    if (payment.invoice_id) {
+      const invoice = await Invoice.findOne({ _id: payment.invoice_id, company_id: req.user.company_id });
+      if (invoice) {
+        // Add this payment to invoice's paid_amount
+        invoice.paid_amount = (invoice.paid_amount || 0) + payment.paid_amount;
+        
+        if (invoice.paid_amount >= invoice.total_amount) {
+          invoice.status = 'Paid';
+          invoice.paid_date = new Date();
+        } else if (invoice.paid_amount > 0) {
+          invoice.status = 'Partially Paid';
+        }
+        
+        await invoice.save();
+        
+        // If invoice is Paid and has a deal, close the deal
+        if (invoice.status === 'Paid' && invoice.deal_id) {
+          const Deal = require('../models/Deal');
+          await Deal.findByIdAndUpdate(invoice.deal_id, { status: 'Closed', actual_close_date: new Date() });
+        }
       }
     }
-  }
 
-  res.created(payment);
+    // Sync with Deal
+    if (payment.deal_id) {
+      await syncDealFinancials(payment.deal_id, req.user.company_id);
+    }
+
+    res.created(payment);
+  } catch (err) {
+    console.error('[CreatePayment] Error:', err);
+    res.fail(err.message || 'Payment creation failed', 500);
+  }
 });
 
 exports.updatePayment = asyncHandler(async (req, res) => {
@@ -193,6 +208,11 @@ exports.updatePayment = asyncHandler(async (req, res) => {
   
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.fail('Invalid payment ID format', 400);
+  }
+
+  // Employee/HR block for updates
+  if (['Employee', 'HR'].includes(req.user.role)) {
+    return res.fail('You are not authorized to modify payment records.', 403);
   }
 
   // Normalize object-based ids before validation
@@ -284,6 +304,11 @@ exports.updatePayment = asyncHandler(async (req, res) => {
       }
     }
 
+    // 4. Sync Deal Balance
+    if (payment.deal_id && mongoose.Types.ObjectId.isValid(payment.deal_id)) {
+      await syncDealFinancials(payment.deal_id, req.user.company_id);
+    }
+
     res.ok(payment);
   } catch (err) {
     console.error('[UpdatePayment] Critical Error:', err);
@@ -357,8 +382,12 @@ exports.deletePayment = asyncHandler(async (req, res) => {
 
   // Step 4 & 5: Sync Financials after deletion
   if (customerId) {
-    const { syncCustomerFinancials } = require('../utils/financialsSync');
     await syncCustomerFinancials(customerId, req.user.company_id, req.user.id);
+  }
+
+  // Step 4 & 5: Sync Deal Balance after deletion
+  if (payment.deal_id) {
+    await syncDealFinancials(payment.deal_id, req.user.company_id);
   }
 
   res.ok(null, 'Payment moved to trash');

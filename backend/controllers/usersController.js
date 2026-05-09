@@ -120,18 +120,38 @@ exports.listUsers = asyncHandler(async (req, res) => {
   if (req.query.manager_id) filter.manager_id = String(req.query.manager_id).trim();
 
   if (isHRUser(req)) {
-    // HR can see Managers if they specifically ask, otherwise default to Employee
-    if (role === 'Manager') {
-      filter.role = 'Manager';
+    // HR can see other roles if they specifically ask (for reporting purposes), otherwise default to Employee
+    if (role) {
+      if (String(role).includes(',')) {
+        const roles = String(role).split(',').map(r => normalizeRole(r.trim()));
+        filter.role = { $in: roles };
+      } else {
+        filter.role = normalizeRole(role) || String(role).trim();
+      }
     } else {
       filter.role = 'Employee';
     }
   } else if (req.user.role === 'Manager') {
-    // Managers only see their own team members and NOT HR users
-    filter.manager_id = req.user.id || req.user._id;
-    filter.role = { $ne: 'HR' };
+    // Managers only see their own team members, UNLESS they are specifically looking for managers/admins for reporting
+    const isRequestingStaff = role && (String(role).includes('Admin') || String(role).includes('Manager'));
+    if (isRequestingStaff) {
+      if (String(role).includes(',')) {
+        const roles = String(role).split(',').map(r => normalizeRole(r.trim()));
+        filter.role = { $in: roles };
+      } else {
+        filter.role = normalizeRole(role) || String(role).trim();
+      }
+    } else {
+      filter.manager_id = req.user.id || req.user._id;
+      filter.role = { $ne: 'HR' };
+    }
   } else if (role) {
-    filter.role = normalizeRole(role) || String(role).trim();
+    if (String(role).includes(',')) {
+      const roles = String(role).split(',').map(r => normalizeRole(r.trim()));
+      filter.role = { $in: roles };
+    } else {
+      filter.role = normalizeRole(role) || String(role).trim();
+    }
   }
   if (search) {
     filter.$or = [
@@ -178,7 +198,7 @@ exports.listUsers = asyncHandler(async (req, res) => {
 
 
 exports.createUser = asyncHandler(async (req, res) => {
-  const { name, email, password, role, status, department, designation, phone, username: providedUsername } = req.body;
+  const { name, email, password, role, status, department, designation, phone, manager_id, username: providedUsername } = req.body;
 
   // 1. Basic Validation
   if (!name || !email || !password) {
@@ -218,6 +238,7 @@ exports.createUser = asyncHandler(async (req, res) => {
     department,
     designation,
     phone,
+    manager_id,
     company_id: req.user.company_id,
     is_profile_complete: true
   });

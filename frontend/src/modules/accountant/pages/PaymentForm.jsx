@@ -34,11 +34,13 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
   })
   
   const [customers, setCustomers] = useState([])
+  const [deals, setDeals] = useState([])
   const [users, setUsers] = useState([]) 
   const [invoices, setInvoices] = useState([])
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
   const [fieldErrors, setFieldErrors] = useState({})
+  const [file, setFile] = useState(null)
 
   const isAdmin = user?.role === 'Admin'
   const isAccountant = user?.role === 'Accountant'
@@ -63,6 +65,7 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
     // 1. Load context data
     api.get('/api/customers?limit=200').then(res => setCustomers(res.items || [])).catch(console.error)
     api.get('/api/users?limit=200').then(res => setUsers(res.items || [])).catch(console.error)
+    api.get('/api/deals?limit=200').then(res => setDeals(res.items || [])).catch(console.error)
 
     // 2. Load payment data if EDIT
     if (isEdit && id) {
@@ -85,7 +88,10 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
 
   useEffect(() => {
     if (model.customer_id && model.payment_type === 'Customer Payment') {
-      invoicesApi.list({ customer_id: model.customer_id, limit: 100 }).then(res => {
+      const params = { customer_id: model.customer_id, limit: 100 };
+      if (model.deal_id) params.deal_id = model.deal_id;
+      
+      invoicesApi.list(params).then(res => {
         const items = res.items || []
         const pending = items.filter(i => i.status !== 'Paid' && i.status !== 'Cancelled')
         setInvoices(pending)
@@ -99,8 +105,10 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
             setModel(prev => ({ 
               ...prev, 
               invoice_id: preInvId, 
+              deal_id: normalizeId(inv.deal_id),
               total_amount: inv.total_amount, 
-              paid_amount: remaining 
+              paid_amount: remaining,
+              status: remaining === 0 ? 'Paid' : (remaining < inv.total_amount ? 'Partial' : 'Pending')
             }))
           }
         }
@@ -108,13 +116,37 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
     } else {
       setInvoices([])
     }
-  }, [model.customer_id, model.payment_type, searchParams])
+  }, [model.customer_id, model.deal_id, model.payment_type, searchParams])
+
+  // New Effect: Handle Deal ID from URL
+  useEffect(() => {
+    const preDealId = searchParams.get('deal_id') || searchParams.get('dealId');
+    if (preDealId && deals.length > 0 && !model.deal_id) {
+      const deal = deals.find(d => d.id === preDealId || d._id === preDealId);
+      if (deal) {
+        setModel(prev => ({
+          ...prev,
+          deal_id: preDealId,
+          customer_id: normalizeId(deal.customer_id),
+          total_amount: deal.value || prev.total_amount
+        }));
+      }
+    }
+  }, [searchParams, deals, model.deal_id])
 
   const handleInvoiceSelect = (invId) => {
     const inv = invoices.find(i => i._id === invId || i.id === invId)
     if (inv) {
       const remaining = inv.total_amount - (inv.paid_amount || 0)
-      setModel({ ...model, invoice_id: invId, total_amount: inv.total_amount, paid_amount: remaining, pending_amount: 0 })
+      setModel({ 
+        ...model, 
+        invoice_id: invId, 
+        deal_id: normalizeId(inv.deal_id),
+        total_amount: inv.total_amount, 
+        paid_amount: remaining, 
+        pending_amount: 0,
+        status: remaining === 0 ? 'Paid' : 'Partial'
+      })
     } else {
       setModel({ ...model, invoice_id: '', total_amount: '', paid_amount: '', pending_amount: 0 })
     }
@@ -246,15 +278,20 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
                       className="crm-input"
                       value={model.invoice_id}
                       onChange={e => handleInvoiceSelect(e.target.value)}
-                      disabled={!model.customer_id || invoices.length === 0}
+                      disabled={!model.customer_id}
                     >
-                      <option value="">No Invoice Link</option>
+                      <option value="">{invoices.length > 0 ? 'Select an outstanding invoice...' : 'No pending invoices found'}</option>
                       {invoices.map(i => (
                         <option key={i._id || i.id} value={i._id || i.id}>
-                          {i.invoice_number} - Pending: ₹{(i.total_amount - (i.paid_amount || 0)).toFixed(2)}
+                          {i.invoice_number} - {i.deal_id?.name || 'No Deal'} (Pending: ₹{(i.total_amount - (i.paid_amount || 0)).toFixed(2)})
                         </option>
                       ))}
                     </select>
+                    {invoices.length === 0 && model.customer_id && (
+                      <p className="field-hint" style={{ color: 'var(--primary)', fontSize: '0.7rem', marginTop: '4px' }}>
+                        * Only unpaid/partial invoices are shown here.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -295,15 +332,33 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <Icon name="creditCard" />
-                <span>Payment Details</span>
+                <span>💰 Payment Details</span>
               </div>
               <div className="form-sheet-grid">
+                {model.payment_type === 'Customer Payment' && (
+                  <div className="sheet-field full-width">
+                    <label>Deal / Project Name</label>
+                    <select
+                      className="crm-input"
+                      value={model.deal_id}
+                      onChange={e => setModel({ ...model, deal_id: e.target.value })}
+                      disabled={!model.customer_id}
+                    >
+                      <option value="">Select Deal...</option>
+                      {deals.filter(d => normalizeId(d.customer_id) === normalizeId(model.customer_id)).map(d => (
+                        <option key={d.id} value={d.id}>{d.name} (Val: ₹{d.value})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="sheet-field">
-                  <label>Full Amount (₹)</label>
+                  <label>Total Amount (₹)</label>
                   <input
                     type="number"
                     className={`crm-input ${fieldErrors.total_amount ? 'error' : ''}`}
                     value={model.total_amount}
+                    readOnly={!!model.invoice_id}
+                    style={model.invoice_id ? { background: 'var(--bg-surface)', fontWeight: 700, opacity: 0.8 } : {}}
                     onChange={e => {
                       const val = e.target.value;
                       setModel(prev => ({ 
@@ -315,19 +370,27 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
                     placeholder="0.00"
                     required
                   />
+                  {model.invoice_id && <p className="field-hint" style={{ fontSize: '0.65rem', color: 'var(--primary)', marginTop: '2px' }}>* Amount locked to selected bill</p>}
                 </div>
                 <div className="sheet-field">
-                  <label>Amount Paid (₹)</label>
+                  <label>Paid Amount (₹)</label>
                   <input
                     type="number"
                     className={`crm-input ${fieldErrors.paid_amount ? 'error' : ''}`}
                     value={model.paid_amount}
                     onChange={e => {
                       const val = e.target.value;
+                      const total = Number(model.total_amount) || 0;
+                      const paid = Number(val) || 0;
+                      let status = 'Pending';
+                      if (paid >= total && total > 0) status = 'Paid';
+                      else if (paid > 0) status = 'Partial';
+
                       setModel(prev => ({ 
                         ...prev, 
                         paid_amount: val,
-                        pending_amount: Math.max(0, Number(prev.total_amount) - Number(val))
+                        pending_amount: Math.max(0, total - paid),
+                        status: status
                       }))
                     }}
                     placeholder="0.00"
@@ -335,13 +398,42 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
                   />
                 </div>
                 <div className="sheet-field">
-                  <label>Amount Still Due (₹)</label>
+                  <label>Pending Amount (₹)</label>
                   <input
                     type="number"
                     className="crm-input"
                     value={model.pending_amount}
                     disabled
-                    style={{ background: 'var(--bg-hover)', fontWeight: 800, color: model.pending_amount > 0 ? 'var(--danger)' : 'var(--success)' }}
+                    style={{ background: 'var(--bg-surface)', fontWeight: 800, color: model.pending_amount > 0 ? 'var(--danger)' : 'var(--success)' }}
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="activity" />
+                <span>💳 Payment Info</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field">
+                  <label>Payment Method</label>
+                  <select className="crm-input" value={model.payment_mode} onChange={e => setModel({ ...model, payment_mode: e.target.value })} required>
+                    <option value="UPI">UPI</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                    <option value="Cheque">Cheque</option>
+                  </select>
+                </div>
+                <div className="sheet-field">
+                  <label>Transaction ID / Ref</label>
+                  <input
+                    type="text"
+                    className="crm-input"
+                    value={model.transaction_id}
+                    onChange={e => setModel({ ...model, transaction_id: e.target.value })}
+                    placeholder="TXN-XXXXXX"
                   />
                 </div>
                 <div className="sheet-field">
@@ -354,25 +446,27 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
                     required
                   />
                 </div>
-                <div className="sheet-field">
-                  <label>How was it paid?</label>
-                  <select className="crm-input" value={model.payment_mode} onChange={e => setModel({ ...model, payment_mode: e.target.value })} required>
-                    <option value="UPI">UPI</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Card">Card</option>
-                    <option value="Cheque">Cheque</option>
+              </div>
+            </section>
+
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <Icon name="info" />
+                <span>📊 Status</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field full-width">
+                  <label>Current Status</label>
+                  <select 
+                    className="crm-input" 
+                    value={model.status} 
+                    onChange={e => setModel({ ...model, status: e.target.value })}
+                    style={{ fontWeight: 800, color: model.status === 'Paid' ? 'var(--success)' : model.status === 'Partial' ? 'var(--warning)' : 'var(--danger)' }}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Partial">Partial</option>
+                    <option value="Paid">Paid</option>
                   </select>
-                </div>
-                <div className="sheet-field">
-                  <label>Reference Number</label>
-                  <input
-                    type="text"
-                    className="crm-input"
-                    value={model.transaction_id}
-                    onChange={e => setModel({ ...model, transaction_id: e.target.value })}
-                    placeholder="TXN-XXXXXX"
-                  />
                 </div>
               </div>
             </section>
@@ -380,8 +474,8 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
             {/* Memo */}
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
-                <Icon name="info" />
-                <span>Additional Notes</span>
+                <Icon name="notes" />
+                <span>📝 Extra</span>
               </div>
               <div className="sheet-field full-width">
                 <label>Notes</label>
@@ -392,6 +486,18 @@ export default function PaymentForm({ mode = 'create', onCancel, onSuccess, paym
                   onChange={e => setModel({ ...model, notes: e.target.value })}
                   placeholder="Record any details for audit purposes..."
                 />
+              </div>
+              <div className="sheet-field full-width">
+                <label>Attachment (Screenshot/Receipt)</label>
+                <div className="file-upload-zone">
+                  <input 
+                    type="file" 
+                    onChange={e => setFile(e.target.files[0])} 
+                    className="crm-input" 
+                    style={{ border: '2px dashed var(--border)', padding: '20px', textAlign: 'center' }}
+                  />
+                  {file && <div className="text-xs muted mt-8">Selected: {file.name}</div>}
+                </div>
               </div>
             </section>
           </div>

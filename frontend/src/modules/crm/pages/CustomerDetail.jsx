@@ -24,6 +24,26 @@ function stripHtml(html) {
   return tmp.textContent || tmp.innerText || ''
 }
 
+function getCustomerDealSnapshot(customer, deals) {
+  const latestDealRef = customer?.latest_deal
+  const matchedDeal = latestDealRef?.id
+    ? deals.find(deal => String(deal.id || deal._id) === String(latestDealRef.id))
+    : null
+  const fallbackDeal = matchedDeal || latestDealRef || deals[0] || null
+
+  const totalValue = Number(fallbackDeal?.value ?? customer?.total_deal_value ?? 0) || 0
+  const paidAmount = Number(fallbackDeal?.paid_amount ?? customer?.paid_amount ?? 0) || 0
+  const pendingAmount = Math.max(0, Number(fallbackDeal?.value != null ? (totalValue - paidAmount) : (customer?.pending_amount ?? (totalValue - paidAmount))) || 0)
+  const paymentStatus = fallbackDeal?.payment_status || customer?.payment_status || (pendingAmount === 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending')
+
+  return {
+    totalValue,
+    paidAmount,
+    pendingAmount,
+    paymentStatus,
+  }
+}
+
 export default function CustomerDetail() {
   const { id } = useParams()
   const { user } = useAuth()
@@ -34,6 +54,7 @@ export default function CustomerDetail() {
 
   const isManagement = isAdmin || isManager
   const isReadOnly = isHR || isAccountant
+  const isEmployee = user?.role === 'Employee'
 
   const [customer, setCustomer] = useState(null)
   const [deals, setDeals] = useState([])
@@ -101,10 +122,7 @@ export default function CustomerDetail() {
   if (!customer) return <div className="muted center padding40">Record not found.</div>
 
   const canModify = !isReadOnly && (isManagement || String(customer.assigned_to?.id || customer.assigned_to) === String(user?.id))
-
-  const paymentStatusClass = customer.payment_status === 'Paid' ? 'badge-success-vibrant' :
-    customer.payment_status === 'Partial' ? 'badge-warning-vibrant' :
-      'badge-danger-vibrant'
+  const financials = getCustomerDealSnapshot(customer, deals)
 
   return (
     <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
@@ -125,7 +143,7 @@ export default function CustomerDetail() {
               <span>New Deal</span>
             </button>
           )}
-          {canModify && (
+          {isManagement && (
             <Link className="crm-btn-premium" to={`/customers/${id}/edit`} style={{ background: 'var(--primary)', color: '#ffffff', padding: '8px 24px', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}>
               <Icon name="edit" />
               <span>Edit Customer</span>
@@ -151,7 +169,7 @@ export default function CustomerDetail() {
               </span>
             </div>
 
-            <div style={{ display: 'flex', gap: '20px', color: 'var(--text-dimmed)', fontSize: '0.9rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '20px', color: 'var(--text-dimmed)', fontSize: '0.9rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Icon name="mail" size={14} />
                 <span>{customer.email || 'No email'}</span>
@@ -162,6 +180,11 @@ export default function CustomerDetail() {
                   <span>{customer.phone}</span>
                 </div>
               )}
+              <div className="contactQuickActions" style={{ marginLeft: '10px' }}>
+                 <a href={`tel:${customer.phone}`} className="action-icon-mini phone" title="Call"><Icon name="phone" size={12} /></a>
+                 <a href={`https://wa.me/${customer.phone?.replace(/\D/g, '')}`} target="_blank" className="action-icon-mini whatsapp" title="WhatsApp"><Icon name="whatsapp" size={12} /></a>
+                 <a href={`mailto:${customer.email}`} className="action-icon-mini email" title="Email"><Icon name="mail" size={12} /></a>
+              </div>
             </div>
           </div>
         </div>
@@ -173,12 +196,12 @@ export default function CustomerDetail() {
            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
              <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
              <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Total Deal Value:</span>
-             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--success)' }}>₹{(customer.total_deal_value || 0).toLocaleString()}</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--success)' }}>₹{financials.totalValue.toLocaleString()}</span>
            </div>
            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
              <Icon name="clock" size={16} style={{ color: 'var(--text-dimmed)' }} />
              <span style={{ fontSize: '0.9rem', color: 'var(--text-dimmed)' }}>Pending Amount:</span>
-             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--danger)' }}>₹{(customer.pending_amount || 0).toLocaleString()}</span>
+             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--danger)' }}>₹{financials.pendingAmount.toLocaleString()}</span>
            </div>
         </div>
       </section>
@@ -211,9 +234,9 @@ export default function CustomerDetail() {
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Payment Status</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: customer.payment_status === 'Paid' ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: customer.payment_status === 'Paid' ? 'var(--success)' : 'var(--danger)' }} />
-                  {customer.payment_status || 'Pending'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: financials.paymentStatus === 'Paid' ? 'var(--success)' : financials.paymentStatus === 'Partial' ? 'var(--warning)' : 'var(--danger)', fontWeight: 700 }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: financials.paymentStatus === 'Paid' ? 'var(--success)' : financials.paymentStatus === 'Partial' ? 'var(--warning)' : 'var(--danger)' }} />
+                  {financials.paymentStatus}
                 </div>
               </div>
             </div>
@@ -277,7 +300,7 @@ export default function CustomerDetail() {
           { id: 'summary', label: 'Summary', icon: 'dashboard', roles: ['Admin', 'Manager', 'Employee', 'Accountant', 'HR'] },
           { id: 'deals', label: 'Deals', icon: 'deals', roles: ['Admin', 'Manager', 'Employee', 'Accountant'] },
           { id: 'invoices', label: 'Invoices', icon: 'reports', roles: ['Admin', 'Manager', 'Accountant'] },
-          { id: 'payments', label: 'Payments', icon: 'reports', roles: ['Admin', 'Manager', 'Accountant'] },
+          { id: 'payments', label: 'Payments', icon: 'reports', roles: ['Admin', 'Manager', 'Employee', 'Accountant'] },
           { id: 'notes', label: 'Notes', icon: 'notes', roles: ['Admin', 'Manager', 'Employee'] },
           { id: 'activity', label: 'Activity History', icon: 'reports', roles: ['Admin', 'Manager', 'Employee', 'Accountant'] }
         ].filter(tab => !tab.roles || tab.roles.includes(user?.role)).map(tab => (
@@ -303,15 +326,15 @@ export default function CustomerDetail() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px' }}>
                 <div style={{ background: 'var(--bg-surface)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   <div style={{ color: 'var(--text-dimmed)', fontSize: '0.8rem', marginBottom: '4px' }}>Total Business</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text)' }}>₹{(customer.total_deal_value || 0).toLocaleString()}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text)' }}>₹{financials.totalValue.toLocaleString()}</div>
                 </div>
                 <div style={{ background: 'var(--primary-soft)', padding: '20px', borderRadius: '12px', border: '1px solid var(--primary-soft)' }}>
                   <div style={{ color: 'var(--primary)', fontSize: '0.8rem', marginBottom: '4px' }}>Received Amount</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>₹{(customer.paid_amount || 0).toLocaleString()}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>₹{financials.paidAmount.toLocaleString()}</div>
                 </div>
                 <div style={{ background: 'var(--danger-soft)', padding: '20px', borderRadius: '12px', border: '1px solid var(--danger-soft)' }}>
                   <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginBottom: '4px' }}>Pending Receivables</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--danger)' }}>₹{(customer.pending_amount || 0).toLocaleString()}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--danger)' }}>₹{financials.pendingAmount.toLocaleString()}</div>
                 </div>
               </div>
             </div>
@@ -416,8 +439,8 @@ export default function CustomerDetail() {
                       {payments.map(p => (
                         <tr key={p.id}>
                           <td><span style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)' }}>{p.payment_number}</span></td>
-                          <td><span style={{ fontWeight: 600, color: 'var(--success)' }}>₹{p.amount?.toLocaleString()}</span></td>
-                          <td>{p.payment_method}</td>
+                          <td><span style={{ fontWeight: 600, color: 'var(--success)' }}>₹{p.paid_amount?.toLocaleString()}</span></td>
+                          <td>{p.payment_mode}</td>
                           <td>{new Date(p.payment_date).toLocaleDateString()}</td>
                         </tr>
                       ))}
@@ -476,7 +499,10 @@ export default function CustomerDetail() {
         isOpen={isDealModalOpen}
         customerId={id}
         onClose={() => setIsDealModalOpen(false)}
-        onSave={() => loadCustomerData()}
+        onSave={() => {
+          setIsDealModalOpen(false)
+          loadCustomerData()
+        }}
       />
 
       <FollowupModal

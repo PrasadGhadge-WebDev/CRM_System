@@ -21,7 +21,8 @@ import { Icon } from '../../../layouts/icons.jsx'
 import { useAuth } from '../../../context/AuthContext.jsx'
 
 import { 
-  validateRequired 
+  validateRequired,
+  validateEmail
 } from '../../../utils/formValidation.js'
 
 export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
@@ -150,6 +151,19 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
 
     const descErr = validateRequired('Description', formData.description)
     if (descErr) errors.description = descErr
+
+    if (formData.customer_email_manual) {
+      const emailErr = validateEmail('Manual Email', formData.customer_email_manual)
+      if (emailErr) errors.customer_email_manual = emailErr
+    }
+
+    if (formData.cc_emails) {
+      const emails = formData.cc_emails.split(',').map(e => e.trim()).filter(Boolean)
+      const invalidEmails = emails.filter(e => !validateEmail('Email', e) === false) 
+      // Wait, validateEmail returns a string error if invalid
+      const hasInvalid = emails.some(e => !!validateEmail('Email', e))
+      if (hasInvalid) errors.cc_emails = 'One or more CC emails are invalid'
+    }
 
     setFieldErrors(errors)
     return Object.keys(errors).length === 0

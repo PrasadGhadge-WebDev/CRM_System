@@ -8,6 +8,9 @@ import { toast } from 'react-toastify'
 import { useAuth } from '../../../context/AuthContext'
 import PageHeader from '../../../components/PageHeader.jsx'
 import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
+import Modal from '../../../components/Modal.jsx'
+import InteractionLogger from '../../../components/InteractionLogger.jsx'
+import StatusBadge from '../../../components/StatusBadge.jsx'
 
 export default function PaymentsList() {
   const { user } = useAuth()
@@ -16,7 +19,7 @@ export default function PaymentsList() {
   const [q, setQ] = useState('')
   const [method, setMethod] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
+  const [activeTab, setActiveTab] = useState('customer') // 'customer' or 'staff'
   const [staffFilter, setStaffFilter] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -26,10 +29,12 @@ export default function PaymentsList() {
   const limit = 20
   const [summary, setSummary] = useState({ total: 0, byMethod: {}, byStatus: {}, totalAmount: 0, bankTransferVolume: 0 })
   const [selectedPayments, setSelectedPayments] = useState([])
+  const [followupPayment, setFollowupPayment] = useState(null)
+  const [isFollowupOpen, setIsFollowupOpen] = useState(false)
   const navigate = useNavigate()
 
   const toggleSelect = (id) => {
-    setSelectedPayments(prev => 
+    setSelectedPayments(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     )
   }
@@ -67,29 +72,29 @@ export default function PaymentsList() {
 
   // HR should not see customer payments, only internal ones
   useEffect(() => {
-    if (isHR && !typeFilter) {
-      setTypeFilter('internal') // Custom filter handled in backend or frontend
+    if (isHR && activeTab !== 'staff') {
+      setActiveTab('staff')
     }
-  }, [isHR, typeFilter])
+  }, [isHR, activeTab])
 
   const fetchPayments = useCallback(async () => {
     try {
       setLoading(true)
-      
+
       let sDate = startDate
       let eDate = endDate
       const now = new Date()
-      now.setHours(0,0,0,0)
+      now.setHours(0, 0, 0, 0)
 
       if (dateRangeType === 'today') {
         sDate = now.toISOString()
-        eDate = new Date(new Date().setHours(23,59,59,999)).toISOString()
+        eDate = new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
       } else if (dateRangeType === 'yesterday') {
         const y = new Date(now)
         y.setDate(y.getDate() - 1)
         sDate = y.toISOString()
         const yEnd = new Date(y)
-        yEnd.setHours(23,59,59,999)
+        yEnd.setHours(23, 59, 59, 999)
         eDate = yEnd.toISOString()
       } else if (dateRangeType === 'week') {
         const w = new Date(now)
@@ -101,28 +106,26 @@ export default function PaymentsList() {
         sDate = m.toISOString()
       }
 
-      const res = await paymentsApi.list({ 
-        q, 
-        payment_mode: method, 
+      const res = await paymentsApi.list({
+        q,
+        payment_mode: method,
         status: statusFilter,
-        payment_type: typeFilter,
+        payment_type: activeTab === 'customer' ? 'Customer Payment' : 'internal',
         created_by: staffFilter,
-        startDate: sDate, 
-        endDate: eDate, 
-        page, 
-        limit 
+        startDate: sDate,
+        endDate: eDate,
+        page,
+        limit
       })
       setPayments(res.items || [])
       setTotal(res.total || 0)
       setSummary(res.summary || { total: 0, byMethod: {}, byStatus: {}, totalAmount: 0, bankTransferVolume: 0 })
-      
-      // Summary updated
     } catch (err) {
       toast.error('Failed to load payments')
     } finally {
       setLoading(false)
     }
-  }, [q, method, statusFilter, typeFilter, staffFilter, startDate, endDate, dateRangeType, page])
+  }, [q, method, statusFilter, activeTab, staffFilter, startDate, endDate, dateRangeType, page])
 
   useEffect(() => {
     fetchPayments()
@@ -172,11 +175,11 @@ export default function PaymentsList() {
   const handleLinkBill = async (payment) => {
     const invoiceNumber = window.prompt('Enter Invoice Number to link (e.g., INV-101):')
     if (!invoiceNumber) return
-    
+
     try {
       const res = await invoicesApi.list({ q: invoiceNumber })
       const invoice = res.items?.find(i => i.invoice_number === invoiceNumber)
-      
+
       if (!invoice) {
         toast.error('Invoice not found')
         return
@@ -221,7 +224,7 @@ export default function PaymentsList() {
         <Row ss:StyleID="header">
           ${headers.map(h => `<Cell><Data ss:Type="String">${h}</Data></Cell>`).join('')}
         </Row>`;
-    
+
     const escapeXml = (unsafe) => {
       return String(unsafe).replace(/[<>&'"]/g, (c) => {
         switch (c) {
@@ -291,26 +294,30 @@ export default function PaymentsList() {
         {/* Payment Flow Split Tabs */}
         <div className="payment-flow-tabs">
           {(!isHR) && (
-            <button 
-              className={`flow-tab ${(!typeFilter || typeFilter === 'Customer Payment') ? 'active' : ''}`}
-              onClick={() => setTypeFilter('Customer Payment')}
+            <button
+              className={`flow-tab ${activeTab === 'customer' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('customer'); setPage(1); }}
             >
-              <Icon name="billing" size={16} />
+              <div className="tab-icon-wrap">
+                <Icon name="billing" size={20} />
+              </div>
               <div className="tab-info">
                 <span className="tab-label">Customer Payments</span>
-                <span className="tab-desc">Sales & Invoices</span>
+                <span className="tab-desc">Revenue & Invoices</span>
               </div>
             </button>
           )}
           {(isAdmin || isAccountant || isHR) && (
-            <button 
-              className={`flow-tab ${(typeFilter === 'internal' || ['Salary Payment', 'Employee Reimbursement'].includes(typeFilter)) ? 'active' : ''}`}
-              onClick={() => setTypeFilter('internal')}
+            <button
+              className={`flow-tab ${activeTab === 'staff' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('staff'); setPage(1); }}
             >
-              <Icon name="users" size={16} />
+              <div className="tab-icon-wrap staff">
+                <Icon name="users" size={20} />
+              </div>
               <div className="tab-info">
                 <span className="tab-label">Staff Payments</span>
-                <span className="tab-desc">Salary & Claims</span>
+                <span className="tab-desc">Payroll & Claims</span>
               </div>
             </button>
           )}
@@ -335,11 +342,11 @@ export default function PaymentsList() {
         <div className="crm-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
           <div className="premium-stat-card">
             <div className="stat-icon collection">
-              <Icon name="billing" size={24} />
+              <Icon name={activeTab === 'customer' ? 'billing' : 'users'} size={24} />
             </div>
             <div className="stat-details">
-              <span className="stat-label">Total Collection</span>
-              <span className="stat-value">{formatCurrency(summary.totalCollection)}</span>
+              <span className="stat-label">{activeTab === 'customer' ? 'Total Collection' : 'Total Payroll'}</span>
+              <span className="stat-value">{formatCurrency(activeTab === 'customer' ? summary.totalCollection : summary.totalStaffPayments || 0)}</span>
             </div>
           </div>
 
@@ -348,8 +355,10 @@ export default function PaymentsList() {
               <Icon name="activity" size={24} />
             </div>
             <div className="stat-details">
-              <span className="stat-label">Today's Inflow</span>
-              <span className="stat-value text-success">{formatCurrency(summary.todayCollection)}</span>
+              <span className="stat-label">{activeTab === 'customer' ? "Today's Inflow" : "Pending Approvals"}</span>
+              <span className={`stat-value ${activeTab === 'customer' ? 'text-success' : 'text-warning'}`}>
+                {activeTab === 'customer' ? formatCurrency(summary.todayCollection) : (summary.pendingStaffCount || 0)}
+              </span>
             </div>
           </div>
 
@@ -358,8 +367,10 @@ export default function PaymentsList() {
               <Icon name="info" size={24} />
             </div>
             <div className="stat-details">
-              <span className="stat-label">Total Pending</span>
-              <span className="stat-value text-danger">{formatCurrency(summary.totalPending)}</span>
+              <span className="stat-label">{activeTab === 'customer' ? 'Total Pending' : 'Claims Processing'}</span>
+              <span className="stat-value text-danger">
+                {activeTab === 'customer' ? formatCurrency(summary.totalPending) : formatCurrency(summary.pendingClaimsAmount || 0)}
+              </span>
             </div>
           </div>
         </div>
@@ -386,15 +397,16 @@ export default function PaymentsList() {
 
             <select className="crm-input filter-select-modern" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={{ width: '160px' }}>
               <option value="">All Statuses</option>
-              <option value="Pending">Pending</option>
               <option value="Paid">Paid</option>
               <option value="Partial">Partial</option>
+              <option value="Pending">Pending</option>
+              <option value="Overdue">Overdue</option>
               <option value="Failed">Failed</option>
             </select>
 
-            <select 
-              className="crm-input filter-select-modern" 
-              value={dateRangeType} 
+            <select
+              className="crm-input filter-select-modern"
+              value={dateRangeType}
               onChange={(e) => { setDateRangeType(e.target.value); setPage(1); }}
               style={{ width: '160px' }}
             >
@@ -415,7 +427,7 @@ export default function PaymentsList() {
             )}
 
             {(q || method || statusFilter || dateRangeType !== 'all') && (
-              <button 
+              <button
                 className="btn-premium-mini reset-btn"
                 onClick={() => {
                   setQ(''); setMethod(''); setStatusFilter('');
@@ -440,161 +452,122 @@ export default function PaymentsList() {
             <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <div className="crm-table-scroll">
                 <table className="crm-table">
-                    <thead style={{ background: 'var(--bg-surface)' }}>
+                  <thead style={{ background: 'var(--bg-surface)' }}>
+                    {activeTab === 'customer' ? (
                       <tr>
-                        <th style={{ width: '40px' }}>
-                          <input type="checkbox" checked={selectedPayments.length === payments.length && payments.length > 0} onChange={toggleSelectAll} onClick={e => e.stopPropagation()} />
-                        </th>
-                        <th>CUSTOMER & DATE</th>
-                        <th>DEAL</th>
-                        <th>METHOD</th>
-                        <th>STATUS</th>
-                        <th className="text-right">TOTAL</th>
-                        <th className="text-right">PAID</th>
-                        <th className="text-right">PENDING</th>
-                        <th className="text-right" style={{ width: '120px' }}>ACTIONS</th>
+                        <th style={{ minWidth: '120px' }}>PAYMENT ID</th>
+                        <th style={{ minWidth: '150px' }}>CUSTOMER</th>
+                        <th style={{ minWidth: '140px' }}>DEAL</th>
+                        <th style={{ minWidth: '120px' }}>BILL #</th>
+                        <th style={{ minWidth: '110px' }} className="text-right">TOTAL AMOUNT</th>
+                        <th style={{ minWidth: '110px' }} className="text-right">PAID</th>
+                        <th style={{ minWidth: '110px' }} className="text-right">PENDING</th>
+                        <th style={{ minWidth: '120px' }}>METHOD</th>
+                        <th style={{ minWidth: '120px' }}>STATUS</th>
+                        <th style={{ minWidth: '120px' }}>DATE</th>
+                        <th style={{ minWidth: '100px' }} className="text-right">ACTIONS</th>
                       </tr>
-                    </thead>
-                  <tbody>
-                    {payments.length ? (
-                          payments.map(pay => {
-                            const isOverdue = pay.invoice_id?.due_date && new Date(pay.invoice_id.due_date) < new Date() && pay.status !== 'Paid';
-                            
-                            return (
-                              <tr 
-                                key={pay.id} 
-                                className={`crm-table-row clickable-row ${selectedPayments.includes(pay.id) ? 'selected' : ''} ${isOverdue ? 'overdue-row' : ''}`}
-                                onClick={() => navigate(`/payments/${pay.id}`)}
-                              >
-                                <td onClick={e => e.stopPropagation()}>
-                                  <input type="checkbox" checked={selectedPayments.includes(pay.id)} onChange={() => toggleSelect(pay.id)} />
-                                </td>
-                                <td>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div className="payee-avatar-mini">
-                                      {(pay.customer_id?.name || '?').charAt(0)}
-                                    </div>
-                                    <div className="stack gap-0">
-                                      <span className="font-bold payee-name-mini" style={{ color: 'var(--text)', fontSize: '0.85rem' }}>
-                                        {pay.customer_id?.name || 'Customer'}
-                                      </span>
-                                      <span className="text-xs muted font-numeric" style={{ fontSize: '0.7rem', marginTop: '2px', opacity: 0.7 }}>
-                                        {new Date(pay.payment_date).toLocaleDateString()}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td>
-                                  <span className="text-sm font-bold truncate" style={{ maxWidth: '120px', display: 'block', color: 'var(--text-dimmed)' }}>
-                                    {pay.deal_id?.name || 'Direct Payment'}
-                                  </span>
-                                </td>
-                                <td onClick={e => e.stopPropagation()}>
-                                  {(isAdmin || isAccountant) ? (
-                                    <select 
-                                      className="status-dropdown-mini" 
-                                      value={pay.payment_mode || 'UPI'} 
-                                      onChange={(e) => handleModeChange(pay.id, e.target.value)}
-                                      style={{ border: 'none', background: 'var(--bg-surface)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}
-                                    >
-                                      <option value="UPI">UPI</option>
-                                      <option value="Bank Transfer">Bank Transfer</option>
-                                      <option value="Cash">Cash</option>
-                                      <option value="Card">Card</option>
-                                      <option value="Cheque">Cheque</option>
-                                    </select>
-                                  ) : (
-                                    <div className="method-tag">
-                                      {pay.payment_mode || 'UPI'}
-                                    </div>
-                                  )}
-                                </td>
-                                <td onClick={e => e.stopPropagation()}>
-                                  {(isAdmin || isAccountant) ? (
-                                    <select 
-                                      className={`status-dropdown-mini ${pay.status?.toLowerCase()}`} 
-                                      value={pay.status || 'Pending'} 
-                                      onChange={(e) => handleStatusChange(pay.id, e.target.value)}
-                                      style={{ minWidth: '90px' }}
-                                    >
-                                      <option value="Pending">Pending</option>
-                                      <option value="Partial">Partial</option>
-                                      <option value="Paid">Paid</option>
-                                      <option value="Failed">Failed</option>
-                                      <option value="Refunded">Refunded</option>
-                                    </select>
-                                  ) : (
-                                    <span className={`crm-status-pill-mini ${
-                                      pay.status === 'Paid' ? 'success' : 
-                                      pay.status === 'Failed' ? 'danger' : 'warning'
-                                    }`}>
-                                      {pay.status}
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="text-right font-numeric font-bold" style={{ color: 'var(--text)' }}>
-                                  {formatCurrency(pay.total_amount)}
-                                </td>
-                                <td className="text-right font-numeric font-bold" style={{ color: 'var(--success)' }}>
-                                  {formatCurrency(pay.paid_amount)}
-                                </td>
-                                <td className="text-right font-numeric font-bold" style={{ color: pay.pending_amount > 0 ? 'var(--danger)' : 'var(--success)' }}>
-                                  {formatCurrency(pay.pending_amount)}
-                                </td>
-                                <td onClick={e => e.stopPropagation()}>
-                                  <div className="crm-action-group" style={{ justifyContent: 'flex-end', gap: '8px' }}>
-                                    <div className="crm-more-actions-dropdown">
-                                      <button className="crm-action-btn-mini glass" style={{ borderRadius: '50%', width: '32px', height: '32px' }}>
-                                        <Icon name="more-vertical" size={16} />
-                                      </button>
-                                      <div className="crm-dropdown-content" style={{ right: 0, minWidth: '180px', padding: '8px' }}>
-                                        <button className="dropdown-item-premium" onClick={() => navigate(`/payments/${pay.id}`)}>
-                                          <Icon name="eye" size={14} />
-                                          <span>View Details</span>
-                                        </button>
-                                        
-                                        {(isAdmin || isAccountant) && (
-                                          <button className="dropdown-item-premium" onClick={() => navigate(`/payments/${pay.id}/edit`)}>
-                                            <Icon name="edit" size={14} />
-                                            <span>Edit Payment</span>
-                                          </button>
-                                        )}
-
-                                        {pay.invoice_id && (
-                                          <button className="dropdown-item-premium" onClick={() => {
-                                            const invId = pay.invoice_id?.id || pay.invoice_id?._id || pay.invoice_id;
-                                            navigate(`/invoices/${invId}`);
-                                          }}>
-                                            <Icon name="billing" size={14} />
-                                            <span>View Invoice</span>
-                                          </button>
-                                        )}
-
-                                        <button className="dropdown-item-premium" onClick={() => navigate(`/payments/${pay.id}?print=true`)}>
-                                          <Icon name="reports" size={14} />
-                                          <span>Print Receipt</span>
-                                        </button>
-
-                                        {isAdmin && (
-                                          <>
-                                            <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
-                                            <button className="dropdown-item-premium danger" onClick={() => handleDelete(pay.id)}>
-                                              <Icon name="trash" size={14} />
-                                              <span>Delete Permanently</span>
-                                            </button>
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-
-                          );
-                        })
                     ) : (
                       <tr>
-                        <td colSpan={11}>
+                        <th style={{ minWidth: '120px' }}>TXN ID</th>
+                        <th style={{ minWidth: '150px' }}>EMPLOYEE NAME</th>
+                        <th style={{ minWidth: '140px' }}>PAYMENT TYPE</th>
+                        <th style={{ minWidth: '120px' }}>MONTH / DATE</th>
+                        <th style={{ minWidth: '110px' }} className="text-right">AMOUNT</th>
+                        <th style={{ minWidth: '130px' }}>METHOD</th>
+                        <th style={{ minWidth: '120px' }}>STATUS</th>
+                        <th style={{ minWidth: '100px' }} className="text-right">ACTIONS</th>
+                      </tr>
+                    )}
+                  </thead>
+                  <tbody>
+                    {payments.length ? (
+                      payments.map(pay => {
+                        const isOverdue = pay.invoice_id?.due_date && new Date(pay.invoice_id.due_date) < new Date() && pay.status !== 'Paid';
+                        const isInternal = ['Salary Payment', 'Employee Reimbursement', 'Vendor Payment'].includes(pay.payment_type);
+
+                        if (activeTab === 'customer') {
+                          return (
+                            <tr
+                              key={pay.id}
+                              className={`crm-table-row clickable-row ${isOverdue ? 'overdue-row' : ''}`}
+                              onClick={() => navigate(`/payments/${pay.id}`)}
+                            >
+                              <td><div className="font-bold text-primary">{pay.payment_number || 'PAY-PENDING'}</div></td>
+                              <td><div className="font-bold">{pay.customer_id?.name || '—'}</div></td>
+                              <td><div className="font-semibold text-xs">{pay.deal_id?.name || '—'}</div></td>
+                              <td><div className="font-numeric strong">{pay.invoice_id?.invoice_number || 'UNLINKED'}</div></td>
+                              <td className="text-right font-numeric font-bold" style={{ color: 'var(--text)' }}>{formatCurrency(pay.total_amount)}</td>
+                              <td className="text-right font-numeric font-bold" style={{ color: '#10b981' }}>{formatCurrency(pay.paid_amount)}</td>
+                              <td className="text-right font-numeric font-bold" style={{ color: pay.pending_amount > 0 ? '#ef4444' : '#10b981' }}>{formatCurrency(pay.pending_amount)}</td>
+                              <td><div className="text-xs font-bold caps muted">{pay.payment_mode || '—'}</div></td>
+                              <td>
+                                <span className={`status-badge-mini ${pay.status === 'Paid' ? 'success' : 'warning'}`}>
+                                  {isOverdue ? 'Overdue' : (pay.status || 'Pending')}
+                                </span>
+                              </td>
+                              <td><div className="text-xs font-numeric strong">{new Date(pay.payment_date).toLocaleDateString('en-IN')}</div></td>
+                              <td onClick={e => e.stopPropagation()}>
+                                <div className="crm-action-group" style={{ justifyContent: 'flex-end', gap: '8px' }}>
+                                  <button 
+                                    className="modern-action-btn" 
+                                    title="Edit Payment"
+                                    onClick={() => navigate(`/payments/${pay.id}/edit`)}
+                                  >
+                                    <Icon name="edit" size={14} />
+                                  </button>
+
+                                  <details className="crm-actions-overflow">
+                                    <summary className="modern-action-btn" title="More Options"><Icon name="more-vertical" size={14} /></summary>
+                                    <div className="overflow-menu-content shadow-soft">
+                                      {pay.invoice_id && <button className="overflow-item" onClick={() => navigate(`/invoices/${pay.invoice_id?.id || pay.invoice_id?._id}`)}><Icon name="billing" size={14} /><span>View Invoice</span></button>}
+                                      {isAdmin && <button className="overflow-item danger" onClick={() => handleDelete(pay.id)}><Icon name="trash" size={14} /><span>Delete</span></button>}
+                                    </div>
+                                  </details>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        } else {
+                          return (
+                            <tr key={pay.id} className="crm-table-row clickable-row" onClick={() => navigate(`/payments/${pay.id}`)}>
+                              <td><div className="font-numeric strong">{pay.transaction_id || 'INTERNAL'}</div></td>
+                              <td><div className="font-bold">{pay.user_id?.name || pay.vendor_name || 'Staff Member'}</div></td>
+                              <td>
+                                <div className="stack gap-0">
+                                  <span className="font-bold text-xs caps">{pay.payment_type}</span>
+                                  <span className="muted text-xs">{pay.notes || ''}</span>
+                                </div>
+                              </td>
+                              <td><div className="text-xs font-numeric strong">{new Date(pay.payment_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</div></td>
+                              <td className="text-right font-numeric font-bold" style={{ color: '#6366f1' }}>{formatCurrency(pay.total_amount)}</td>
+                              <td><div className="text-xs strong caps">{pay.payment_mode}</div></td>
+                              <td><span className={`status-badge-mini ${pay.status === 'Paid' ? 'success' : 'warning'}`}>{pay.status}</span></td>
+                              <td onClick={e => e.stopPropagation()}>
+                                <div className="crm-action-group" style={{ justifyContent: 'flex-end', gap: '8px' }}>
+                                  <button 
+                                    className="modern-action-btn" 
+                                    title="Update Record"
+                                    onClick={() => navigate(`/payments/${pay.id}/edit`)}
+                                  >
+                                    <Icon name="edit" size={14} />
+                                  </button>
+
+                                  <details className="crm-actions-overflow">
+                                    <summary className="modern-action-btn" title="More Options"><Icon name="more-vertical" size={14} /></summary>
+                                    <div className="overflow-menu-content shadow-soft">
+                                      {isAdmin && <button className="overflow-item danger" onClick={() => handleDelete(pay.id)}><Icon name="trash" size={14} /><span>Delete Record</span></button>}
+                                    </div>
+                                  </details>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={12}>
                           <div className="emptyState" style={{ padding: '60px 0', textAlign: 'center' }}>
                             <h3 style={{ color: 'var(--text)' }}>No Payments Found</h3>
                             <p className="muted">Refine your filters or add a new record.</p>
@@ -616,6 +589,32 @@ export default function PaymentsList() {
           </>
         )}
       </section>
+
+      <Modal
+        isOpen={isFollowupOpen}
+        onClose={() => setIsFollowupOpen(false)}
+        title={`Payment Follow-up: ${followupPayment?.payment_number}`}
+      >
+        <div className="p20 stack gap-20">
+          <div className="payment-summary-mini glass-panel p16">
+            <div className="flex justify-between items-center mb-8">
+              <span className="muted text-xs caps strong">Pending Follow-up</span>
+              <span className="text-danger font-bold">{formatCurrency(followupPayment?.pending_amount)}</span>
+            </div>
+            <div className="text-sm">
+              Customer: <strong>{followupPayment?.customer_id?.name}</strong>
+            </div>
+          </div>
+          <InteractionLogger
+            relatedId={followupPayment?.id}
+            relatedType="payment"
+            onNoteAdded={() => {
+              setIsFollowupOpen(false)
+              fetchPayments()
+            }}
+          />
+        </div>
+      </Modal>
 
       <style>{`
          .status-dropdown-mini {
@@ -666,9 +665,9 @@ export default function PaymentsList() {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
-            box-shadow: var(--shadow-sm);
+            box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-sm);
           }
-          .premium-stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--primary); }
+          .premium-stat-card:hover { transform: translateY(-4px); box-shadow: inset 4px 0 0 var(--card-accent), var(--shadow-md); border-color: var(--primary); }
           .premium-stat-card::after {
             content: '';
             position: absolute;
@@ -719,6 +718,72 @@ export default function PaymentsList() {
            border-radius: 4px;
            width: fit-content;
            margin-top: 2px;
+           animation: pulse 2s infinite;
+         }
+
+          .modern-action-btn { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+          .modern-action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); }
+          
+          .crm-actions-overflow { position: relative; }
+          .crm-actions-overflow summary { list-style: none; outline: none; }
+          .crm-actions-overflow summary::-webkit-details-marker { display: none; }
+           
+          .overflow-menu-content { 
+            position: absolute; 
+            right: 0; 
+            top: calc(100% + 8px); 
+            background: var(--bg-card); 
+            border: 1px solid var(--border); 
+            border-radius: 16px; 
+            padding: 8px; 
+            z-index: 1000; 
+            min-width: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(20px);
+          }
+           
+          .overflow-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-decoration: none;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            text-align: left;
+            width: 100%;
+            transition: all 0.2s;
+            white-space: nowrap;
+          }
+          .overflow-item:hover { background: var(--bg-surface); color: var(--primary); }
+          .overflow-item.danger:hover { background: #fee2e2; color: #ef4444; }
+          .overflow-item span { flex: 1; }
+
+         .pending-highlight {
+           background: rgba(239, 68, 68, 0.1);
+           border-radius: 999px;
+           padding: 2px;
+           display: inline-block;
+         }
+
+         @keyframes pulse {
+           0% { opacity: 1; transform: scale(1); }
+           50% { opacity: 0.8; transform: scale(0.95); }
+           100% { opacity: 1; transform: scale(1); }
+         }
+
+         .payment-summary-mini {
+           background: var(--bg-surface);
+           border: 1px solid var(--border);
+           border-radius: 16px;
          }
 
          .crm-action-btn-mini {
@@ -962,8 +1027,98 @@ export default function PaymentsList() {
            color: var(--primary) !important;
            transform: translateY(-2px);
          }
+         .payment-flow-tabs { display: flex; gap: 24px; margin-bottom: 32px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; }
+         .flow-tab { 
+           background: none; 
+           border: none; 
+           padding: 12px 0; 
+           display: flex; 
+           align-items: center; 
+           gap: 16px; 
+           cursor: pointer; 
+           transition: all 0.3s;
+           opacity: 0.5;
+           position: relative;
+         }
+         .flow-tab:hover { opacity: 0.8; }
+         .flow-tab.active { opacity: 1; }
+         .flow-tab.active::after {
+           content: '';
+           position: absolute;
+           bottom: -9px;
+           left: 0;
+           right: 0;
+           height: 3px;
+           background: var(--primary);
+           border-radius: 3px 3px 0 0;
+         }
+
+         .tab-icon-wrap {
+           width: 42px;
+           height: 42px;
+           border-radius: 12px;
+           display: flex;
+           align-items: center;
+           justify-content: center;
+           background: var(--bg-surface);
+           border: 1px solid var(--border);
+           color: var(--text-dimmed);
+           transition: all 0.3s;
+         }
+         .flow-tab.active .tab-icon-wrap { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); transform: scale(1.05); }
+         .tab-icon-wrap.staff { }
+         .flow-tab.active .tab-icon-wrap.staff { background: #f0f9ff; color: #0369a1; border-color: #0369a1; }
+
+         .tab-info { display: flex; flex-direction: column; align-items: flex-start; }
+         .tab-label { font-size: 0.95rem; font-weight: 800; color: var(--text); }
+         .tab-desc { font-size: 0.7rem; font-weight: 600; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
+
+         .caps { text-transform: uppercase; }
+         .text-primary { color: var(--primary); }
+         .status-badge-mini {
+           display: inline-flex;
+           padding: 4px 12px;
+           border-radius: 8px;
+           font-size: 0.7rem;
+           font-weight: 800;
+           text-transform: uppercase;
+           letter-spacing: 0.02em;
+         }
+         .status-badge-mini.success { background: #dcfce7; color: #15803d; }
+         .status-badge-mini.warning { background: #fef3c7; color: #b45309; }
+         .status-badge-mini.danger { background: #fee2e2; color: #b91c1c; }
+
+         .overdue-banner {
+           background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+           color: white;
+           padding: 16px 24px;
+           border-radius: 16px;
+           display: flex;
+           justify-content: space-between;
+           align-items: center;
+           margin-bottom: 24px;
+           box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
+         }
+         .banner-action {
+           background: white;
+           color: #b91c1c;
+           border: none;
+           padding: 8px 16px;
+           border-radius: 10px;
+           font-weight: 800;
+           font-size: 0.8rem;
+           cursor: pointer;
+           transition: all 0.2s;
+         }
+         .banner-action:hover { transform: scale(1.05); }
+
+         @keyframes pulse {
+           0% { transform: scale(1); }
+           50% { transform: scale(1.02); }
+           100% { transform: scale(1); }
+         }
+         .animate-pulse { animation: pulse 3s infinite ease-in-out; }
       `}</style>
     </div>
   )
 }
-

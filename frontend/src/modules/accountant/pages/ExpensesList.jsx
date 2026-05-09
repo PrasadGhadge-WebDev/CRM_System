@@ -1,64 +1,186 @@
-import { useEffect, useState, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Icon } from '../../../layouts/icons'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'react-toastify'
+import Pagination from '../../../components/Pagination.jsx'
+import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
+import { Icon } from '../../../layouts/icons.jsx'
+import { useAuth } from '../../../context/AuthContext'
 import { expensesApi } from '../../../services/expenses'
 import { formatCurrency } from '../../../utils/formatters'
-import { toast } from 'react-toastify'
-import { useAuth } from '../../../context/AuthContext'
 import { useDebouncedValue } from '../../../utils/useDebouncedValue.js'
-import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
+import SearchableSelect from '../../crm/components/SearchableSelect.jsx'
+import ExpenseForm from './ExpenseForm.jsx'
 import '../../../styles/leadsList.css'
 
+const CATEGORY_OPTIONS = [
+  { value: '', label: 'Category: All' },
+  { value: 'Rent', label: 'Rent' },
+  { value: 'Salary', label: 'Salary' },
+  { value: 'Internet', label: 'Internet' },
+  { value: 'Marketing', label: 'Marketing' },
+  { value: 'Travel', label: 'Travel' },
+  { value: 'Medical', label: 'Medical' },
+  { value: 'Training', label: 'Training' },
+  { value: 'Software', label: 'Software' },
+  { value: 'Other', label: 'Other' },
+]
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'Status: All' },
+  { value: 'Pending', label: 'Pending' },
+  { value: 'Approved', label: 'Approved' },
+  { value: 'Rejected', label: 'Rejected' },
+  { value: 'Completed', label: 'Completed' },
+  { value: 'Failed', label: 'Failed' },
+]
+
+const DATE_RANGE_OPTIONS = [
+  { value: 'all', label: 'Date: All' },
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: 'week', label: 'This Week' },
+  { value: 'month', label: 'This Month' },
+  { value: 'custom', label: 'Custom Range' },
+]
+
+function stopRowNavigation(event) {
+  event.stopPropagation()
+}
+
+function buildDateRange(rangeType, startDate, endDate) {
+  let nextStart = startDate
+  let nextEnd = endDate
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+
+  if (rangeType === 'today') {
+    nextStart = now.toISOString()
+    nextEnd = new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
+  } else if (rangeType === 'yesterday') {
+    const yesterday = new Date(now)
+    yesterday.setDate(yesterday.getDate() - 1)
+    nextStart = yesterday.toISOString()
+    const yesterdayEnd = new Date(yesterday)
+    yesterdayEnd.setHours(23, 59, 59, 999)
+    nextEnd = yesterdayEnd.toISOString()
+  } else if (rangeType === 'week') {
+    const week = new Date(now)
+    week.setDate(week.getDate() - 7)
+    nextStart = week.toISOString()
+    nextEnd = ''
+  } else if (rangeType === 'month') {
+    const month = new Date(now)
+    month.setMonth(month.getMonth() - 1)
+    nextStart = month.toISOString()
+    nextEnd = ''
+  } else if (rangeType !== 'custom') {
+    nextStart = ''
+    nextEnd = ''
+  }
+
+  return { startDate: nextStart, endDate: nextEnd }
+}
+
 export default function ExpensesList() {
+  const { user } = useAuth()
   const [expenses, setExpenses] = useState([])
-  const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [category, setCategory] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [q, setQ] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [dateRangeType, setDateRangeType] = useState('all')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
-  const [viewMode, setViewMode] = useState('list') 
+  const [modal, setModal] = useState({ open: false, mode: 'create', id: null })
+  const [activeMenu, setActiveMenu] = useState(null)
   const limit = 20
-  const debouncedQ = useDebouncedValue(q, 500)
-  const navigate = useNavigate()
-  const { user } = useAuth()
+  const debouncedQ = useDebouncedValue(q, 300)
+
   const isAdmin = user?.role === 'Admin'
+  const isAccountant = user?.role === 'Accountant'
+  const isManager = user?.role === 'Manager'
+  const isHR = user?.role === 'HR'
+  const isEmployee = user?.role === 'Employee'
+
+  const canApprove = (exp) => {
+    if (exp.status !== 'Pending') return false
+    if (isAdmin) return true // Admin can approve everything pending
+
+    const amount = Number(exp.amount) || 0
+    const cat = exp.category || ''
+    
+    // Employee Claims categories (Managers can approve these)
+    const isClaim = ['Travel', 'Medical', 'Training', 'Wellness', 'Other', 'Food', 'Office Supplies'].includes(cat)
+    
+    // Large amount safety
+    if (amount > 50000) return false
+
+    // Managers/HR can approve Claims
+    if (isClaim && (isManager || isHR)) return true
+
+    return false
+  }
+
+  const canRecordPayment = (exp) => {
+    return exp.status === 'Approved' && (isAccountant || isAdmin)
+  }
+
+  const handleStatusUpdate = async (id, newStatus) => {
+    try {
+      await expensesApi.update(id, { status: newStatus })
+      toast.success(`Expense ${newStatus.toLowerCase()} successfully`)
+      fetchExpenses()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Update failed')
+    }
+  }
+
+  const canDelete = isAdmin
+  const canAdd = true
 
   const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true)
-      if (viewMode === 'list') {
-        const res = await expensesApi.list({ category, status: statusFilter, q: debouncedQ, page, limit })
-        setExpenses(res.items || [])
-        setTotal(res.total || 0)
-      } else {
-        const res = await expensesApi.getReports({})
-        setReports(res || [])
-      }
+      setError('')
+
+      const resolvedDates = buildDateRange(dateRangeType, startDate, endDate)
+      const res = await expensesApi.list({
+        category,
+        status: statusFilter,
+        q: debouncedQ,
+        startDate: resolvedDates.startDate,
+        endDate: resolvedDates.endDate,
+        page,
+        limit,
+      })
+
+      setExpenses(res.items || [])
+      setTotal(res.total || 0)
     } catch (err) {
+      setError('Failed to load expenses')
       toast.error('Failed to load expenses')
     } finally {
       setLoading(false)
     }
-  }, [category, statusFilter, debouncedQ, page, viewMode])
+  }, [category, statusFilter, debouncedQ, startDate, endDate, dateRangeType, page])
 
   useEffect(() => {
     fetchExpenses()
   }, [fetchExpenses])
 
-  const handleApprove = async (id) => {
-    try {
-      await expensesApi.update(id, { status: 'Approved', approved_by: user.id })
-      toast.success('Expense approved')
-      fetchExpenses()
-    } catch (err) {
-      toast.error('Approval failed')
-    }
-  }
+  const summary = useMemo(() => {
+    const totalSpent = expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+    const approved = expenses.filter((item) => ['Approved', 'Completed'].includes(item.status)).length
+    const pending = expenses.filter((item) => item.status === 'Pending').length
+
+    return { totalSpent, approved, pending }
+  }, [expenses])
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this expense?')) return
+
     try {
       await expensesApi.remove(id)
       toast.success('Expense deleted')
@@ -68,94 +190,143 @@ export default function ExpensesList() {
     }
   }
 
+  const getHeaderTitle = () => {
+    if (isEmployee) return 'My Expenses'
+    if (isManager) return 'My Team Expenses'
+    if (isHR) return 'HR Expenses'
+    return 'Expenses Management'
+  }
+
+  const getHeaderSubtitle = () => {
+    if (isEmployee) return 'Track your reimbursement requests and approval status'
+    return 'Monitor, categorize, and review business spending'
+  }
+
   return (
-    <div className="stack leadsListPage crmContent">
-      <section className="leadsFullscreenShell">
+    <div className="stack">
+      <section className="crm-fullscreen-shell">
         <div className="users-page-header">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h1 className="users-title">Expenses Management</h1>
-              <p className="users-subtitle">Track operational costs and categorize business spending</p>
+              <h1 className="users-title">{getHeaderTitle()}</h1>
+              <p className="users-subtitle">{getHeaderSubtitle()}</p>
             </div>
-            <button
-              className="btn-premium action-vibrant"
-              onClick={() => navigate('/expenses/new')}
-            >
-              <Icon name="plus" size={16} />
-              <span>Add Expense</span>
-            </button>
+            {canAdd && (
+              <button
+                className="btn-premium action-vibrant"
+                onClick={() => setModal({ open: true, mode: 'create', id: null })}
+              >
+                <Icon name="plus" size={16} />
+                <span>{isEmployee ? 'Request Expense' : 'Add Expense'}</span>
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="crm-stats-bar-compact">
-          <div className="stat-pill-mini">
+        <div className="crm-stats-bar-compact overflow-x-auto pb-8">
+          <div
+            className={`stat-pill-mini clickable ${statusFilter === '' ? 'is-active' : ''}`}
+            onClick={() => {
+              setStatusFilter('')
+              setPage(1)
+            }}
+          >
             <span className="stat-pill-label">TOTAL SPENT</span>
-            <span className="stat-pill-value inactive">₹{expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0).toLocaleString()}</span>
+            <span className="stat-pill-value total">{formatCurrency(summary.totalSpent)}</span>
           </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">TAX PAID</span>
-            <span className="stat-pill-value pending">₹{expenses.reduce((sum, e) => sum + (Number(e.tax_amount) || 0), 0).toLocaleString()}</span>
+          <div
+            className={`stat-pill-mini clickable ${statusFilter === 'Approved' ? 'is-active' : ''}`}
+            onClick={() => {
+              setStatusFilter('Approved')
+              setPage(1)
+            }}
+          >
+            <span className="stat-pill-label">APPROVED</span>
+            <span className="stat-pill-value active">{summary.approved}</span>
           </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">RECORDS</span>
-            <span className="stat-pill-value total">{total}</span>
-          </div>
-          <div className="stat-pill-mini">
-            <span className="stat-pill-label">CATEGORIES</span>
-            <span className="stat-pill-value active">{new Set(expenses.map(e => e.category)).size}</span>
+          <div
+            className={`stat-pill-mini clickable ${statusFilter === 'Pending' ? 'is-active' : ''}`}
+            onClick={() => {
+              setStatusFilter('Pending')
+              setPage(1)
+            }}
+          >
+            <span className="stat-pill-label">PENDING</span>
+            <span className="stat-pill-value pending">{summary.pending}</span>
           </div>
         </div>
 
         <div className="unified-action-bar">
           <div className="search-filter-group">
-            <div className="view-switcher-pill">
-              <button className={`view-pill ${viewMode === 'list' ? 'active' : ''}`} onClick={() => { setViewMode('list'); setPage(1); }}>List</button>
-              <button className={`view-pill ${viewMode === 'report' ? 'active' : ''}`} onClick={() => setViewMode('report')}>Analysis</button>
-            </div>
+            <ModernSearchBar
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value)
+                setPage(1)
+              }}
+              placeholder="Search by ID, title, vendor, note, category..."
+            />
 
-            {viewMode === 'list' && (
-              <ModernSearchBar
-                value={q}
-                onChange={e => { setQ(e.target.value); setPage(1); }}
-                placeholder="Search category, notes..."
-              />
-            )}
+            <SearchableSelect
+              value={category}
+              onChange={(val) => {
+                setCategory(val)
+                setPage(1)
+              }}
+              options={CATEGORY_OPTIONS}
+              placeholder="Category: All"
+              icon="reports"
+            />
 
-            {viewMode === 'list' && (
-              <select className="crm-input filter-select" value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}>
-                <option value="">All Categories</option>
-                <option value="Rent">Rent</option>
-                <option value="Salary">Salary</option>
-                <option value="Software">Software</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Travel">Travel</option>
-                <option value="Other">Other</option>
-              </select>
-            )}
+            <SearchableSelect
+              value={statusFilter}
+              onChange={(val) => {
+                setStatusFilter(val)
+                setPage(1)
+              }}
+              options={STATUS_OPTIONS}
+              placeholder="Status: All"
+              icon="check"
+            />
 
-            {viewMode === 'list' && (
-              <select className="crm-input filter-select" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>
-                <option value="">All Statuses</option>
-                <option value="Pending">Pending</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
-              </select>
-            )}
+            <SearchableSelect
+              value={dateRangeType}
+              onChange={(val) => {
+                setDateRangeType(val)
+                setPage(1)
+              }}
+              options={DATE_RANGE_OPTIONS}
+              placeholder="Date: All"
+              icon="calendar"
+            />
 
-
-            {(category) && (
-              <button 
-                className="btn-clear-filters"
-                onClick={() => {
-                  setCategory('')
-                  setPage(1)
-                }}
-              >
-                Clear All
-              </button>
+            {dateRangeType === 'custom' && (
+              <div className="flex items-center gap-4 animate-fade-in expense-date-range">
+                <input
+                  type="date"
+                  className="crm-input date-mini"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value)
+                    setPage(1)
+                  }}
+                />
+                <span className="muted" style={{ fontSize: '0.7rem' }}>to</span>
+                <input
+                  type="date"
+                  className="crm-input date-mini"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value)
+                    setPage(1)
+                  }}
+                />
+              </div>
             )}
           </div>
         </div>
+
+        {error ? <div className="alert error glass-alert">{error}</div> : null}
 
         {loading ? (
           <div className="leadsLoadingState">
@@ -164,138 +335,512 @@ export default function ExpensesList() {
           </div>
         ) : (
           <>
-            <div className="tableWrap leadsTableWrap shadow-soft">
-              <div className="leadsTableScroll">
-                <table className="table-premium">
-                  {viewMode === 'list' ? (
-                    <>
-                      <thead>
-                        <tr>
-                          <th style={{ width: '120px' }}>DATE</th>
-                          <th style={{ width: '140px' }}>CATEGORY</th>
-                          <th style={{ minWidth: '180px' }}>NOTES</th>
-                          <th style={{ width: '120px' }}>STATUS</th>
-                          <th style={{ width: '120px' }}>TAX</th>
-                          <th style={{ width: '140px' }}>TOTAL AMOUNT</th>
-                          <th className="text-right" style={{ width: '120px' }}>ACTION</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {expenses.length ? (
-                          expenses.map(exp => (
-                            <tr key={exp._id} className="tableRowInteractive">
-                              <td><span className="text-sm">{new Date(exp.date).toLocaleDateString()}</span></td>
-                              <td><span className="status-pill-modern" style={{ '--pill-color': '#a855f7' }}>{exp.category}</span></td>
-                              <td><span className="text-sm muted">{exp.note || 'General'}</span></td>
-                              <td>
-                                <span className={`status-pill-modern ${exp.status === 'Approved' ? 'success' : exp.status === 'Rejected' ? 'danger' : 'warning'}`}>
-                                  {exp.status || 'Pending'}
+            <div className="crm-table-wrap shadow-soft" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+              <div className="crm-table-scroll">
+                <table className="crm-table expenses-crm-table">
+                  <thead style={{ background: 'var(--bg-surface)' }}>
+                    <tr>
+                      <th style={{ width: '100px' }}>EXP ID</th>
+                      <th style={{ minWidth: '220px' }}>EXPENSE TITLE</th>
+                      <th style={{ width: '130px' }}>CATEGORY</th>
+                      <th style={{ width: '110px' }}>AMOUNT</th>
+                      <th style={{ width: '130px' }}>DATE</th>
+                      <th style={{ width: '130px' }}>PAID BY</th>
+                      <th style={{ width: '120px' }}>STATUS</th>
+                      <th style={{ width: '130px' }}>APPROVED BY</th>
+                      <th style={{ width: '70px' }} className="text-center">DOC</th>
+                      <th className="text-right" style={{ width: '90px' }}>ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenses.length > 0 ? (
+                      expenses.map((exp) => {
+                        const id = exp.id || exp._id
+                        const paidBy = exp.paid_by || exp.created_by
+                        const approvedBy = exp.approved_by
+                        const vendorLabel = exp.vendor_name || 'Individual Expense'
+
+                        return (
+                          <tr key={String(id)} className="crm-table-row">
+                            <td>
+                              <span className="expense-id-badge">
+                                {exp.custom_id || `#${String(id).slice(-5).toUpperCase()}`}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="leadsIdentityCell">
+                                <div className="leadsPrimaryText">{exp.title}</div>
+                                <div className="leadsSecondaryText">{vendorLabel}</div>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="expense-category-pill">{exp.category || 'Other'}</span>
+                            </td>
+                            <td>
+                              <div className="leadsOwnerCell">
+                                <span className="expense-amount">{formatCurrency(exp.amount || 0)}</span>
+                                <span className="ownerRole">{exp.payment_method || 'Cash'}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="leadsOwnerCell">
+                                <span className="ownerName">
+                                  {exp.date ? new Date(exp.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '-'}
                                 </span>
-                              </td>
-                              <td><span className="font-numeric text-danger">{formatCurrency(exp.tax_amount || 0)}</span></td>
-                              <td><span className="font-numeric-bold text-danger">{formatCurrency(exp.amount)}</span></td>
-                              <td className="text-right" onClick={e => e.stopPropagation()}>
-                                <div className="tableActions">
-                                  {isAdmin && exp.status !== 'Approved' && (
-                                    <button className="action-btn-mini success" title="Approve" onClick={() => handleApprove(exp._id)}><Icon name="check" size={14} /></button>
+                                <span className="ownerRole">{exp.date ? new Date(exp.date).getFullYear() : ''}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="leadsOwnerCell">
+                                <span className="ownerName">{paidBy?.name || '—'}</span>
+                                <span className="ownerRole">{exp.status === 'Completed' ? 'Accountant' : 'Requester'}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className={`expense-status-badge ${(exp.status || '').toLowerCase().replace(/\s+/g, '-')}`}>
+                                <span className="status-dot"></span>
+                                {exp.status || 'Pending'}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="leadsOwnerCell">
+                                <span className="ownerName">{approvedBy?.name || '—'}</span>
+                                <span className="ownerRole">{approvedBy?.role || (exp.status === 'Pending' ? 'Pending' : '—')}</span>
+                              </div>
+                            </td>
+                            <td className="text-center">
+                              {exp.receipt_url ? (
+                                <a href={exp.receipt_url} target="_blank" rel="noreferrer" className="modern-action-btn" style={{ margin: '0 auto', background: 'var(--success-soft)', color: 'var(--success)' }}>
+                                  <Icon name="billing" size={14} />
+                                </a>
+                              ) : (
+                                <span className="muted" style={{ fontSize: '0.6rem' }}>NO BILL</span>
+                              )}
+                            </td>
+                            <td className="text-right" onClick={stopRowNavigation}>
+                              <div className="crm-action-group" style={{ position: 'relative' }}>
+                                <button
+                                  className="modern-action-btn"
+                                  onClick={() => setModal({ open: true, mode: 'edit', id })}
+                                  title="Edit"
+                                >
+                                  <Icon name="edit" size={14} />
+                                </button>
+
+                                <div className="dropdown-container-leads">
+                                  <button 
+                                    className={`modern-action-btn ${activeMenu === id ? 'active' : ''}`}
+                                    onClick={() => setActiveMenu(activeMenu === id ? null : id)}
+                                  >
+                                    <Icon name="more-vertical" size={14} />
+                                  </button>
+
+                                  {activeMenu === id && (
+                                    <div className="dropdown-menu-leads animate-fade-in shadow-lg">
+                                      {canApprove(exp) && (
+                                        <>
+                                          <button className="dropdown-item success" onClick={() => { handleStatusUpdate(id, 'Approved'); setActiveMenu(null); }}>
+                                            <Icon name="check" size={14} />
+                                            <span>Approve Expense</span>
+                                          </button>
+                                          <button className="dropdown-item danger" onClick={() => { handleStatusUpdate(id, 'Rejected'); setActiveMenu(null); }}>
+                                            <Icon name="close" size={14} />
+                                            <span>Reject Expense</span>
+                                          </button>
+                                          <div className="dropdown-divider"></div>
+                                        </>
+                                      )}
+
+                                      {canRecordPayment(exp) && (
+                                        <button 
+                                          className="dropdown-item vibrant" 
+                                          style={{ color: 'var(--primary)', background: 'var(--primary-soft)' }}
+                                          onClick={() => { handleStatusUpdate(id, 'Completed'); setActiveMenu(null); }}
+                                        >
+                                          <Icon name="billing" size={14} />
+                                          <span>Mark as Paid</span>
+                                        </button>
+                                      )}
+                                      
+                                      <button className="dropdown-item" onClick={() => { setModal({ open: true, mode: 'edit', id }); setActiveMenu(null); }}>
+                                        <Icon name="edit" size={14} />
+                                        <span>Edit Details</span>
+                                      </button>
+
+                                      <div className="dropdown-divider"></div>
+                                      
+                                      {canDelete && (
+                                        <button className="dropdown-item danger" onClick={() => { handleDelete(id); setActiveMenu(null); }}>
+                                          <Icon name="trash" size={14} />
+                                          <span>Delete Permanently</span>
+                                        </button>
+                                      )}
+                                    </div>
                                   )}
-                                  <button className="action-btn-mini" onClick={() => navigate(`/expenses/${exp._id}`)}><Icon name="edit" size={14} /></button>
-                                  <button className="action-btn-mini danger" onClick={() => handleDelete(exp._id)}><Icon name="trash" size={14} /></button>
                                 </div>
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan="6">
-                              <div className="emptyState" style={{ padding: '60px 0', textAlign: 'center' }}>
-                                <Icon name="reports" size={40} style={{ opacity: 0.2, marginBottom: '16px' }} />
-                                <h3>No Expenses Found</h3>
-                                <p className="muted" style={{ fontSize: '0.8rem' }}>Adjust filters or add a new expense.</p>
                               </div>
                             </td>
                           </tr>
-                        )}
-                      </tbody>
-                    </>
-                  ) : (
-                    <>
-                      <thead>
-                        <tr>
-                          <th style={{ minWidth: '200px' }}>CATEGORY</th>
-                          <th style={{ width: '180px' }}>COUNT</th>
-                          <th style={{ width: '200px' }}>TOTAL SPENT</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reports.length ? (
-                          reports.map(rep => (
-                            <tr key={rep._id}>
-                              <td><span className="font-bold">{rep._id}</span></td>
-                              <td><span className="text-sm">{rep.count} Records</span></td>
-                              <td><span className="font-numeric-bold text-danger">{formatCurrency(rep.total)}</span></td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr><td colSpan="3" className="text-center p-8 muted">No analysis available</td></tr>
-                        )}
-                      </tbody>
-                    </>
-                  )}
+                        )
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={8}>
+                          <div className="emptyState" style={{ padding: '80px 0' }}>
+                            <h3>No expenses found</h3>
+                            <p className="muted">Try a different filter or add a new expense entry.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
                 </table>
               </div>
             </div>
-            {viewMode === 'list' && total > limit && (
-              <div className="pagination-container" style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                <button className="btn-premium action-secondary" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Prev</button>
-                <span className="text-sm muted" style={{ display: 'flex', alignItems: 'center' }}>Page {page}</span>
-                <button className="btn-premium action-secondary" disabled={page * limit >= total} onClick={() => setPage(p => p + 1)}>Next</button>
-              </div>
-            )}
+
+            <Pagination
+              page={page}
+              limit={limit}
+              total={total}
+              onPageChange={(nextPage) => setPage(Math.max(1, nextPage))}
+              onLimitChange={() => {}}
+            />
           </>
         )}
       </section>
 
+      {modal.open && (
+        <ExpenseForm
+          mode={modal.mode}
+          expenseId={modal.id}
+          onClose={() => setModal({ open: false, mode: 'create', id: null })}
+          onSuccess={() => {
+            setModal({ open: false, mode: 'create', id: null })
+            fetchExpenses()
+          }}
+        />
+      )}
 
       <style>{`
-         .users-page-header { margin-bottom: 8px; }
-         .users-title { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
-         .users-subtitle { font-size: 0.85rem; color: var(--text-dimmed); font-weight: 500; }
+        .users-page-header { margin-bottom: 8px; }
+        .users-title { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+        .users-subtitle { font-size: 0.85rem; color: var(--text-dimmed); font-weight: 500; }
 
-         .unified-action-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 8px; flex-wrap: wrap; }
-         .search-filter-group { display: flex; align-items: center; gap: 16px; flex: 1; justify-content: space-between; }
-         .filter-select { max-width: 150px; }
-         .btn-clear-filters { background: none; border: none; color: var(--primary); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
-         .btn-clear-filters:hover { text-decoration: underline; }
+        .unified-action-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          margin-bottom: 8px;
+          flex-wrap: wrap;
+        }
 
-         .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; justify-content: space-between; }
-         .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 10px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 130px; box-shadow: var(--shadow-sm); }
-         .stat-pill-label { font-size: 10px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
-         .stat-pill-value { font-size: 20px; font-weight: 900; }
-         .stat-pill-value.total { color: var(--text); }
-         .stat-pill-value.active { color: var(--success); }
-         .stat-pill-value.inactive { color: var(--danger); }
-         .stat-pill-value.pending { color: var(--warning); }
+        .search-filter-group {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex: 1;
+          justify-content: space-between;
+          flex-wrap: wrap;
+        }
 
-         .crm-input { width: 100%; background: var(--bg-surface) !important; border: 1px solid var(--border-strong) !important; border-radius: 10px !important; padding: 8px 14px !important; color: var(--text) !important; font-size: 0.85rem !important; transition: all 0.2s; }
-         
-         .add-user-btn { background: var(--primary) !important; color: white !important; border: none !important; border-radius: 10px !important; padding: 0 20px !important; font-weight: 700 !important; height: 38px; display: flex; align-items: center; gap: 6px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2); font-size: 0.85rem; flex-shrink: 0; }
-         .add-user-btn:hover { background: var(--primary-hover) !important; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(var(--primary-rgb), 0.4); }
+        .crm-stats-bar-compact {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          align-items: center;
+          margin-bottom: 12px;
+          justify-content: space-between;
+        }
 
-         .view-switcher-pill { display: flex; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; height: 38px; background: var(--bg-surface); }
-         .view-pill { border: none; padding: 0 16px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s; background: transparent; color: var(--text-muted); }
-         .view-pill.active { background: var(--primary); color: white; }
-         .view-pill:not(.active):hover { background: var(--bg-hover); }
+        .stat-pill-mini {
+          --stat-accent: var(--card-accent);
+          background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-surface) 12%);
+          border: 1px solid var(--border-strong);
+          padding: 14px 18px;
+          border-radius: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          flex: 1;
+          min-width: 130px;
+          box-shadow: inset 4px 0 0 var(--stat-accent), 0 10px 24px rgba(var(--text-rgb), 0.06);
+          transition: all 0.25s ease;
+        }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(1) { --stat-accent: #3b82f6; }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(2) { --stat-accent: #10b981; }
+        .crm-stats-bar-compact .stat-pill-mini:nth-child(3) { --stat-accent: #f59e0b; }
 
-         .crm-table th { padding: 12px 16px !important; border-bottom: 2px solid var(--border-strong) !important; color: var(--text-dimmed) !important; font-weight: 800 !important; font-size: 0.7rem !important; }
-         .crm-table td { padding: 10px 16px !important; border-bottom: 1px solid var(--border-strong) !important; }
-         
-         @media (max-width: 1000px) {
-            .crm-stats-bar-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-            .stat-pill-mini { min-width: 0; padding: 10px; }
-            .stat-pill-value { font-size: 1.1rem; }
-            .add-user-btn { width: 100%; justify-content: center; }
-         }
+        .stat-pill-mini.clickable {
+          cursor: pointer;
+          transition: all 0.25s ease;
+        }
+
+        .stat-pill-mini.clickable:hover {
+          transform: translateY(-2px);
+          border-color: var(--stat-accent);
+          box-shadow: inset 4px 0 0 var(--stat-accent), 0 14px 30px color-mix(in srgb, var(--stat-accent) 20%, rgba(var(--text-rgb), 0.08));
+        }
+        .stat-pill-mini.is-active { background: color-mix(in srgb, var(--bg-card) 82%, var(--stat-accent) 18%); border-color: var(--stat-accent); }
+
+        .stat-pill-label {
+          font-size: 11px;
+          font-weight: 800;
+          color: var(--text-dimmed);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        .stat-pill-value {
+          font-size: 20px;
+          font-weight: 900;
+        }
+
+        .stat-pill-value.total { color: var(--text); }
+        .stat-pill-value.active { color: var(--success); }
+        .stat-pill-value.pending { color: var(--warning); }
+
+        .crm-table-row { transition: all 0.2s; }
+        .crm-table-row:hover { background: rgba(59, 130, 246, 0.03) !important; }
+
+        .crm-action-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          justify-content: flex-end;
+        }
+
+        .modern-action-btn {
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--bg-surface);
+          border: 1px solid var(--border);
+          color: var(--text-muted);
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modern-action-btn:hover {
+          background: var(--primary-soft);
+          color: var(--primary);
+          border-color: var(--primary);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+
+        .modern-action-btn.success:hover {
+          background: #f0fdf4;
+          color: #16a34a;
+          border-color: #bbf7d0;
+          box-shadow: 0 4px 12px rgba(22, 163, 74, 0.15);
+        }
+
+        .modern-action-btn.danger:hover {
+          background: #fee2e2;
+          color: #ef4444;
+          border-color: #ef4444;
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+        }
+
+        .dropdown-container-leads { position: relative; }
+        .dropdown-menu-leads {
+          position: absolute;
+          top: 100%;
+          right: 0;
+          background: white;
+          border: 1px solid var(--border-strong);
+          border-radius: 12px;
+          min-width: 200px;
+          z-index: 100;
+          margin-top: 8px;
+          padding: 8px;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        .dropdown-item {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          border-radius: 8px;
+          border: none;
+          background: transparent;
+          color: var(--text-muted);
+          font-size: 0.85rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: 0.2s;
+        }
+        .dropdown-item:hover { background: var(--bg-surface); color: var(--text); }
+        .dropdown-item.success { color: #16a34a; }
+        .dropdown-item.success:hover { background: #f0fdf4; }
+        .dropdown-item.danger { color: #ef4444; }
+        .dropdown-item.danger:hover { background: #fef2f2; }
+        .dropdown-divider { height: 1px; background: var(--border-subtle); margin: 6px 0; }
+
+        .leadsIdentityCell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .leadsPrimaryText { color: var(--text); font-size: 0.95rem; font-weight: 700; line-height: 1.4; }
+        .leadsSecondaryText {
+          color: var(--text-dimmed);
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          line-height: 1.35;
+          word-break: break-word;
+        }
+
+        .leadsOwnerCell { display: flex; flex-direction: column; gap: 2px; }
+        .ownerName { color: var(--text); font-size: 0.85rem; font-weight: 700; }
+        .ownerRole {
+          color: var(--text-dimmed);
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+        }
+
+        .expense-id-badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 6px 12px;
+          border-radius: 10px;
+          background: var(--primary-soft);
+          color: var(--primary);
+          font-size: 0.8rem;
+          font-weight: 800;
+          white-space: nowrap;
+        }
+
+        .expense-category-pill {
+          display: inline-flex;
+          align-items: center;
+          padding: 5px 12px;
+          border-radius: 999px;
+          background: var(--bg-surface);
+          color: var(--text-muted);
+          border: 1px solid var(--border-subtle);
+          font-size: 0.75rem;
+          font-weight: 800;
+          white-space: nowrap;
+        }
+
+        .expense-amount {
+          color: var(--text);
+          font-size: 0.95rem;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .expense-status-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 14px;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          white-space: nowrap;
+          background: var(--bg-surface);
+          color: var(--text-muted);
+          border: 1px solid transparent;
+        }
+
+        .expense-status-badge.pending {
+          background: #fffbeb;
+          color: #b45309;
+          border-color: #fde68a;
+        }
+
+        .expense-status-badge.approved,
+        .expense-status-badge.completed {
+          background: #f0fdf4;
+          color: #16a34a;
+          border-color: #bbf7d0;
+        }
+
+        .expense-status-badge.rejected,
+        .expense-status-badge.failed {
+          background: #fef2f2;
+          color: #ef4444;
+          border-color: #fecaca;
+        }
+
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: currentColor;
+          flex-shrink: 0;
+        }
+
+        .expense-date-range {
+          flex-wrap: nowrap;
+        }
+
+        .crm-input {
+          width: 100%;
+          background: var(--bg-surface) !important;
+          border: 1px solid var(--border-strong) !important;
+          border-radius: 10px !important;
+          padding: 8px 14px !important;
+          color: var(--text) !important;
+          font-size: 0.85rem !important;
+          transition: all 0.2s;
+        }
+
+        .crm-table th {
+          padding: 12px 16px !important;
+          border-bottom: 2px solid var(--border-strong) !important;
+        }
+
+        .crm-table td {
+          padding: 12px 16px !important;
+          border-bottom: 1px solid var(--border-strong) !important;
+          vertical-align: middle;
+        }
+
+        @media (max-width: 1000px) {
+          .crm-stats-bar-compact {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+          }
+
+          .stat-pill-mini {
+            min-width: 0;
+            padding: 10px;
+          }
+
+          .stat-pill-value {
+            font-size: 1.1rem;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .users-page-header > div {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 16px;
+          }
+
+          .search-filter-group {
+            align-items: stretch;
+          }
+
+          .search-filter-group > * {
+            width: 100%;
+          }
+
+          .expense-date-range {
+            flex-wrap: wrap;
+          }
+        }
       `}</style>
     </div>
   )

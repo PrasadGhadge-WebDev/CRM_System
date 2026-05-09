@@ -5,6 +5,20 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { parseCsv, rowsToObjects, toCsv } = require('../utils/csv');
 const { moveDocumentToTrash } = require('../utils/trash');
 
+async function checkEmployeeCustomerAccess(customerId, userId, companyId) {
+  // 1. Check direct assignment
+  const Customer = require('../models/Customer');
+  const directAccess = await Customer.exists({ _id: customerId, company_id: companyId, assigned_to: userId });
+  if (directAccess) return true;
+
+  // 2. Check deal assignment (if assigned to any deal for this customer)
+  const Deal = require('../models/Deal');
+  const dealAccess = await Deal.exists({ customer_id: customerId, company_id: companyId, assigned_to: userId, isDeleted: { $ne: true } });
+  if (dealAccess) return true;
+
+  return false;
+}
+
 function buildSearchQuery(q) {
   if (!q) return null;
   const safe = String(q).trim();
@@ -43,7 +57,17 @@ exports.listCustomers = asyncHandler(async (req, res) => {
 
   // --- Role-Based Access Control ---
   if (req.user?.role === 'Employee') {
-    filter.assigned_to = req.user.id;
+    const Deal = require('../models/Deal');
+    const myDealCustomerIds = await Deal.find({ 
+      company_id: req.user.company_id, 
+      assigned_to: req.user.id, 
+      isDeleted: { $ne: true } 
+    }).distinct('customer_id');
+    
+    filter.$or = [
+      { assigned_to: req.user.id },
+      { _id: { $in: myDealCustomerIds } }
+    ];
   } else if (req.user?.role === 'Manager') {
     // Manager: Team Access (Self + Reporting Users)
     const User = require('../models/User');
@@ -137,14 +161,16 @@ exports.listCustomers = asyncHandler(async (req, res) => {
   // Inject dynamic metrics
   const Deal = require('../models/Deal');
   const items = await Promise.all(customers.map(async (c) => {
-    const [dealCount, lastNote] = await Promise.all([
+    const [dealCount, lastNote, latestDeal] = await Promise.all([
       Deal.countDocuments({ customer_id: c._id, isDeleted: { $ne: true } }),
-      CustomerNote.findOne({ customer_id: c._id }).sort({ created_at: -1 }).select('created_at')
+      CustomerNote.findOne({ customer_id: c._id }).sort({ created_at: -1 }).select('created_at'),
+      Deal.findOne({ customer_id: c._id, isDeleted: { $ne: true } }).sort({ created_at: -1 }).select('name stage status value')
     ]);
     return {
       ...c,
       id: c._id,
       total_deals: dealCount,
+      latest_deal: latestDeal,
       last_interaction: lastNote?.created_at || c.created_at
     };
   }));
@@ -204,15 +230,17 @@ exports.getCustomer = asyncHandler(async (req, res) => {
 
   // Role Access Check
   if (req.user?.role === 'Employee') {
-    if (String(customer.assigned_to?._id || customer.assigned_to) !== String(req.user.id)) {
-      return res.fail('Access denied: Record not assigned to you', 403);
+    const hasAccess = await checkEmployeeCustomerAccess(req.params.id, req.user.id, req.user.company_id);
+    if (!hasAccess) {
+      return res.fail('Access denied: Record not assigned to you (nor any associated deals)', 403);
     }
   } else if (req.user?.role === 'Manager') {
-    // Check if assigned to team
-    const assignedId = String(customer.assigned_to?._id || customer.assigned_to);
-    if (assignedId !== String(req.user.id)) {
+    const assignedId = customer.assigned_to?._id || customer.assigned_to;
+    const currentUserId = req.user._id || req.user.id;
+    
+    if (String(assignedId) !== String(currentUserId)) {
       const User = require('../models/User');
-      const isTeamMember = await User.exists({ _id: assignedId, manager_id: req.user.id });
+      const isTeamMember = await User.exists({ _id: assignedId, manager_id: currentUserId });
       if (!isTeamMember) {
         return res.fail('Access denied: Record not in your team scope', 403);
       }
@@ -233,7 +261,9 @@ exports.updateCustomer = asyncHandler(async (req, res) => {
 
   // Role Access Check
   if (req.user?.role === 'Employee') {
-    if (String(customer.assigned_to) !== String(req.user.id)) {
+    const assignedId = customer.assigned_to;
+    const currentUserId = req.user._id || req.user.id;
+    if (String(assignedId) !== String(currentUserId)) {
       return res.fail('Access denied: You can only update your own assigned customers', 403);
     }
     // Employee can only update specific fields
@@ -500,6 +530,14 @@ exports.addNote = asyncHandler(async (req, res) => {
   const customer_id = req.params.id;
   if (!content) return res.fail('Note content is required', 400);
 
+  // Access check for notes
+  if (req.user?.role === 'Employee') {
+    const hasAccess = await checkEmployeeCustomerAccess(customer_id, req.user.id, req.user.company_id);
+    if (!hasAccess) {
+      return res.fail('Access denied: Cannot add notes to customers not assigned to you (nor any associated deals)', 403);
+    }
+  }
+
   const note = await CustomerNote.create({
     customer_id,
     author_id: req.user.id,
@@ -510,6 +548,16 @@ exports.addNote = asyncHandler(async (req, res) => {
 });
 
 exports.listNotes = asyncHandler(async (req, res) => {
+  const customer = await Customer.findById(req.params.id);
+  if (!customer) return res.fail('Customer not found', 404);
+
+  if (req.user?.role === 'Employee') {
+    const hasAccess = await checkEmployeeCustomerAccess(req.params.id, req.user.id, req.user.company_id);
+    if (!hasAccess) {
+      return res.fail('Access denied: Cannot view notes for customers not assigned to you (nor any associated deals)', 403);
+    }
+  }
+
   const notes = await CustomerNote.find({ customer_id: req.params.id })
     .populate('author_id', 'name role')
     .sort({ created_at: -1 });

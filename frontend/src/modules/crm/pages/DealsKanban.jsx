@@ -101,6 +101,11 @@ export default function DealsKanban({ deals = [], loading, onStatusChange }) {
                     </div>
                   )}
 
+                  <div className="card-activity" style={{ fontSize: '0.7rem', color: 'var(--text-dimmed)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Icon name="clock" size={10} />
+                    <span>Last: {deal.last_followup_date ? new Date(deal.last_followup_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'No activity'}</span>
+                  </div>
+
                   <div className="card-footer">
                     <div className="card-value">₹{(deal.value || 0).toLocaleString()}</div>
                     <div className="card-meta">

@@ -19,7 +19,6 @@ import StatusDropdown from '../components/StatusDropdown.jsx'
 import DeleteConfirmModal from '../components/DeleteConfirmModal.jsx'
 import SearchableSelect from '../components/SearchableSelect.jsx'
 import ModernSearchBar from '../../../components/ModernSearchBar.jsx'
-import LostReasonModal from '../components/LostReasonModal.jsx'
 
 import { notesApi } from '../../../services/notes.js'
 
@@ -28,8 +27,6 @@ function stopRowNavigation(event) {
 }
 
 export default function LeadsList() {
-  const [isLostModalOpen, setIsLostModalOpen] = useState(false)
-  const [lostTargetId, setLostTargetId] = useState(null)
 
   const [followupLead, setFollowupLead] = useState(null)
   const [isFollowupOpen, setIsFollowupOpen] = useState(false)
@@ -69,6 +66,7 @@ export default function LeadsList() {
   const [followupDate, setFollowupDate] = useState(followupDateParam)
   const [page, setPage] = useState(pageParam)
   const [limit, setLimit] = useState(limitParam)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [summary, setSummary] = useState({ total: 0, byStatus: {} })
   const [selectedLeads, setSelectedLeads] = useState([])
 
@@ -112,11 +110,11 @@ export default function LeadsList() {
   useEffect(() => {
     statusesApi
       .list('lead')
-      .then((res) =>
-        setStatusOptions(
-          (Array.isArray(res) ? res : []).map((s) => ({ value: s.name, label: s.name, color: s.color })),
-        ),
-      )
+      .then((res) => {
+        const raw = Array.isArray(res) ? res : []
+        const mapped = mappedStatusOptions(raw)
+        setStatusOptions(mapped)
+      })
       .catch(() => { })
 
     usersApi
@@ -126,6 +124,12 @@ export default function LeadsList() {
         setEmployees(list.filter((u) => (u?.role || '').toLowerCase() === 'employee'))
       })
       .catch(() => { })
+
+    // For Employees, we hardcode the status options to the new flow if they don't exist
+    if (isEmployee) {
+      const newFlow = ['New', 'Contacted', 'Follow-up', 'Qualified', 'Converted']
+      setStatusOptions(newFlow.map(s => ({ value: s, label: s, color: 'var(--primary)' })))
+    }
   }, [])
 
   const desiredParams = useMemo(() => {
@@ -220,7 +224,7 @@ export default function LeadsList() {
     return () => {
       canceled = true
     }
-  }, [debouncedQ, status, source, dateRange, customDates, assignedTo, followupDate, page, limit])
+  }, [debouncedQ, status, source, dateRange, customDates, assignedTo, followupDate, page, limit, refreshTrigger])
 
   const handleSelectAll = (checked) =>
     setSelectedLeads(checked ? items.map((lead) => String(lead.id || lead._id || '')) : [])
@@ -275,8 +279,7 @@ export default function LeadsList() {
       }
       setIsDeleteModalOpen(false);
       // Trigger a re-fetch of stats/counts
-      setPage(prev => (prev === 1 ? 1.1 : 1)); // Hacky but triggers useEffect if page is dependency
-      setTimeout(() => setPage(Math.floor(page)), 10);
+      setRefreshTrigger(prev => prev + 1);
     } catch (err) {
       console.error('Delete error:', err);
       toast.error(err.message || 'Failed to delete');
@@ -315,11 +318,6 @@ export default function LeadsList() {
     if (newStatus === 'Converted') {
       return onConvertToCustomer(id)
     }
-    if (newStatus === 'Lost') {
-      setLostTargetId(id)
-      setIsLostModalOpen(true)
-      return
-    }
     try {
       await leadsApi.update(id, { status: newStatus })
       toast.success(`Status updated to ${newStatus}`)
@@ -335,20 +333,6 @@ export default function LeadsList() {
     }
   }
 
-  async function handleLostConfirm(reason) {
-    try {
-      await leadsApi.update(lostTargetId, { 
-        status: 'Lost',
-        lostReason: reason 
-      })
-      toast.success('Lead marked as Lost')
-      setItems(prev => prev.filter(item => (item.id !== lostTargetId && item._id !== lostTargetId)))
-      setTotal(t => Math.max(0, t - 1))
-      setIsLostModalOpen(false)
-    } catch (err) {
-      toast.error(err.message || 'Failed to update')
-    }
-  }
 
   async function onConvertToCustomer(id) {
     const lead = items.find(x => (x.id === id || x._id === id))
@@ -398,13 +382,11 @@ export default function LeadsList() {
       if (!confirmed) return
 
       try {
-        toast.info('Converting Lead to Customer first...')
         const res = await leadsApi.update(lead.id || lead._id, { status: 'Converted' })
         const rawId = res.convertedCustomerId || res.data?.convertedCustomerId
         const custId = typeof rawId === 'object' ? (rawId.id || rawId._id) : rawId
         setConvertedCustomerId(custId)
         setIsDealModalOpen(true)
-        toast.success('Lead converted! Now please configure the Deal details.')
       } catch (e) {
         toast.error('Lead conversion failed')
       }
@@ -413,6 +395,29 @@ export default function LeadsList() {
 
   const isAllSelected = items.length > 0 && selectedLeads.length === items.length
   const isSomeSelected = selectedLeads.length > 0 && selectedLeads.length < items.length
+
+  const mappedStatusOptions = (raw) => {
+    // If employee, enforce specific list
+    if (isEmployee) {
+       return [
+         { value: 'New', label: 'New', color: '#3b82f6' },
+         { value: 'Contacted', label: 'Contacted', color: '#8b5cf6' },
+         { value: 'Follow-up', label: 'Follow-up', color: '#f59e0b' },
+         { value: 'Qualified', label: 'Qualified', color: '#10b981' },
+         { value: 'Converted', label: 'Converted', color: '#059669' }
+       ]
+    }
+    return raw.map((s) => ({ value: s.name, label: s.name, color: s.color }))
+  }
+
+  const getPriorityColor = (p) => {
+    switch(p) {
+      case 'High': return '#ef4444';
+      case 'Medium': return '#f59e0b';
+      case 'Low': return '#3b82f6';
+      default: return 'var(--text-dimmed)';
+    }
+  }
 
   return (
     <div className="stack">
@@ -428,25 +433,24 @@ export default function LeadsList() {
               onClick={() => navigate('/leads/new')}
             >
               <Icon name="plus" size={16} />
-              <span>Add Lead</span>
+              <span>{isEmployee ? 'Create Lead' : 'Add Lead'}</span>
             </button>
           </div>
         </div>
 
         <div className="crm-stats-bar-compact overflow-x-auto pb-8">
-          <div className="stat-pill-mini clickable" onClick={() => setStatus('')} style={{ borderBottom: status === '' ? '2px solid var(--primary)' : '' }}>
+          <div className={`stat-pill-mini clickable ${status === '' ? 'is-active' : ''}`} onClick={() => setStatus('')}>
             <span className="stat-pill-label">ALL LEADS</span>
             <span className="stat-pill-value total">{summary.total}</span>
           </div>
           {Object.entries(summary.byStatus).map(([name, count]) => (
             <div 
               key={name} 
-              className="stat-pill-mini clickable" 
+              className={`stat-pill-mini clickable ${status === name ? 'is-active' : ''}`} 
               onClick={() => setStatus(name)}
-              style={{ borderBottom: status === name ? '2px solid var(--primary)' : '' }}
             >
               <span className="stat-pill-label">{name.toUpperCase()}</span>
-              <span className="stat-pill-value">{count}</span>
+              <span className={`stat-pill-value ${String(name).toLowerCase()}`}>{count}</span>
             </div>
           ))}
         </div>
@@ -467,9 +471,18 @@ export default function LeadsList() {
               onChange={(val) => { setStatus(val); setPage(1); }}
               options={[
                 { value: '', label: 'Status: All' },
-                ...(statusOptions.length > 0 
-                  ? statusOptions 
-                  : Object.keys(summary.byStatus).map(name => ({ value: name, label: name }))
+                ...(isEmployee 
+                   ? [
+                      { value: 'New', label: 'New' },
+                      { value: 'Contacted', label: 'Contacted' },
+                      { value: 'Follow-up', label: 'Follow-up' },
+                      { value: 'Qualified', label: 'Qualified' },
+                      { value: 'Converted', label: 'Converted' }
+                     ]
+                   : (statusOptions.length > 0 
+                      ? statusOptions 
+                      : Object.keys(summary.byStatus).map(name => ({ value: name, label: name }))
+                     )
                 )
               ]}
               placeholder="Status: All"
@@ -565,11 +578,11 @@ export default function LeadsList() {
                         />
                       </th>
                       <th style={{ minWidth: '180px' }}>NAME</th>
-                      <th style={{ minWidth: '180px' }}>CONTACT</th>
+                      <th style={{ minWidth: '180px' }}>MOBILE NUMBER</th>
                       <th style={{ minWidth: '140px' }} className="tablet-hide">ASSIGNED TO</th>
                       <th style={{ minWidth: '120px' }}>FOLLOW-UP</th>
                       <th style={{ width: '120px' }}>STATUS</th>
-                      <th style={{ minWidth: '120px' }}>CREATED</th>
+                      {!isEmployee && <th style={{ minWidth: '140px' }} className="tablet-hide">CREATED BY / DATE</th>}
                       <th className="text-right" style={{ width: '140px' }}>ACTIONS</th>
                     </tr>
                   </thead>
@@ -606,16 +619,23 @@ export default function LeadsList() {
                             <td>
                               <div className="leadsContactCell">
                                 <div className="contactMain">{lead.phone || '—'}</div>
-                                <div className="contactSub" style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{lead.email || '—'}</div>
+                                <div className="contactQuickActions">
+                                   <a href={`tel:${lead.phone}`} className="action-icon-mini phone" onClick={stopRowNavigation} title="Call"><Icon name="phone" size={12} /></a>
+                                   <a href={`https://wa.me/${lead.phone?.replace(/\D/g, '')}`} target="_blank" className="action-icon-mini whatsapp" onClick={stopRowNavigation} title="WhatsApp"><Icon name="whatsapp" size={12} /></a>
+                                   <a href={`mailto:${lead.email}`} className="action-icon-mini email" onClick={stopRowNavigation} title="Email"><Icon name="mail" size={12} /></a>
+                                </div>
                               </div>
                             </td>
 
+
+
                             <td className="tablet-hide">
                               <div className="leadsOwnerCell">
-                                <div className="ownerName">{lead.assignedTo?.name || 'Unassigned'}</div>
-                                <div className="ownerRole">{lead.assignedTo?.role || 'Agent'}</div>
+                                <span className="ownerName">{lead.assignedTo?.name || 'Unassigned'}</span>
+                                <span className="ownerRole">{lead.assignedTo?.role || ''}</span>
                               </div>
                             </td>
+
 
                             <td className="tablet-hide">
                               <div className={`leadsFollowupCell ${isOverdue ? 'is-overdue' : ''} ${isToday ? 'is-today' : ''}`}>
@@ -640,15 +660,19 @@ export default function LeadsList() {
                                   } 
                                   onChange={(newStatus) => onUpdateStatus(id, newStatus)}
                                   bypassRules={isAdmin}
-                                  disabled={lead.status === 'Converted'}
+                                  disabled={lead.status === 'Converted' && !isAdmin}
                                 />
                             </td>
 
-                            <td>
-                              <div style={{ fontSize: '0.8rem', color: 'var(--text-dimmed)' }}>
-                                {new Date(lead.created_at).toLocaleDateString()}
-                              </div>
-                            </td>
+                            {/* Created field removed for employees to save space */}
+                            {!isEmployee && (
+                              <td className="tablet-hide">
+                                <div className="leadsOwnerCell">
+                                  <span className="ownerName">{lead.createdBy?.name || 'System'}</span>
+                                  <span className="ownerRole">{lead.created_at ? new Date(lead.created_at).toLocaleDateString() : ''}</span>
+                                </div>
+                              </td>
+                            )}
                             <td className="text-right" onClick={stopRowNavigation}>
                               <div className="crm-action-group">
                                 {true && (
@@ -661,7 +685,7 @@ export default function LeadsList() {
                                       <Icon name="edit" size={14} />
                                     </button>
                                     
-                                    {isAdmin && lead.status !== 'Converted' && (
+                                    {isAdmin && (
                                       <button
                                         className="modern-action-btn danger"
                                         onClick={() => onDelete(id)}
@@ -693,7 +717,18 @@ export default function LeadsList() {
                                       <span>History</span>
                                     </button>
 
-                                    {lead.status === 'Converted' ? (
+                                    {lead.status !== 'Converted' ? (
+                                      <>
+                                        <button className="overflow-item" onClick={() => onConvertToCustomer(id)}>
+                                          <Icon name="refresh" size={14} />
+                                          <span>Convert to Customer</span>
+                                        </button>
+                                        <button className="overflow-item" onClick={() => onConvertToDeal(lead)}>
+                                          <Icon name="activity" size={14} />
+                                          <span>Convert to Deal</span>
+                                        </button>
+                                      </>
+                                    ) : (
                                       <button 
                                         className="overflow-item primary"
                                         onClick={() => {
@@ -705,17 +740,13 @@ export default function LeadsList() {
                                         <Icon name="user" size={14} />
                                         <span>Go to Customer Profile</span>
                                       </button>
-                                    ) : (
-                                      <>
-                                        <button className="overflow-item" onClick={() => onConvertToCustomer(id)}>
-                                          <Icon name="refresh" size={14} />
-                                          <span>Convert to Customer</span>
-                                        </button>
-                                        <button className="overflow-item" onClick={() => onConvertToDeal(lead)}>
-                                          <Icon name="activity" size={14} />
-                                          <span>Convert to Deal</span>
-                                        </button>
-                                      </>
+                                    )}
+
+                                    {isAdmin && (
+                                      <button className="overflow-item danger" onClick={() => onDelete(id)}>
+                                        <Icon name="trash" size={14} />
+                                        <span>Delete Lead</span>
+                                      </button>
                                     )}
                                   </div>
                                 </details>
@@ -751,11 +782,6 @@ export default function LeadsList() {
             />
           </>
         )}
-        <LostReasonModal 
-          isOpen={isLostModalOpen}
-          onClose={() => setIsLostModalOpen(false)}
-          onConfirm={handleLostConfirm}
-        />
       </section>
 
       <FollowupModal
@@ -778,7 +804,7 @@ export default function LeadsList() {
         onClose={() => setIsDealModalOpen(false)}
         onSave={(newDeal) => {
           setIsDealModalOpen(false)
-          toast.success('Deal created and linked successfully')
+          // Removed redundant toast as DealModal already handles it
           navigate('/deals')
         }}
       />
@@ -816,15 +842,49 @@ export default function LeadsList() {
         .leadsPrimaryText { color: var(--text); font-size: 0.95rem; font-weight: 700; }
         .leadsSecondaryText { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
         
-        .leadsContactCell { display: flex; flex-direction: column; gap: 2px; }
-        .contactMain { color: var(--text); font-size: 0.85rem; font-weight: 700; }
-        .contactSub { color: var(--text-muted); font-size: 0.75rem; font-weight: 500; }
+        .leadsContactCell { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+        .contactMain { color: var(--text); font-size: 0.85rem; font-weight: 800; white-space: nowrap; }
+        .contactQuickActions { display: flex; gap: 6px; }
+        .action-icon-mini { 
+          width: 28px; 
+          height: 28px; 
+          border-radius: 8px; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          background: var(--bg-surface); 
+          color: var(--text-dimmed); 
+          border: 1px solid var(--border-subtle);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .action-icon-mini.phone { color: #3b82f6; background: #eff6ff; border-color: #bfdbfe; }
+        .action-icon-mini.whatsapp { color: #22c55e; background: #f0fdf4; border-color: #bbf7d0; }
+        .action-icon-mini.email { color: #ef4444; background: #fef2f2; border-color: #fecaca; }
+        
+        .action-icon-mini:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .action-icon-mini.phone:hover { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .action-icon-mini.whatsapp:hover { background: #22c55e; color: white; border-color: #22c55e; }
+        .action-icon-mini.email:hover { background: #ef4444; color: white; border-color: #ef4444; }
 
         .leadsOwnerCell { display: flex; flex-direction: column; gap: 2px; }
         .ownerName { color: var(--text); font-size: 0.85rem; font-weight: 700; }
         .ownerRole { color: var(--text-dimmed); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
 
         .leadsFollowupCell { display: flex; flex-direction: column; gap: 2px; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .gap-8 { gap: 8px; }
+        .gap-12 { gap: 12px; }
+        .priority-badge { 
+          display: inline-flex; 
+          padding: 2px 10px; 
+          border-radius: 6px; 
+          font-size: 0.65rem; 
+          font-weight: 800; 
+          text-transform: uppercase; 
+          border: 1px solid transparent;
+        }
+        .mt-4 { margin-top: 4px; }
         .leadsFollowupCell.is-overdue .followupDate { color: var(--danger); font-weight: 800; }
         .leadsFollowupCell.is-today .followupDate { color: var(--warning); font-weight: 800; }
         .followupDate { color: var(--text); font-size: 0.85rem; font-weight: 700; }
@@ -915,8 +975,17 @@ export default function LeadsList() {
          .btn-clear-filters:hover { text-decoration: underline; }
 
          .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; justify-content: space-between; }
-         .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 10px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 130px; box-shadow: var(--shadow-sm); }
-         .stat-pill-label { font-size: 10px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
+         .stat-pill-mini { --stat-accent: var(--card-accent); background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-surface) 12%); border: 1px solid var(--border-strong); padding: 14px 18px; border-radius: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px; box-shadow: inset 4px 0 0 var(--stat-accent), 0 10px 24px rgba(var(--text-rgb), 0.06); transition: all 0.25s ease; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(1) { --stat-accent: #3b82f6; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(2) { --stat-accent: #10b981; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(3) { --stat-accent: #f59e0b; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(4) { --stat-accent: #8b5cf6; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(5) { --stat-accent: #ef4444; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(6) { --stat-accent: #14b8a6; }
+         .stat-pill-mini.clickable { cursor: pointer; }
+         .stat-pill-mini:hover { transform: translateY(-2px); border-color: var(--stat-accent); box-shadow: inset 4px 0 0 var(--stat-accent), 0 14px 30px color-mix(in srgb, var(--stat-accent) 20%, rgba(var(--text-rgb), 0.08)); }
+         .stat-pill-mini.is-active { background: color-mix(in srgb, var(--bg-card) 82%, var(--stat-accent) 18%); border-color: var(--stat-accent); }
+         .stat-pill-label { font-size: 11px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.08em; }
          .stat-pill-value { font-size: 20px; font-weight: 900; }
          .stat-pill-value.total { color: var(--text); }
          .stat-pill-value.active { color: var(--success); }

@@ -250,19 +250,18 @@ export default function SupportList() {
         </div>
 
         <div className="crm-stats-bar-compact overflow-x-auto pb-8">
-          <div className="stat-pill-mini clickable" onClick={() => handleFilterChange({ status: '' })} style={{ borderBottom: filters.status === '' ? '2px solid var(--primary)' : '' }}>
+          <div className={`stat-pill-mini clickable ${filters.status === '' ? 'is-active' : ''}`} onClick={() => handleFilterChange({ status: '' })}>
             <span className="stat-pill-label">ALL TICKETS</span>
             <span className="stat-pill-value total">{summary.total}</span>
           </div>
           {Object.entries(summary.byStatus).map(([name, count]) => (
             <div 
               key={name} 
-              className="stat-pill-mini clickable" 
+              className={`stat-pill-mini clickable ${filters.status === name ? 'is-active' : ''}`} 
               onClick={() => handleFilterChange({ status: name })}
-              style={{ borderBottom: filters.status === name ? '2px solid var(--primary)' : '' }}
             >
               <span className="stat-pill-label">{name.toUpperCase()}</span>
-              <span className="stat-pill-value">{count}</span>
+              <span className={`stat-pill-value ${String(name).toLowerCase()}`}>{count}</span>
             </div>
           ))}
         </div>
@@ -608,7 +607,16 @@ export default function SupportList() {
          .btn-clear-filters:hover { text-decoration: underline; }
 
          .crm-stats-bar-compact { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; justify-content: space-between; padding: 0 4px; }
-         .stat-pill-mini { background: var(--bg-card); border: 1px solid var(--border-strong); padding: 8px 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 0; flex: 1; min-width: 120px; box-shadow: var(--shadow-sm); }
+         .stat-pill-mini { --stat-accent: var(--card-accent); background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-surface) 12%); border: 1px solid var(--border-strong); padding: 12px 14px; border-radius: 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; box-shadow: inset 4px 0 0 var(--stat-accent), 0 10px 24px rgba(var(--text-rgb), 0.06); transition: all 0.25s ease; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(1) { --stat-accent: #3b82f6; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(2) { --stat-accent: #10b981; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(3) { --stat-accent: #f59e0b; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(4) { --stat-accent: #8b5cf6; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(5) { --stat-accent: #ef4444; }
+         .crm-stats-bar-compact .stat-pill-mini:nth-child(6) { --stat-accent: #14b8a6; }
+         .stat-pill-mini.clickable { cursor: pointer; }
+         .stat-pill-mini:hover { transform: translateY(-2px); border-color: var(--stat-accent); box-shadow: inset 4px 0 0 var(--stat-accent), 0 14px 30px color-mix(in srgb, var(--stat-accent) 20%, rgba(var(--text-rgb), 0.08)); }
+         .stat-pill-mini.is-active { background: color-mix(in srgb, var(--bg-card) 82%, var(--stat-accent) 18%); border-color: var(--stat-accent); }
          .stat-pill-label { font-size: 9px; font-weight: 800; color: var(--text-dimmed); text-transform: uppercase; letter-spacing: 0.05em; }
          .stat-pill-value { font-size: 20px; font-weight: 900; }
          .stat-pill-value.total { color: var(--text); }

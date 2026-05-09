@@ -83,6 +83,8 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave, initialTa
     } else if (type === 'next-week') {
       target.setDate(now.getDate() + 7)
       target.setHours(10, 0, 0, 0)
+    } else if (type === 'today-evening') {
+      target.setHours(18, 0, 0, 0)
     }
 
     setForm((prev) => ({
@@ -119,28 +121,41 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave, initialTa
     setLoading(true)
     try {
       const scheduledAt = new Date(`${form.followupDate}T${form.followupTime}`).toISOString()
-      const leadId = lead.id || lead._id
+      const entityId = lead.id || lead._id
+      const isDeal = lead.readable_id?.startsWith('DL')
       const reminderEnabled = Boolean(form.sendReminder)
 
-      const updatedLead = await leadsApi.updateFollowup(leadId, {
-        mode: form.followupType,
-        status: form.followUpStatus,
-        nextFollowupDate: scheduledAt,
-        followupDate: form.followupDate,
-        followupTime: form.followupTime,
-        followupType: form.followupType,
-        note: form.note,
-        assignedTo: form.assignedTo,
-        statusAfterCall: form.statusAfterCall,
-        reminder: reminderEnabled,
-        reminderTime: reminderEnabled ? form.followupTime : '',
-        reminderOffsets: reminderEnabled ? [form.reminderOffset] : [],
-        requestId: form.requestId,
-        expectedClosingDate: form.expectedClosingDate || undefined,
-      })
+      let updatedData;
+      if (isDeal) {
+        const { dealsApi } = await import('../services/deals')
+        updatedData = await dealsApi.update(entityId, {
+          last_followup_date: new Date().toISOString(),
+          next_followup_date: scheduledAt,
+          notes: form.note,
+          stage: form.statusAfterCall, // Map outcome to stage for deals if applicable
+          assigned_to: form.assignedTo
+        })
+      } else {
+        updatedData = await leadsApi.updateFollowup(entityId, {
+          mode: form.followupType,
+          status: form.followUpStatus,
+          nextFollowupDate: scheduledAt,
+          followupDate: form.followupDate,
+          followupTime: form.followupTime,
+          followupType: form.followupType,
+          note: form.note,
+          assignedTo: form.assignedTo,
+          statusAfterCall: form.statusAfterCall,
+          reminder: reminderEnabled,
+          reminderTime: reminderEnabled ? form.followupTime : '',
+          reminderOffsets: reminderEnabled ? [form.reminderOffset] : [],
+          requestId: form.requestId,
+          expectedClosingDate: form.expectedClosingDate || undefined,
+        })
+      }
 
       toast.success('Follow-up updated successfully')
-      onSave?.(updatedLead)
+      onSave?.(updatedData)
       onClose()
     } catch (error) {
       const msg = error.response?.data?.message || error.message || 'Failed to save follow-up'
@@ -159,14 +174,13 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave, initialTa
   if (!isOpen || !lead) return null
 
   const outcomeOptions = [
-    { value: 'Converted', label: 'Converted' },
+    { value: 'Open', label: 'Open' },
     { value: 'Interested', label: 'Interested' },
-    { value: 'Not Interested', label: 'Not Interested' },
-    { value: 'Call Later', label: 'Call Later' },
-    { value: 'Wrong Number', label: 'Wrong No.' },
-    { value: 'No Response', label: 'No Response' },
-    { value: 'Demo Scheduled', label: 'Demo Scheduled' },
+    { value: 'Follow-up Required', label: 'Follow-up Required' },
     { value: 'Negotiation', label: 'Negotiation' },
+    { value: 'Won', label: 'Won' },
+    { value: 'Lost', label: 'Lost' },
+    { value: 'No Response', label: 'No Response' },
   ]
 
   const modalContent = (
@@ -240,7 +254,7 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave, initialTa
                       <SearchableSelect
                         value={form.followupType}
                         onChange={(val) => setForm((prev) => ({ ...prev, followupType: val }))}
-                        options={['Call', 'Meeting', 'Email', 'WhatsApp']}
+                        options={['Call', 'Meeting', 'WhatsApp', 'Email', 'Demo', 'Video Call', 'Site Visit']}
                         icon="activity"
                       />
                     </div>
@@ -254,6 +268,10 @@ export default function FollowupModal({ isOpen, onClose, lead, onSave, initialTa
                         <button type="button" className="fu-quick-chip" onClick={() => setQuickDate('next-week')}>
                           <Icon name="calendar" size={12} />
                           <span>Next Week</span>
+                        </button>
+                        <button type="button" className="fu-quick-chip" onClick={() => setQuickDate('today-evening')}>
+                          <Icon name="clock" size={12} />
+                          <span>Evening</span>
                         </button>
                       </div>
                     </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { invoicesApi } from '../../../services/invoices'
 import { paymentsApi } from '../../../services/payments'
+import { api } from '../../../services/api'
 import { formatCurrency, numberToWords } from '../../../utils/formatters'
 import { Icon } from '../../../layouts/icons'
 import PageHeader from '../../../components/PageHeader.jsx'
@@ -9,6 +10,7 @@ import { toast } from 'react-toastify'
 import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js'
 
 import { useAuth } from '../../../context/AuthContext'
+import BackButton from '../../../components/BackButton.jsx'
 
 export default function InvoiceDetail() {
   const { id } = useParams()
@@ -94,10 +96,7 @@ export default function InvoiceDetail() {
     <div className="user-profile-container" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
       {/* Header Row */}
       <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <button onClick={() => navigate('/invoices')} className="back-btn-modern">
-          <Icon name="chevronLeft" />
-          <span>Back to Invoices</span>
-        </button>
+        <BackButton to="/invoices" text="Back to Invoices" />
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
            {canEdit && remaining > 0 && (
              <button className="crm-btn-premium" onClick={() => navigate(`/payments/new?invoiceId=${invoice.id}&customerId=${invoice.customer_id?._id || invoice.customer_id}`)} style={{ background: 'var(--success)', color: '#ffffff', border: 'none', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>

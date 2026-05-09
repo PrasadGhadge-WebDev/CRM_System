@@ -89,6 +89,11 @@ exports.listInvoices = asyncHandler(async (req, res) => {
 });
 
 exports.createInvoice = asyncHandler(async (req, res) => {
+  // RBAC: Only Admin and Accountant can create invoices
+  if (!['Admin', 'Accountant'].includes(req.user.role)) {
+    return res.fail('Unauthorized: Only administrators or accountants can generate bills', 403);
+  }
+
   const payload = req.body;
   
   payload.company_id = req.user.company_id;
@@ -136,6 +141,11 @@ exports.getInvoice = asyncHandler(async (req, res) => {
 });
 
 exports.updateInvoice = asyncHandler(async (req, res) => {
+  // RBAC: Only Admin and Accountant can update invoices
+  if (!['Admin', 'Accountant'].includes(req.user.role)) {
+    return res.fail('Unauthorized: Only administrators or accountants can update bills', 403);
+  }
+
   const invoice = await Invoice.findOneAndUpdate(
     { _id: req.params.id, company_id: req.user.company_id },
     req.body,
@@ -159,6 +169,11 @@ exports.deleteInvoice = asyncHandler(async (req, res) => {
 });
 
 exports.generateInvoiceFromDeal = asyncHandler(async (req, res) => {
+  // RBAC: Only Admin and Accountant can generate invoices from deals
+  if (!['Admin', 'Accountant'].includes(req.user.role)) {
+    return res.fail('Unauthorized: Only administrators or accountants can generate bills from deals', 403);
+  }
+
   const { dealId } = req.body;
   if (!dealId) return res.fail('Deal ID is required', 400);
 

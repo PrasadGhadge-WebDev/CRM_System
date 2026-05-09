@@ -9,7 +9,14 @@ const LeadSchema = new mongoose.Schema(
     firstName: { type: String, trim: true, index: true },
     lastName: { type: String, trim: true, index: true },
     name: { type: String, required: true, trim: true, index: true }, // Unified field for display and tracking
-    email: { type: String, required: true, trim: true, lowercase: true, index: true },
+    email: { 
+      type: String, 
+      required: true, 
+      trim: true, 
+      lowercase: true, 
+      index: true,
+      match: [/^[a-zA-Z0-9.]+@[a-zA-Z0-9.]+\.[a-zA-Z]{2,}$/, 'Please add a valid email (letters, numbers, dots and @ only)']
+    },
     phone: { type: String, required: true, trim: true, index: true },
     alternate_phone: { type: String, trim: true },
     company: { type: String, trim: true, index: true },
@@ -60,6 +67,8 @@ const LeadSchema = new mongoose.Schema(
     
     convertedCustomerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', index: true },
     convertedAt: { type: Date },
+    isConvertedToDeal: { type: Boolean, default: false },
+    convertedDealId: { type: mongoose.Schema.Types.ObjectId, ref: 'Deal' },
     lostReason: { type: String, trim: true },
     lastActivityAt: { type: Date, default: Date.now },
   },

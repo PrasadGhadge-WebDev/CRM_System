@@ -25,14 +25,16 @@ export default function PageHeader({
       
       {/* Left Column: Back Button + Title */}
       <div className="pageHeaderLeft pageHeaderCluster">
-        <button 
-          className="btn-modern-back" 
-          type="button" 
-          onClick={handleBack} 
-        >
-          {showBackIcon && <Icon name="arrowLeft" size={16} />}
-          <span>{backLabel}</span>
-        </button>
+        {backTo && (
+          <button 
+            className="btn-modern-back" 
+            type="button" 
+            onClick={handleBack} 
+          >
+            {showBackIcon && <Icon name="arrowLeft" size={16} />}
+            <span>{backLabel}</span>
+          </button>
+        )}
 
         <div className="pageHeaderCopy">
           <h1 className="pageHeaderHeroTitle">

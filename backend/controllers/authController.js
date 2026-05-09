@@ -330,10 +330,9 @@ exports.register = asyncHandler(async (req, res, next) => {
           leadStatuses: [
             { name: 'New', color: '#fbbf24', order: 0, type: 'lead', isDefault: true, isSystem: true },
             { name: 'Contacted', color: '#3b82f6', order: 1, type: 'lead', isSystem: true },
-            { name: 'Qualified', color: '#8b5cf6', order: 2, type: 'lead', isSystem: true },
-            { name: 'Negotiation', color: '#fb923c', order: 3, type: 'lead', isSystem: true },
-            { name: 'Won', color: '#22c55e', order: 4, type: 'lead', isSystem: true },
-            { name: 'Lost', color: '#ef4444', order: 5, type: 'lead', isSystem: true }
+            { name: 'Follow-up', color: '#8b5cf6', order: 2, type: 'lead', isSystem: true },
+            { name: 'Qualified', color: '#fb923c', order: 3, type: 'lead', isSystem: true },
+            { name: 'Converted', color: '#22c55e', order: 4, type: 'lead', isSystem: true }
           ]
         },
         { upsert: true, new: true }

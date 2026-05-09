@@ -24,7 +24,6 @@ exports.listActivities = asyncHandler(async (req, res) => {
     limit = 20,
     urgency,
     status: statusFilter,
-    all
   } = req.query;
   let { sortField, sortOrder } = req.query;
   
@@ -35,16 +34,22 @@ exports.listActivities = asyncHandler(async (req, res) => {
   sortOrder = sortOrder === 'asc' ? 1 : -1;
   const sort = { [sortField]: sortOrder };
 
-  const filter = {};
-  filter.company_id = req.user.company_id;
+  const filter = { company_id: req.user.company_id };
   const search = buildSearchQuery(q);
-  if (related_to && mongoose.Types.ObjectId.isValid(related_to)) {
-    filter.related_to = related_to;
-  }
+  
+  if (related_to && mongoose.Types.ObjectId.isValid(related_to)) filter.related_to = related_to;
   if (related_type) filter.related_type = related_type;
   if (activity_type) filter.activity_type = activity_type;
   if (statusFilter) filter.status = statusFilter;
   if (search) filter.description = search;
+
+  // Role-Based Filtering
+  if (req.user.role === 'Employee') {
+    filter.$or = [
+      { created_by: req.user.id },
+      { assigned_to: req.user.id }
+    ];
+  }
 
   if (urgency) {
     const today = new Date();
@@ -90,6 +95,17 @@ exports.createActivity = asyncHandler(async (req, res) => {
 exports.updateActivity = asyncHandler(async (req, res) => {
   const oldActivity = await Activity.findOne({ _id: req.params.id, company_id: req.user.company_id });
   if (!oldActivity) return res.fail('Activity not found', 404);
+
+  // RBAC for Employees
+  if (req.user?.role === 'Employee') {
+    const assignedId = oldActivity.assigned_to;
+    const creatorId = oldActivity.created_by;
+    const currentUserId = req.user._id || req.user.id;
+    
+    if (String(assignedId) !== String(currentUserId) && String(creatorId) !== String(currentUserId)) {
+      return res.fail('Unauthorized access: You can only update your own activities', 403);
+    }
+  }
 
   const activity = await Activity.findOneAndUpdate(
     { _id: req.params.id, company_id: req.user.company_id },

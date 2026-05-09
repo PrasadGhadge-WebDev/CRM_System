@@ -16,7 +16,13 @@ const CustomerSchema = new mongoose.Schema(
     pending_amount: { type: Number, default: 0 },
     payment_status: { type: String, enum: ['Paid', 'Partial', 'Pending', 'Overdue'], default: 'Pending' },
     
-    email: { type: String, trim: true, lowercase: true, index: true },
+    email: { 
+      type: String, 
+      trim: true, 
+      lowercase: true, 
+      index: true,
+      match: [/^[a-zA-Z0-9.]+@[a-zA-Z0-9.]+\.[a-zA-Z]{2,}$/, 'Please add a valid email (letters, numbers, dots and @ only)']
+    },
     phone: { type: String, trim: true },
     alternate_phone: { type: String, trim: true },
     address: { type: String, trim: true },

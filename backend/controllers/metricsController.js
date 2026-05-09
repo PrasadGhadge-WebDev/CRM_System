@@ -8,34 +8,20 @@ const Activity = require('../models/Activity');
 const Order = require('../models/Order');
 const SupportTicket = require('../models/SupportTicket');
 const Notification = require('../models/Notification');
+const Payment = require('../models/Payment');
 const { asyncHandler } = require('../middleware/asyncHandler');
 
 exports.getMetrics = asyncHandler(async (req, res) => {
-  // A "Global Admin" is strictly an Admin with NO company_id (superuser).
-  // Any Admin WITH a company_id is a regular company admin — must be scoped.
   const isGlobalAdmin = req.user?.role === 'Admin' && !req.user?.company_id;
   const isEmployee = req.user?.role === 'Employee';
 
-  // Safety guard: if not a global admin, company_id must be present
   if (!isGlobalAdmin && !req.user?.company_id) {
     req.user.company_id = new mongoose.Types.ObjectId();
   }
 
-  const demoCompanyIds = isGlobalAdmin
-    ? await User.distinct('company_id', {
-        company_id: { $ne: null },
-        $or: [{ is_demo: true }, { is_trial: true }],
-      })
-    : [];
-
-  // Always scope to company_id when user has one — never allow empty filter
-  // Use the exact same filtering as list views: scope to user's company_id (or null if unassigned)
   const queryCompanyId = req.user.company_id ? new mongoose.Types.ObjectId(req.user.company_id) : null;
   const companyFilter = { company_id: queryCompanyId };
   
-  // For global calculations like Revenue, we must also respect this scoping
-  const companyQuery = queryCompanyId ? { _id: queryCompanyId } : { _id: null };
-
   const leadFilter = { ...companyFilter, isDeleted: { $ne: true } };
   const customerFilter = { ...companyFilter, isDeleted: { $ne: true } };
   const dealFilter = { ...companyFilter, isDeleted: { $ne: true } };
@@ -45,334 +31,86 @@ exports.getMetrics = asyncHandler(async (req, res) => {
     is_demo: { $ne: true },
     is_trial: { $ne: true },
   };
+
   const userObjectId = req.user?._id ? new mongoose.Types.ObjectId(req.user._id) : null;
   const employeeLeadFilter = isEmployee && userObjectId ? { ...leadFilter, assigned_to: userObjectId } : null;
   const employeeDealFilter = isEmployee && userObjectId ? { ...dealFilter, assigned_to: userObjectId } : null;
   const employeeActivityFilter = isEmployee && userObjectId ? { ...companyFilter, created_by: userObjectId } : null;
-
-  const monthsToInclude = 6;
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  const trendStartDate = new Date();
-  trendStartDate.setDate(1);
-  trendStartDate.setHours(0, 0, 0, 0);
-  trendStartDate.setMonth(trendStartDate.getMonth() - (monthsToInclude - 1));
-
-  const monthBuckets = Array.from({ length: monthsToInclude }).map((_, idx) => {
-    const date = new Date(trendStartDate);
-    date.setMonth(trendStartDate.getMonth() + idx);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    return { key, year: date.getFullYear(), month: date.getMonth() + 1, label: `${monthNames[date.getMonth()]} ${String(date.getFullYear()).slice(-2)}` };
-  });
-
-  const fillTrend = (raw = [], valueKey = 'count') => {
-    const lookup = new Map(
-      raw.map((item) => {
-        const key = `${item._id.year}-${String(item._id.month).padStart(2, '0')}`;
-        return [key, item[valueKey]];
-      }),
-    );
-
-    return monthBuckets.map((bucket) => ({
-      label: bucket.label,
-      month: bucket.label,
-      amount: lookup.get(bucket.key) || 0,
-      value: lookup.get(bucket.key) || 0,
-    }));
-  };
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const startOfTomorrow = new Date(startOfToday);
   startOfTomorrow.setDate(startOfToday.getDate() + 1);
 
-  const dealTerminalStatuses = ['Converted', 'Closed Won', 'Closed Lost', 'Not Interested'];
-
-  const [
-    companiesTotal,
-    usersTotal,
-    customersTotal,
-    leadsTotal,
-    ordersTotal,
-    ticketsTotal,
-    activitiesTotal,
-    notificationsUnread,
-    leadsByStatus,
-    leadsBySource,
-    leadTrendRaw,
-    customerTrendRaw,
-    customersActive,
-    customersInactive,
-    dealsTotal,
-    dealsByStatus,
-    dealTrendRaw,
-    recentLeads,
-    recentCustomers,
-    recentActivities,
-    dealsWonTotal,
-    dealRevenueRaw,
-    pendingActivitiesTotal,
-    employeeLeadsTotal,
-    employeeFollowupsToday,
-    employeeDealsInProgress,
-    employeeTasksPlanned,
-    employeePriorityLeads,
-    employeePriorityTickets,
-    employeeActiveDeals,
-    billingTicketsTotal,
-    unpaidDealsCount,
-    unpaidDealsValue,
-    wonDealsAwaitingBilling,
-    vipCustomersTotal,
-    overdueOrdersCount,
-    overdueOrdersValue,
-    revenueTrendRaw,
-    topPerformersRaw,
-    employeeTicketsTotal,
-    overdueLeadsCount,
-    customersByStatus,
-    customersByType,
-  ] = await Promise.all([
-    Company.countDocuments(companyQuery),
-    User.countDocuments(userFilter),
-    Customer.countDocuments(customerFilter),
-    Lead.countDocuments(leadFilter),
-    Order.countDocuments(companyFilter),
-    SupportTicket.countDocuments(companyFilter),
-    Activity.countDocuments(companyFilter),
-    Notification.countDocuments({ ...companyFilter, is_read: false }),
-    Lead.aggregate([
-      { $match: leadFilter },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $project: { _id: 0, status: { $ifNull: ['$_id', ''] }, count: 1 } },
-    ]),
-    Lead.aggregate([
-      { $match: leadFilter },
-      { $group: { _id: '$source', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 8 },
-      { $project: { _id: 0, source: { $ifNull: ['$_id', ''] }, count: 1 } },
-    ]),
-    Lead.aggregate([
-      { $match: { ...leadFilter, created_at: { $gte: trendStartDate } } },
-      {
-        $group: {
-          _id: { year: { $year: '$created_at' }, month: { $month: '$created_at' } },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1 } },
-    ]),
-    Customer.aggregate([
-      { $match: { ...customerFilter, created_at: { $gte: trendStartDate } } },
-      {
-        $group: {
-          _id: { year: { $year: '$created_at' }, month: { $month: '$created_at' } },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1 } },
-    ]),
-    Customer.countDocuments({ ...customerFilter, status: 'Active' }),
-    Customer.countDocuments({ ...customerFilter, status: 'Inactive' }),
-    Deal.countDocuments(dealFilter),
-    Deal.aggregate([
-      { $match: dealFilter },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $project: { _id: 0, status: { $ifNull: ['$_id', ''] }, count: 1 } },
-    ]),
-    Deal.aggregate([
-      { $match: { ...dealFilter, created_at: { $gte: trendStartDate } } },
-      {
-        $group: {
-          _id: { year: { $year: '$created_at' }, month: { $month: '$created_at' } },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1 } },
-    ]),
-    Lead.find(isEmployee && employeeLeadFilter ? employeeLeadFilter : leadFilter)
-      .sort({ created_at: -1 })
-      .limit(5)
-      .select('name status source created_at'),
-    Customer.find(customerFilter).sort({ created_at: -1 }).limit(5).select('name email phone created_at'),
-    Activity.find(isEmployee && employeeActivityFilter ? employeeActivityFilter : companyFilter)
-      .sort({ created_at: -1 })
-      .limit(5)
-      .select('activity_type description status activity_date due_date created_at related_type'),
-    Deal.countDocuments({ ...dealFilter, stage: 'Won' }),
-    Deal.aggregate([
-      { $match: { ...dealFilter, stage: 'Won' } },
-      { $group: { _id: null, total: { $sum: '$value' } } }
-    ]),
-    Activity.countDocuments({ ...companyFilter, status: 'planned' }),
-    isEmployee && employeeLeadFilter ? Lead.countDocuments(employeeLeadFilter) : 0,
-    isEmployee && employeeLeadFilter
-      ? Lead.countDocuments({ ...employeeLeadFilter, nextFollowupDate: { $gte: startOfToday, $lt: startOfTomorrow } })
-      : 0,
-    isEmployee && employeeDealFilter
-      ? Deal.countDocuments({ ...employeeDealFilter, stage: 'Won', status: { $ne: 'Completed' } })
-      : 0,
-    isEmployee && employeeActivityFilter
-      ? Activity.countDocuments({ ...employeeActivityFilter, status: 'planned', activity_type: 'task' })
-      : 0,
-    isEmployee && employeeLeadFilter
-      ? Lead.find({ 
-          ...employeeLeadFilter, 
-          status: { $ne: 'Converted' },
-          follow_up_date: { $exists: true, $lte: startOfTomorrow }
-        })
-        .sort({ follow_up_date: 1 })
-        .limit(5)
-        .select('name status follow_up_date source')
-      : [],
-    isEmployee && userObjectId
-      ? SupportTicket.find({
-          assigned_to: userObjectId,
-          status: { $in: ['new', 'in-progress'] }
-        })
-        .sort({ priority: -1, created_at: 1 })
-        .limit(5)
-        .select('subject ticket_id priority status created_at')
-      : [],
-    isEmployee && employeeDealFilter
-      ? Deal.find({ ...employeeDealFilter, stage: 'Won', status: { $ne: 'Completed' } })
-        .sort({ updated_at: -1 })
-        .limit(5)
-        .populate('customer_id', 'name')
-      : [],
-    SupportTicket.countDocuments({ ...companyFilter, category: 'Billing', status: { $ne: 'resolved' } }),
-    Deal.countDocuments({ ...dealFilter, stage: 'Won', status: { $ne: 'Completed' } }),
-    Deal.aggregate([
-      { $match: { ...dealFilter, stage: 'Won', status: { $ne: 'Completed' } } },
-      { $group: { _id: null, total: { $sum: '$value' } } }
-    ]),
-    Deal.find({ ...dealFilter, stage: 'Won', status: { $ne: 'Completed' } })
-      .sort({ updated_at: -1 })
-      .limit(5)
-      .populate('customer_id', 'name'),
-    Customer.countDocuments({ ...customerFilter, is_vip: true }),
-    Order.countDocuments({ ...companyFilter, status: 'pending', due_date: { $lt: new Date() } }),
-    Order.aggregate([
-      { $match: { ...companyFilter, status: 'pending', due_date: { $lt: new Date() } } },
-      { $group: { _id: null, total: { $sum: '$total_amount' } } }
-    ]),
-    Deal.aggregate([
-      { $match: { ...dealFilter, stage: 'Won', created_at: { $gte: trendStartDate } } },
-      {
-        $group: {
-          _id: { year: { $year: '$created_at' }, month: { $month: '$created_at' } },
-          amount: { $sum: '$value' }
-        }
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1 } }
-    ]),
-    Deal.aggregate([
-      { $match: { ...dealFilter, stage: 'Won' } },
-      {
-        $group: {
-          _id: '$assigned_to',
-          revenue: { $sum: '$value' },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { revenue: -1 } },
-      { $limit: 3 }
-    ]),
-    isEmployee && userObjectId ? SupportTicket.countDocuments({ assigned_to: userObjectId }) : 0,
-    Lead.countDocuments({ 
-      ...leadFilter, 
-      status: { $nin: ['Converted', 'Lost'] }, 
-      nextFollowupDate: { $lt: startOfToday } 
-    }),
-    Customer.aggregate([
-      { $match: customerFilter },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-      { $project: { _id: 0, status: { $ifNull: ['$_id', 'Active'] }, count: 1 } }
-    ]),
-    Customer.aggregate([
-      { $match: customerFilter },
-      { $group: { _id: '$customer_type', count: { $sum: 1 } } },
-      { $project: { _id: 0, type: { $ifNull: ['$_id', 'Individual'] }, count: 1 } }
-    ]),
+  const results = await Promise.all([
+    Company.countDocuments(queryCompanyId ? { _id: queryCompanyId } : { _id: null }), // 0
+    User.countDocuments(userFilter), // 1
+    Customer.countDocuments(customerFilter), // 2
+    Lead.countDocuments(leadFilter), // 3
+    SupportTicket.countDocuments(companyFilter), // 4
+    Activity.countDocuments(companyFilter), // 5
+    Notification.countDocuments({ ...companyFilter, is_read: false }), // 6
+    Deal.countDocuments(dealFilter), // 7
+    
+    // Employee Specific Counts
+    isEmployee ? Lead.countDocuments(employeeLeadFilter) : 0, // 8
+    isEmployee ? Lead.countDocuments({ ...employeeLeadFilter, status: 'New' }) : 0, // 9
+    isEmployee ? Lead.countDocuments({ ...employeeLeadFilter, status: 'Follow-up' }) : 0, // 10
+    isEmployee ? Deal.countDocuments({ ...employeeDealFilter, stage: { $ne: 'Lost' } }) : 0, // 11
+    isEmployee ? Deal.countDocuments({ ...employeeDealFilter, stage: 'Won' }) : 0, // 12
+    isEmployee ? Deal.countDocuments({ ...employeeDealFilter, stage: 'Lost' }) : 0, // 13
+    isEmployee ? SupportTicket.countDocuments({ assigned_to: userObjectId, status: { $ne: 'closed' } }) : 0, // 14
+    isEmployee ? SupportTicket.countDocuments({ assigned_to: userObjectId, status: 'closed' }) : 0, // 15
+    isEmployee ? Payment.countDocuments({ collected_by: userObjectId, status: 'Pending' }) : 0, // 16
+    
+    // Employee Specific Lists
+    isEmployee ? Activity.find({ ...employeeActivityFilter, activity_date: { $gte: startOfToday, $lt: startOfTomorrow } }).sort({ activity_date: 1 }) : [], // 17
+    isEmployee ? Lead.find(employeeLeadFilter).sort({ created_at: -1 }).limit(5).select('name status nextFollowupDate') : [], // 18
+    isEmployee ? Deal.find({ ...employeeDealFilter, stage: { $ne: 'Lost' } }).sort({ updated_at: -1 }).limit(5).populate('customer_id', 'name') : [], // 19
+    isEmployee ? Payment.find({ collected_by: userObjectId, status: 'Pending' }).sort({ payment_date: 1 }).limit(5).populate('customer_id', 'name') : [], // 20
+    isEmployee ? SupportTicket.find({ assigned_to: userObjectId }).sort({ created_at: -1 }).limit(5).populate('customer_id', 'name') : [], // 21
+    
+    // General Lists & Totals
+    Lead.find(leadFilter).sort({ created_at: -1 }).limit(5).select('name status source created_at'), // 22
+    Activity.find(companyFilter).sort({ created_at: -1 }).limit(5), // 23
+    Deal.aggregate([{ $match: { ...dealFilter, stage: 'Won' } }, { $group: { _id: null, total: { $sum: '$value' } } }]), // 24
+    Activity.countDocuments({ ...companyFilter, status: 'planned' }), // 25
+    Lead.countDocuments({ ...leadFilter, status: { $nin: ['Converted', 'Lost'] }, nextFollowupDate: { $lt: startOfToday } }), // 26
   ]);
 
-  const revenueTotal = (dealRevenueRaw[0]?.total || 0);
+  const [
+    companiesTotal, usersTotal, customersTotal, leadsTotal, ticketsTotal, activitiesTotal, notificationsUnread, dealsTotal,
+    empLeadsTotal, empLeadsNew, empLeadsFollowup, empDealsActive, empDealsWon, empDealsLost, empTicketsOpen, empTicketsClosed, empPaymentsPending,
+    empTasksToday, empLeadsRecent, empDealsRecent, empPaymentsRecent, empTicketsRecent,
+    recentLeads, recentActivities, revenueRaw, pendingActivitiesTotal, overdueLeadsCount
+  ] = results;
 
   res.json({
     companies: { total: companiesTotal },
     users: { total: usersTotal },
-    orders: { total: ordersTotal },
     supportTickets: { total: ticketsTotal },
     activities: { total: activitiesTotal },
     notifications: { unread: notificationsUnread },
-    customers: { 
-      total: customersTotal, 
-      active: customersActive,
-      inactive: customersInactive,
-      recent: recentCustomers, 
-      trend: fillTrend(customerTrendRaw),
-      vipTotal: vipCustomersTotal,
-      byStatus: customersByStatus,
-      byType: customersByType,
-    },
-    leads: {
-      total: leadsTotal,
-      byStatus: leadsByStatus,
-      bySource: leadsBySource,
-      trend: fillTrend(leadTrendRaw),
-      recent: recentLeads,
-      overdueCount: overdueLeadsCount || 0,
-    },
-    deals: {
-      total: dealsTotal,
-      byStatus: dealsByStatus,
-      trend: fillTrend(dealTrendRaw),
-      revenueTrend: fillTrend(revenueTrendRaw, 'amount'),
-    },
-    topPerformers: await Promise.all((topPerformersRaw || []).map(async p => {
-      const user = await User.findById(p._id).select('name role profile_photo');
-      return {
-        ...p,
-        name: user?.name || 'Unknown',
-        role: user?.role || 'Employee'
-      };
-    })),
-    activities: {
-      total: activitiesTotal,
-      pending: pendingActivitiesTotal,
-      recent: recentActivities,
-    },
-    employee: isEmployee
-      ? {
-          leadsTotal: employeeLeadsTotal,
-          followupsToday: employeeFollowupsToday,
-          dealsInProgress: employeeDealsInProgress,
-          activeDeals: employeeActiveDeals,
-          tasksPlanned: employeeTasksPlanned,
-          ticketsTotal: employeeTicketsTotal,
-          priorityItems: [
-            ...(employeePriorityLeads || []).map(l => ({ ...l.toObject(), type: 'lead' })),
-            ...(employeePriorityTickets || []).map(t => ({ ...t.toObject(), type: 'ticket' }))
-          ].sort((a, b) => new Date(a.activity_date || a.follow_up_date || a.created_at) - new Date(b.activity_date || b.follow_up_date || b.created_at))
-        }
-      : undefined,
-    summary: {
-      totalLeads: leadsTotal,
-      dealsWon: dealsWonTotal,
-      pendingTasks: pendingActivitiesTotal,
-      totalRevenue: (dealRevenueRaw[0]?.total || 0),
+    customers: { total: customersTotal },
+    leads: { total: leadsTotal, recent: recentLeads, overdueCount: overdueLeadsCount },
+    deals: { total: dealsTotal },
+    summary: { 
+      totalRevenue: revenueRaw[0]?.total || 0,
+      pendingTasks: pendingActivitiesTotal
     },
     financials: {
-      unpaidCount: unpaidDealsCount || 0,
-      unpaidValue: unpaidDealsValue[0]?.total || 0,
-      billingTicketsOutstanding: billingTicketsTotal || 0,
-      awaitingBillingDeals: wonDealsAwaitingBilling,
-      overdueCount: overdueOrdersCount || 0,
-      overdueValue: overdueOrdersValue[0]?.total || 0,
-    }
+      unpaidValue: 0 // Placeholder
+    },
+    employee: isEmployee ? {
+      leads: { total: empLeadsTotal, new: empLeadsNew, followup: empLeadsFollowup },
+      deals: { active: empDealsActive, won: empDealsWon, lost: empDealsLost },
+      payments: { pending: empPaymentsPending, overdue: 0, recent: empPaymentsRecent },
+      tickets: { total: empTicketsOpen + empTicketsClosed, open: empTicketsOpen, closed: empTicketsClosed, recent: empTicketsRecent },
+      tasks: { today: empTasksToday, planned: empTasksToday.length },
+      leadsRecent: empLeadsRecent,
+      dealsRecent: empDealsRecent,
+      performance: { conversions: empDealsWon, closedDeals: empDealsWon, followupCount: empLeadsFollowup }
+    } : undefined
   });
 });
 
