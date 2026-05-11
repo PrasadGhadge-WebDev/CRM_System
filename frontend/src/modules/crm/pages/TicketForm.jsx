@@ -77,6 +77,8 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
       internal_notes: '',
       cc_emails: '',
       sub_category: '',
+      department: 'Support',
+      expected_resolution_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
       customer_name_manual: '',
       customer_email_manual: '',
       customer_phone_manual: ''
@@ -128,7 +130,10 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
           tags: ticket.tags || '',
           source: ticket.source || 'Portal',
           internal_notes: ticket.internal_notes || '',
-          cc_emails: ticket.cc_emails || ''
+          cc_emails: ticket.cc_emails || '',
+          sub_category: ticket.sub_category || '',
+          department: ticket.department || 'Support',
+          expected_resolution_date: ticket.expected_resolution_date ? new Date(ticket.expected_resolution_date).toISOString().slice(0, 16) : ''
         }
         setFormData(normalized)
         setInitialData(normalized)
@@ -252,83 +257,64 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
 
         <form className="crm-modal-sheet-body custom-scrollbar" onKeyDown={handleKeyDown} onSubmit={handleSubmit}>
           <div className="sheet-content-container">
-            {/* Account Linking */}
-            {showAccountLinkingSection && (
-              <section className="form-sheet-section">
-                <div className="form-sheet-section-header">
-                  <FiUser />
-                  <span>Customer Info</span>
+            {/* 🧍 Customer Info */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <FiUser />
+                <span>Customer Information</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field">
+                  <label>Customer Account *</label>
+                  <SearchableSelect 
+                    value={formData.customer_id}
+                    onChange={val => setFormData({ ...formData, customer_id: val })}
+                    options={[
+                      { value: '', label: 'Select Customer...' },
+                      ...customers.map(c => ({ value: c.id, label: c.name }))
+                    ]}
+                    placeholder="Search Customer..."
+                    icon="user"
+                  />
+                  {fieldErrors.customer_id && <span className="error-text">{fieldErrors.customer_id}</span>}
                 </div>
-                <div className="form-sheet-grid">
-                  <div className="sheet-field">
-                    <label>Customer Account *</label>
-                    <SearchableSelect 
-                      value={formData.customer_id}
-                      onChange={val => setFormData({ ...formData, customer_id: val })}
-                      options={[
-                        { value: '', label: 'Select Customer...' },
-                        ...customers.map(c => ({ value: c.id, label: c.name }))
-                      ]}
-                      placeholder="Search Customer..."
-                      icon="user"
-                    />
-                    {fieldErrors.customer_id && <span className="error-text">{fieldErrors.customer_id}</span>}
-                  </div>
-                  <div className="sheet-field">
-                    <label>System User (Internal Contact)</label>
-                    <SearchableSelect 
-                      value={formData.user_customer_id}
-                      onChange={val => setFormData({ ...formData, user_customer_id: val })}
-                      options={[
-                        { value: '', label: 'Select User...' },
-                        ...allUsers.map(u => ({ value: u.id, label: `${u.name} (${u.role})` }))
-                      ]}
-                      placeholder="Select System User..."
-                      icon="user"
-                      disabled={!isSuperUser}
+                <div className="sheet-field">
+                  <label>Customer ID</label>
+                  <div className="crm-input-group disabled">
+                    <div className="input-icon-box"><FiTag /></div>
+                    <input 
+                      value={customers.find(c => c.id === formData.customer_id)?.customer_id || '—'} 
+                      readOnly 
+                      placeholder="Account ID"
                     />
                   </div>
                 </div>
-
-                <div className="form-sheet-grid" style={{ marginTop: '16px' }}>
-                  <div className="sheet-field">
-                    <label>Customer Name</label>
-                    <div className="crm-input-group disabled">
-                      <div className="input-icon-box"><FiUser /></div>
-                      <input 
-                        value={customers.find(c => c.id === formData.customer_id)?.name || ''} 
-                        readOnly 
-                        placeholder="Select customer above..."
-                      />
-                    </div>
-                  </div>
-                  <div className="sheet-field">
-                    <label>Customer Email</label>
-                    <div className="crm-input-group disabled">
-                      <div className="input-icon-box"><Icon name="mail" /></div>
-                      <input 
-                        value={customers.find(c => c.id === formData.customer_id)?.email || ''} 
-                        readOnly 
-                        placeholder="Email will appear here..."
-                      />
-                    </div>
-                  </div>
-                  <div className="sheet-field">
-                    <label>Phone Number</label>
-                    <div className="crm-input-group disabled">
-                      <div className="input-icon-box"><Icon name="phone" /></div>
-                      <input 
-                        value={customers.find(c => c.id === formData.customer_id)?.phone || ''} 
-                        readOnly 
-                        placeholder="Phone will appear here..."
-                      />
-                    </div>
+                <div className="sheet-field">
+                  <label>Mobile Number</label>
+                  <div className="crm-input-group disabled">
+                    <div className="input-icon-box"><Icon name="phone" /></div>
+                    <input 
+                      value={customers.find(c => c.id === formData.customer_id)?.phone || '—'} 
+                      readOnly 
+                      placeholder="Contact Number"
+                    />
                   </div>
                 </div>
-              </section>
-            )}
+                <div className="sheet-field">
+                  <label>Email Address</label>
+                  <div className="crm-input-group disabled">
+                    <div className="input-icon-box"><Icon name="mail" /></div>
+                    <input 
+                      value={customers.find(c => c.id === formData.customer_id)?.email || '—'} 
+                      readOnly 
+                      placeholder="Email Address"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
 
-            {/* Ticket Details */}
+            {/* 🎫 Ticket Info */}
             <section className="form-sheet-section">
               <div className="form-sheet-section-header">
                 <FiMessageSquare />
@@ -336,220 +322,149 @@ export default function TicketForm({ mode, ticketId, onSuccess, onCancel }) {
               </div>
               <div className="form-sheet-grid">
                 <div className="sheet-field full-width">
-                  <label>Subject *</label>
+                  <label>Ticket Subject *</label>
                   <div className={`crm-input-group ${fieldErrors.subject ? 'error' : ''}`}>
                     <div className="input-icon-box"><FiInfo /></div>
                     <input
                       autoFocus
                       value={formData.subject}
-                      onChange={e => {
-                        setFormData({ ...formData, subject: e.target.value })
-                        if (fieldErrors.subject) setFieldErrors(prev => ({ ...prev, subject: '' }))
-                      }}
-                      placeholder="Brief summary of the issue (e.g., Login Failed)"
+                      onChange={e => setFormData({ ...formData, subject: e.target.value })}
+                      placeholder="Summary of the issue"
                     />
                   </div>
-                  {fieldErrors.subject && <span className="error-text">{fieldErrors.subject}</span>}
                 </div>
                 <div className="sheet-field full-width">
-                  <label>Detailed Description *</label>
+                  <label>Issue Description *</label>
                   <div className={`crm-input-group ${fieldErrors.description ? 'error' : ''}`}>
                     <div className="input-icon-box" style={{ alignItems: 'flex-start', paddingTop: '12px' }}><FiMessageSquare /></div>
                     <textarea
                       style={{ minHeight: '100px' }}
                       value={formData.description}
-                      onChange={e => {
-                        setFormData({ ...formData, description: e.target.value })
-                        if (fieldErrors.description) setFieldErrors(prev => ({ ...prev, description: '' }))
-                      }}
-                      placeholder="Provide as much detail as possible about the issue..."
+                      onChange={e => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Full details of the customer request..."
                     />
                   </div>
-                  {fieldErrors.description && <span className="error-text">{fieldErrors.description}</span>}
                 </div>
-
-                <div className="sheet-field full-width">
-                  <label>Attachments (Screenshots, PDFs, etc.)</label>
-                  <div className="crm-input-group" style={{ cursor: 'pointer', background: 'var(--bg-surface)' }} onClick={() => fileInputRef.current?.click()}>
-                    <div className="input-icon-box"><Icon name="paperclip" /></div>
-                    <div style={{ padding: '12px', color: 'var(--text-dimmed)', fontSize: '0.9rem' }}>
-                      {uploading ? 'Uploading...' : formData.attachments.length > 0 ? `${formData.attachments.length} files attached` : 'Click to attach files...'}
-                    </div>
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      style={{ display: 'none' }} 
-                      onChange={handleFileUpload}
-                      multiple
-                    />
-                  </div>
-                  {formData.attachments.length > 0 && (
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-                      {formData.attachments.map((at, idx) => (
-                        <div key={idx} className="attachment-chip">
-                          <span>{at.name}</span>
-                          <button type="button" onClick={(e) => { e.stopPropagation(); setFormData(prev => ({ ...prev, attachments: prev.attachments.filter((_, i) => i !== idx) })) }}>×</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            {/* Classification */}
-            <section className="form-sheet-section">
-              <div className="form-sheet-section-header">
-                <FiTag />
-                <span>Category & Priority</span>
-              </div>
-              <div className="form-sheet-grid">
                 <div className="sheet-field">
-                  <label>Category *</label>
-                  <SearchableSelect 
-                    value={formData.category}
-                    onChange={val => setFormData({ ...formData, category: val })}
-                    options={[
-                      { value: 'Technical', label: 'Technical Issue' },
-                      { value: 'Billing', label: 'Billing / Payment' },
-                      { value: 'HR', label: 'HR / Employee' },
-                      { value: 'General', label: 'General Inquiry' }
-                    ]}
-                    placeholder="Select Category"
-                    icon="tag"
-                  />
+                  <label>Category</label>
+                  <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                    <option value="Technical">Technical</option>
+                    <option value="Billing">Billing</option>
+                    <option value="General">General</option>
+                    <option value="Complaint">Complaint</option>
+                  </select>
                 </div>
                 <div className="sheet-field">
                   <label>Sub Category (Optional)</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiSettings /></div>
-                    <input 
-                      value={formData.sub_category}
-                      onChange={e => setFormData({ ...formData, sub_category: e.target.value })}
-                      placeholder="e.g., Software, Hardware, Login"
-                    />
-                  </div>
-                </div>
-                <div className="sheet-field">
-                  <label>Priority *</label>
-                  <SearchableSelect 
-                    value={formData.priority}
-                    onChange={val => setFormData({ ...formData, priority: val })}
-                    options={[
-                      { value: 'low', label: 'Low' },
-                      { value: 'medium', label: 'Medium' },
-                      { value: 'high', label: 'High' }
-                    ]}
-                    placeholder="Select Priority"
-                    icon="flag"
+                  <input 
+                    value={formData.sub_category}
+                    onChange={e => setFormData({ ...formData, sub_category: e.target.value })}
+                    placeholder="e.g. Software, Hardware"
                   />
-                </div>
-                <div className="sheet-field">
-                  <label>Status</label>
-                  <SearchableSelect 
-                    value={formData.status}
-                    onChange={val => setFormData({ ...formData, status: val })}
-                    options={[
-                      { value: 'open', label: 'Open' },
-                      { value: 'in-progress', label: 'In Progress' },
-                      { value: 'resolved', label: 'Resolved' },
-                      { value: 'closed', label: 'Closed' }
-                    ]}
-                    placeholder="Select Status"
-                    icon="activity"
-                  />
-                </div>
-                <div className="sheet-field">
-                  <label>Source</label>
-                  <SearchableSelect 
-                    value={formData.source}
-                    onChange={val => setFormData({ ...formData, source: val })}
-                    options={[
-                      { value: 'Portal', label: 'Customer Portal' },
-                      { value: 'Email', label: 'Email' },
-                      { value: 'Phone', label: 'Phone Call' },
-                      { value: 'WhatsApp', label: 'WhatsApp' },
-                      { value: 'Chat', label: 'Live Chat' }
-                    ]}
-                    placeholder="Select Source"
-                    icon="info"
-                  />
-                </div>
-                <div className="sheet-field">
-                  <label>SLA Deadline</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiActivity /></div>
-                    <input 
-                      type="datetime-local" 
-                      value={formData.deadline} 
-                      onChange={e => setFormData({ ...formData, deadline: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="sheet-field">
-                  <label>Tags (Comma separated)</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><FiTag /></div>
-                    <input 
-                      value={formData.tags}
-                      onChange={e => setFormData({ ...formData, tags: e.target.value })}
-                      placeholder="urgent, bug, feature"
-                    />
-                  </div>
                 </div>
               </div>
             </section>
 
-            {/* Management & Notes */}
-            <section className="form-sheet-section no-border">
+            {/* ⚡ Priority Level */}
+            <section className="form-sheet-section">
               <div className="form-sheet-section-header">
-                <FiSettings />
-                <span>Assignment & Notes</span>
+                <FiFlag />
+                <span>Priority & Status</span>
               </div>
               <div className="form-sheet-grid">
-                {!isCustomer && (
-                  <div className="sheet-field">
-                    <label>Assign To *</label>
-                    <div className={`crm-input-group ${fieldErrors.assigned_to ? 'error' : ''}`}>
-                      <div className="input-icon-box"><FiBriefcase /></div>
-                      <select value={formData.assigned_to} onChange={e => setFormData({ ...formData, assigned_to: e.target.value })}>
-                        <option value="">Select Agent...</option>
-                        {allUsers.filter(u => u.role !== 'Customer').map(m => (
-                          <option key={m.id || m._id} value={m.id || m._id}>{m.name} ({m.role})</option>
-                        ))}
-                      </select>
-                    </div>
-                    {fieldErrors.assigned_to && <span className="error-text">{fieldErrors.assigned_to}</span>}
-                  </div>
-                )}
                 <div className="sheet-field">
-                  <label>Assigned By (Auto)</label>
-                  <div className="crm-input-group disabled">
-                    <div className="input-icon-box"><FiUser /></div>
-                    <input value={isEdit ? 'Existing Assignor' : (user?.name || 'Admin')} readOnly />
-                  </div>
+                  <label>Priority Level</label>
+                  <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })}>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
                 </div>
                 <div className="sheet-field">
-                  <label>CC Emails (Multiple)</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box"><Icon name="mail" /></div>
-                    <input 
-                      value={formData.cc_emails}
-                      onChange={e => setFormData({ ...formData, cc_emails: e.target.value })}
-                      placeholder="team@example.com, boss@example.com"
-                    />
-                  </div>
+                  <label>Current Status</label>
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Closed">Closed</option>
+                  </select>
                 </div>
+              </div>
+            </section>
+
+            {/* 👨💼 Assignment */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <FiBriefcase />
+                <span>Assignment Details</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field">
+                  <label>Assigned Employee *</label>
+                  <select value={formData.assigned_to} onChange={e => setFormData({ ...formData, assigned_to: e.target.value })}>
+                    <option value="">Select Employee...</option>
+                    {allUsers.filter(u => u.role !== 'Customer').map(m => (
+                      <option key={m.id || m._id} value={m.id || m._id}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sheet-field">
+                  <label>Department</label>
+                  <select value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })}>
+                    <option value="Support">Support</option>
+                    <option value="Sales">Sales</option>
+                    <option value="Technical">Technical</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            {/* 📅 Tracking */}
+            <section className="form-sheet-section">
+              <div className="form-sheet-section-header">
+                <FiActivity />
+                <span>Timeline Tracking</span>
+              </div>
+              <div className="form-sheet-grid">
+                <div className="sheet-field">
+                  <label>Expected Resolution Date</label>
+                  <input 
+                    type="datetime-local" 
+                    value={formData.expected_resolution_date} 
+                    onChange={e => setFormData({ ...formData, expected_resolution_date: e.target.value })}
+                  />
+                </div>
+                <div className="sheet-field">
+                  <label>Internal Notes (Agent Reference)</label>
+                  <textarea
+                    value={formData.internal_notes}
+                    onChange={e => setFormData({ ...formData, internal_notes: e.target.value })}
+                    placeholder="Strategy or technical notes..."
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* 📎 Attachments */}
+            <section className="form-sheet-section no-border">
+              <div className="form-sheet-section-header">
+                <Icon name="paperclip" />
+                <span>Supporting Files</span>
+              </div>
+              <div className="form-sheet-grid">
                 <div className="sheet-field full-width">
-                  <label>Internal Notes (Agent Reference Only)</label>
-                  <div className="crm-input-group">
-                    <div className="input-icon-box" style={{ alignItems: 'flex-start', paddingTop: '12px' }}><FiInfo /></div>
-                    <textarea
-                      style={{ minHeight: '80px' }}
-                      value={formData.internal_notes}
-                      onChange={e => setFormData({ ...formData, internal_notes: e.target.value })}
-                      placeholder="Any internal context or technical notes..."
-                    />
+                  <div className="attachment-upload-box" onClick={() => fileInputRef.current?.click()}>
+                    <Icon name="upload" size={24} />
+                    <span>{uploading ? 'Uploading...' : 'Click to upload Screenshot or File'}</span>
+                    <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
+                  </div>
+                  <div className="attachment-preview-grid">
+                    {formData.attachments.map((at, idx) => (
+                      <div key={idx} className="attachment-chip">
+                        <span>{at.name}</span>
+                        <button type="button" onClick={() => setFormData(p => ({ ...p, attachments: p.attachments.filter((_, i) => i !== idx) }))}>×</button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

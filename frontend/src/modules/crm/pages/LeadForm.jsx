@@ -34,13 +34,16 @@ const INITIAL_LEAD = {
   name: '',
   email: '',
   phone: '',
+  company: '',
   source: 'Organic',
   status: 'New',
+  priority: 'Medium',
   assigned_to: '',
   follow_up_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   city: '',
   state: 'Maharashtra',
-  dealAmount: 0,
+  budget: 0,
+  requirement: '',
   notes: '',
 }
 
@@ -96,7 +99,9 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
             ...data,
             status,
             source,
-            dealAmount: data.dealAmount || data.value || 0,
+            budget: data.budget || data.dealAmount || data.value || 0,
+            requirement: data.requirement || data.notes || '',
+            priority: data.priority || 'Medium',
             assigned_to: data.assigned_to?._id || data.assigned_to?.id || data.assigned_to || ''
           }
           setModel(normalized)
@@ -179,7 +184,12 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
 
     setSaving(true)
     try {
-      const payload = { ...model }
+      const payload = { 
+        ...model,
+        dealAmount: model.budget, // Sync for backward compatibility
+        notes: model.requirement, // Sync for backward compatibility
+        remarks_internal: model.notes // Sync for backward compatibility
+      }
       delete payload.id
       delete payload._id
       delete payload.created_at
@@ -287,6 +297,17 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                   </div>
                   {fieldErrors.phone && <span className="error-text">{fieldErrors.phone}</span>}
                 </div>
+                <div className="sheet-field">
+                  <label>Company Name</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiBriefcase /></div>
+                    <input 
+                      value={model.company} 
+                      onChange={e => setModel({ ...model, company: e.target.value })} 
+                      placeholder="e.g. Acme Corp" 
+                    />
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -311,16 +332,25 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                   {fieldErrors.source && <span className="error-text">{fieldErrors.source}</span>}
                 </div>
                 <div className="sheet-field">
-                  <label>Estimated Value</label>
+                  <label>Budget (₹)</label>
                   <div className="crm-input-group">
                     <div className="input-icon-box"><FiTag /></div>
                     <input 
                       type="number"
-                      value={model.dealAmount} 
-                      onChange={e => setModel({ ...model, dealAmount: e.target.value })} 
-                      placeholder="Estimated value..." 
+                      value={model.budget} 
+                      onChange={e => setModel({ ...model, budget: e.target.value })} 
+                      placeholder="e.g. 50000" 
                     />
                   </div>
+                </div>
+                <div className="sheet-field">
+                  <label>Priority</label>
+                  <SearchableSelect
+                    value={model.priority}
+                    onChange={val => setModel({ ...model, priority: val })}
+                    options={['High', 'Medium', 'Low'].map(p => ({ value: p, label: p }))}
+                    icon="star"
+                  />
                 </div>
               </div>
             </section>
@@ -373,10 +403,10 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                     onChange={val => setModel({ ...model, status: val })}
                     options={availableStatuses.length > 0 
                       ? (user?.role === 'Employee' 
-                         ? ['New', 'Contacted', 'Follow-up', 'Qualified', 'Converted'].map(n => ({ value: n, label: n }))
+                         ? ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Negotiation', 'Converted', 'Lost'].map(n => ({ value: n, label: n }))
                          : availableStatuses.map(s => ({ value: s.name, label: s.name }))
                         )
-                      : ['New', 'Contacted', 'Follow-up', 'Qualified', 'Lost', 'Converted'].map(name => ({ value: name, label: name }))
+                      : ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Negotiation', 'Converted', 'Lost'].map(name => ({ value: name, label: name }))
                     }
                     icon="activity"
                     disabled={initialModel?.status === 'Converted'}
@@ -395,14 +425,26 @@ export default function LeadForm({ mode, leadId, onSuccess, onCancel }) {
                   {fieldErrors.follow_up_date && <span className="error-text">{fieldErrors.follow_up_date}</span>}
                 </div>
                 <div className="sheet-field full-width">
-                  <label>Lead Description</label>
+                  <label>Requirement / Service</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiActivity /></div>
+                    <textarea 
+                      style={{ minHeight: '80px' }} 
+                      value={model.requirement} 
+                      onChange={e => setModel({ ...model, requirement: e.target.value })} 
+                      placeholder="Describe the customer's requirement..." 
+                    />
+                  </div>
+                </div>
+                <div className="sheet-field full-width">
+                  <label>Internal Notes</label>
                   <div className="crm-input-group">
                     <div className="input-icon-box"><FiMessageSquare /></div>
                     <textarea 
-                      style={{ minHeight: '100px' }} 
+                      style={{ minHeight: '80px' }} 
                       value={model.notes} 
                       onChange={e => setModel({ ...model, notes: e.target.value })} 
-                      placeholder="Add background context or description..." 
+                      placeholder="Additional context or notes..." 
                     />
                   </div>
                 </div>

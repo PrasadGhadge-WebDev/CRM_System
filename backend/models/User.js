@@ -39,6 +39,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    city: { type: String, trim: true },
+    state: { type: String, trim: true },
+    pincode: { type: String, trim: true },
+    permanent_address: { type: String, trim: true },
+    work_location: { type: String, trim: true },
     basic_salary: {
       type: Number,
       default: 0,
@@ -135,6 +140,11 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
+      language: {
+        type: String,
+        default: 'English',
+        trim: true
+      }
     },
     is_trial: {
       type: Boolean,

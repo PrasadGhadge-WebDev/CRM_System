@@ -13,8 +13,8 @@ const DealSchema = new mongoose.Schema(
     
     stage: { 
       type: String, 
-      enum: ['Prospecting', 'New', 'Qualification', 'Proposal', 'Negotiation', 'Won', 'Lost'],
-      default: 'New', 
+      enum: ['New Deal', 'Proposal Sent', 'Negotiation', 'Follow-up', 'Won', 'Lost'],
+      default: 'New Deal', 
       index: true 
     },
     status: {
@@ -39,6 +39,8 @@ const DealSchema = new mongoose.Schema(
     discount_percent: { type: Number, default: 0 },
     discount: { type: Number, default: 0 }, // Fixed discount amount
     
+    deal_type: { type: String, trim: true },
+    requirement: { type: String, trim: true },
     description: { type: String, trim: true },
     notes: { type: String, trim: true },
     lost_reason: { type: String, trim: true },

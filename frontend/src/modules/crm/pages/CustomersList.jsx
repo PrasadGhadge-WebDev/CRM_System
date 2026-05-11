@@ -324,25 +324,42 @@ export default function CustomersList() {
                 <table className="crm-table">
                   <thead style={{ background: 'var(--bg-surface)' }}>
                     <tr>
-                      <th style={{ width: '50px' }}>
-                        <input
-                          type="checkbox"
-                          checked={items.length > 0 && selectedCustomers.length === items.length}
-                          onChange={(e) => handleSelectAll(e.target.checked)}
-                        />
-                      </th>
-                      <th style={{ minWidth: '200px' }} className="sortable" onClick={() => handleSort('name')}>
-                        CUSTOMER NAME <Icon name={getSortIcon('name')} size={12} />
-                      </th>
-                      <th style={{ width: '130px' }} className="sortable" onClick={() => handleSort('status')}>
-                        STATUS <Icon name={getSortIcon('status')} size={12} />
-                      </th>
-                      <th style={{ minWidth: '180px' }}>CONTACT</th>
-                      <th style={{ minWidth: '170px' }} className="sortable" onClick={() => handleSort('assigned_to')}>
-                        ASSIGNED TO <Icon name={getSortIcon('assigned_to')} size={12} />
-                      </th>
-                      <th style={{ minWidth: '160px' }}>ASSIGNED DEAL</th>
-                      <th style={{ minWidth: '150px' }}>PENDING & STATUS</th>
+                      {isEmployee ? (
+                        <>
+                          <th style={{ width: '80px' }}>ID</th>
+                          <th style={{ minWidth: '180px' }}>CUSTOMER NAME</th>
+                          <th style={{ width: '130px' }}>MOBILE</th>
+                          <th style={{ width: '150px' }}>EMAIL</th>
+                          <th style={{ minWidth: '150px' }}>COMPANY</th>
+                          <th style={{ minWidth: '120px' }}>CITY</th>
+                          <th style={{ width: '100px' }}>TYPE</th>
+                          <th style={{ width: '100px' }}>SOURCE</th>
+                          <th style={{ minWidth: '130px' }}>ASSIGNED</th>
+                          <th style={{ width: '100px' }}>STATUS</th>
+                        </>
+                      ) : (
+                        <>
+                          <th style={{ width: '50px' }}>
+                            <input
+                              type="checkbox"
+                              checked={items.length > 0 && selectedCustomers.length === items.length}
+                              onChange={(e) => handleSelectAll(e.target.checked)}
+                            />
+                          </th>
+                          <th style={{ minWidth: '200px' }} className="sortable" onClick={() => handleSort('name')}>
+                            CUSTOMER NAME <Icon name={getSortIcon('name')} size={12} />
+                          </th>
+                          <th style={{ width: '130px' }} className="sortable" onClick={() => handleSort('status')}>
+                            STATUS <Icon name={getSortIcon('status')} size={12} />
+                          </th>
+                          <th style={{ minWidth: '180px' }}>CONTACT</th>
+                          <th style={{ minWidth: '170px' }} className="sortable" onClick={() => handleSort('assigned_to')}>
+                            ASSIGNED TO <Icon name={getSortIcon('assigned_to')} size={12} />
+                          </th>
+                          <th style={{ minWidth: '160px' }}>ASSIGNED DEAL</th>
+                          <th style={{ minWidth: '150px' }}>PENDING & STATUS</th>
+                        </>
+                      )}
                       <th className="text-right" style={{ width: '100px' }}>ACTIONS</th>
                     </tr>
                   </thead>
@@ -358,101 +375,157 @@ export default function CustomersList() {
                             className={`crm-table-row crm-clickable-row ${isSelected ? 'selected-row' : ''}`}
                             onClick={() => openCustomerDetails(id)}
                           >
-                            <td onClick={stopRowNavigation}>
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={(e) => handleSelectCustomer(id, e.target.checked)}
-                              />
-                            </td>
-                            <td>
-                              <div className="leadsIdentityCell">
-                                <div className="leadsPrimaryText">{customer.name}</div>
-                                <div className="leadsSecondaryText" style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
-                                  JOINED: {customer.created_at ? new Date(customer.created_at).toLocaleDateString('en-GB') : '—'}
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                               <div className="leadsIdentityCell">
-                                 <div className="customersTypeBadge" style={{ 
-                                    background: customer.status === 'Active' ? 'var(--success-soft)' : 
-                                                customer.status === 'Inactive' ? 'var(--danger-soft)' : 'var(--bg-surface)',
-                                    color: customer.status === 'Active' ? 'var(--success)' : 
-                                           customer.status === 'Inactive' ? 'var(--danger)' : 'var(--text-dimmed)',
-                                    width: 'fit-content'
+                            {isEmployee ? (
+                              <>
+                                <td style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)' }}>#{customer.customer_id || '—'}</td>
+                                <td style={{ fontWeight: 700 }}>{customer.name}</td>
+                                <td style={{ fontSize: '0.85rem', fontWeight: 700 }}>{customer.phone || '—'}</td>
+                                <td style={{ fontSize: '0.85rem' }}>{customer.email || '—'}</td>
+                                <td style={{ fontSize: '0.85rem', opacity: 0.9 }}>{customer.company_name || '—'}</td>
+                                <td style={{ fontSize: '0.85rem' }}>{customer.city || '—'}</td>
+                                <td>
+                                  <span className="customersTypeBadge" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', fontSize: '0.6rem' }}>
+                                    {customer.customer_type || 'New'}
+                                  </span>
+                                </td>
+                                <td style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-dimmed)' }}>{customer.source || 'Direct'}</td>
+                                <td style={{ fontSize: '0.8rem', fontWeight: 700 }}>{customer.assigned_to?.name || 'Unassigned'}</td>
+                                <td>
+                                  <div className="customersTypeBadge" style={{ 
+                                    background: customer.status === 'Active' ? 'var(--success-soft)' : 'var(--danger-soft)',
+                                    color: customer.status === 'Active' ? 'var(--success)' : 'var(--danger)',
+                                    fontSize: '0.65rem'
                                   }}>
                                     {customer.status || 'Active'}
                                   </div>
-                                  <div className="leadsSecondaryText" style={{ fontSize: '0.65rem', marginTop: '4px', whiteSpace: 'nowrap' }}>
-                                    LAST: {customer.last_interaction ? new Date(customer.last_interaction).toLocaleDateString('en-GB') : 'NEVER'}
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td onClick={stopRowNavigation}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={(e) => handleSelectCustomer(id, e.target.checked)}
+                                  />
+                                </td>
+                                <td>
+                                  <div className="leadsIdentityCell">
+                                    <div className="leadsPrimaryText">{customer.name}</div>
+                                    <div className="leadsSecondaryText" style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                                      JOINED: {customer.created_at ? new Date(customer.created_at).toLocaleDateString('en-GB') : '—'}
+                                    </div>
                                   </div>
-                               </div>
-                            </td>
-                            <td>
-                              <div className="leadsContactCell">
-                                <div className="contactMain">{customer.phone || '—'}</div>
-                                <div className="contactQuickActions">
-                                   <a href={`tel:${customer.phone}`} className="action-icon-mini phone" onClick={stopRowNavigation} title="Call"><Icon name="phone" size={12} /></a>
-                                   <a href={`https://wa.me/${customer.phone?.replace(/\D/g, '')}`} target="_blank" className="action-icon-mini whatsapp" onClick={stopRowNavigation} title="WhatsApp"><Icon name="whatsapp" size={12} /></a>
-                                   <a href={`mailto:${customer.email}`} className="action-icon-mini email" onClick={stopRowNavigation} title="Email"><Icon name="mail" size={12} /></a>
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <div className="leadsOwnerCell">
-                                <span className="ownerName">{customer.assigned_to?.name || 'Unassigned'}</span>
-                                <span className="ownerRole">{customer.assigned_to?.role || 'Support'}</span>
-                              </div>
-                            </td>
-                            <td>
-                              {customer.latest_deal ? (
-                                <div className="leadsIdentityCell">
-                                  <div className="leadsPrimaryText" style={{ color: 'var(--primary)' }}>{customer.latest_deal.name}</div>
-                                  <div className="leadsSecondaryText">{customer.latest_deal.stage}</div>
-                                </div>
-                              ) : (
-                                <span className="leadsSecondaryText" style={{ opacity: 0.5 }}>No Active Deal</span>
-                              )}
-                            </td>
-                            <td>
-                              <div className="leadsIdentityCell">
-                                <div className="leadsPrimaryText" style={{ color: financials.pendingAmount > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 800 }}>
-                                  ₹{financials.pendingAmount.toLocaleString()}
-                                </div>
-                                <div className="customersTypeBadge" style={{ 
-                                  background: financials.pendingAmount === 0 ? 'var(--success-soft)' : 
-                                              (financials.paidAmount > 0) ? 'var(--warning-soft)' : 'var(--danger-soft)',
-                                  color: financials.pendingAmount === 0 ? 'var(--success)' : 
-                                         (financials.paidAmount > 0) ? 'var(--warning)' : 'var(--danger)',
-                                  width: 'fit-content',
-                                  marginTop: '4px'
-                                }}>
-                                  {financials.paymentStatus}
-                                </div>
-                              </div>
-                            </td>
+                                </td>
+                                <td>
+                                  <div className="leadsIdentityCell">
+                                    <div className="customersTypeBadge" style={{ 
+                                        background: customer.status === 'Active' ? 'var(--success-soft)' : 
+                                                    customer.status === 'Inactive' ? 'var(--danger-soft)' : 'var(--bg-surface)',
+                                        color: customer.status === 'Active' ? 'var(--success)' : 
+                                              customer.status === 'Inactive' ? 'var(--danger)' : 'var(--text-dimmed)',
+                                        width: 'fit-content'
+                                      }}>
+                                        {customer.status || 'Active'}
+                                      </div>
+                                      <div className="leadsSecondaryText" style={{ fontSize: '0.65rem', marginTop: '4px', whiteSpace: 'nowrap' }}>
+                                        LAST: {customer.last_interaction ? new Date(customer.last_interaction).toLocaleDateString('en-GB') : 'NEVER'}
+                                      </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="leadsContactCell">
+                                    <div className="contactMain">{customer.phone || '—'}</div>
+                                    <div className="contactQuickActions">
+                                      <a href={`tel:${customer.phone}`} className="action-icon-mini phone" onClick={stopRowNavigation} title="Call"><Icon name="phone" size={12} /></a>
+                                      <a href={`https://wa.me/${customer.phone?.replace(/\D/g, '')}`} target="_blank" className="action-icon-mini whatsapp" onClick={stopRowNavigation} title="WhatsApp"><Icon name="whatsapp" size={12} /></a>
+                                      <a href={`mailto:${customer.email}`} className="action-icon-mini email" onClick={stopRowNavigation} title="Email"><Icon name="mail" size={12} /></a>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="leadsOwnerCell">
+                                    <span className="ownerName">{customer.assigned_to?.name || 'Unassigned'}</span>
+                                    <span className="ownerRole">{customer.assigned_to?.role || 'Support'}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  {customer.latest_deal ? (
+                                    <div className="leadsIdentityCell">
+                                      <div className="leadsPrimaryText" style={{ color: 'var(--primary)' }}>{customer.latest_deal.name}</div>
+                                      <div className="leadsSecondaryText">{customer.latest_deal.stage}</div>
+                                    </div>
+                                  ) : (
+                                    <span className="leadsSecondaryText" style={{ opacity: 0.5 }}>No Active Deal</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <div className="leadsIdentityCell">
+                                    <div className="leadsPrimaryText" style={{ color: financials.pendingAmount > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 800 }}>
+                                      ₹{financials.pendingAmount.toLocaleString()}
+                                    </div>
+                                    <div className="customersTypeBadge" style={{ 
+                                      background: financials.pendingAmount === 0 ? 'var(--success-soft)' : 
+                                                  (financials.paidAmount > 0) ? 'var(--warning-soft)' : 'var(--danger-soft)',
+                                      color: financials.pendingAmount === 0 ? 'var(--success)' : 
+                                            (financials.paidAmount > 0) ? 'var(--warning)' : 'var(--danger)',
+                                      width: 'fit-content',
+                                      marginTop: '4px'
+                                    }}>
+                                      {financials.paymentStatus}
+                                    </div>
+                                  </div>
+                                </td>
+                              </>
+                            )}
+
                             <td className="text-right" onClick={stopRowNavigation}>
                               <div className="crm-action-group">
-                                {canModify && (
-                                  <button
-                                    className="modern-action-btn"
-                                    onClick={() => navigate(`/customers/${id}/edit`)}
-                                    title="Edit"
-                                  >
-                                    <Icon name="edit" size={14} />
-                                  </button>
+                                {isEmployee && (
+                                   <div className="contactQuickActions" style={{ marginRight: '8px' }}>
+                                      <a href={`tel:${customer.phone}`} className="action-icon-mini phone" onClick={stopRowNavigation} title="Call"><Icon name="phone" size={14} /></a>
+                                      <a href={`https://wa.me/${customer.phone?.replace(/\D/g, '')}`} target="_blank" className="action-icon-mini whatsapp" onClick={stopRowNavigation} title="WhatsApp"><Icon name="whatsapp" size={14} /></a>
+                                   </div>
                                 )}
+                                
+                                <button className="modern-action-btn" onClick={() => navigate(`/customers/${id}/edit`)} title="Edit Customer">
+                                  <Icon name="edit" size={14} />
+                                </button>
 
-                                {isAdmin && (
-                                  <button
-                                    className="modern-action-btn danger"
-                                    onClick={() => onDelete(id)}
-                                    title="Delete"
-                                  >
-                                    <Icon name="trash" size={14} />
-                                  </button>
-                                )}
+                                <details className="crm-actions-overflow">
+                                  <summary className="modern-action-btn" title="More Actions">
+                                    <Icon name="more-vertical" size={14} />
+                                  </summary>
+                                  <div className="overflow-menu-content shadow-soft">
+                                    <button className="overflow-item" onClick={() => navigate(`/customers/${id}`)}>
+                                      <Icon name="user" size={14} />
+                                      <span>Full Profile</span>
+                                    </button>
+                                    <button className="overflow-item" onClick={() => {/* Add Call Modal */}}>
+                                      <Icon name="phone" size={14} />
+                                      <span>Add Call Activity</span>
+                                    </button>
+                                    <button className="overflow-item" onClick={() => {/* Add Follow-up Modal */}}>
+                                      <Icon name="calendar" size={14} />
+                                      <span>Schedule Follow-up</span>
+                                    </button>
+                                    <button className="overflow-item" onClick={() => {/* Add Notes Modal */}}>
+                                      <Icon name="edit" size={14} />
+                                      <span>Add Quick Note</span>
+                                    </button>
+                                    <div className="dropdownDivider" />
+                                    <button className="overflow-item" onClick={() => {/* View History */}}>
+                                      <Icon name="activity" size={14} />
+                                      <span>View History</span>
+                                    </button>
+                                    {isAdmin && (
+                                      <button className="overflow-item danger" onClick={() => onDelete(id)}>
+                                        <Icon name="trash" size={14} />
+                                        <span>Delete Customer</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                </details>
                               </div>
                             </td>
                           </tr>

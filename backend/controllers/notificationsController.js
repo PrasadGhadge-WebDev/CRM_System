@@ -15,7 +15,7 @@ exports.listNotifications = asyncHandler(async (req, res, next) => {
   }
 
   const items = await Notification.find(query)
-    .sort({ created_at: -1 })
+    .sort({ is_pinned: -1, created_at: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit));
 
@@ -36,7 +36,7 @@ exports.markAsRead = asyncHandler(async (req, res, next) => {
 
   const notification = await Notification.findOneAndUpdate(
     { _id: id, user_id: req.user.id },
-    { is_read: true },
+    { is_read: true, read_at: Date.now() },
     { new: true }
   );
 
@@ -45,6 +45,49 @@ exports.markAsRead = asyncHandler(async (req, res, next) => {
   }
 
   res.ok(notification);
+});
+
+exports.markAsUnread = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  const notification = await Notification.findOneAndUpdate(
+    { _id: id, user_id: req.user.id },
+    { is_read: false, read_at: null },
+    { new: true }
+  );
+
+  if (!notification) {
+    return res.fail('Notification not found', 404);
+  }
+
+  res.ok(notification);
+});
+
+exports.deleteNotification = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  const notification = await Notification.findOneAndDelete({ 
+    _id: id, 
+    user_id: req.user.id 
+  });
+
+  if (!notification) {
+    return res.fail('Notification not found', 404);
+  }
+
+  res.ok(null, 'Notification deleted');
+});
+
+exports.togglePin = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const note = await Notification.findOne({ _id: id, user_id: req.user.id });
+  
+  if (!note) return res.fail('Notification not found', 404);
+  
+  note.is_pinned = !note.is_pinned;
+  await note.save();
+
+  res.ok(note);
 });
 
 exports.markAllAsRead = asyncHandler(async (req, res, next) => {

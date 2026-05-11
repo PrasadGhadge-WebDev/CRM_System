@@ -9,19 +9,17 @@ import { Icon } from '../../../layouts/icons.jsx'
 import { useAuth } from '../../../context/AuthContext.jsx'
 
 const STATUS_OPTIONS = [
-  { value: 'open', label: 'Open' },
-  { value: 'assigned', label: 'Assigned' },
-  { value: 'in-progress', label: 'In Progress' },
-  { value: 'waiting', label: 'Waiting' },
-  { value: 'resolved', label: 'Resolved' },
-  { value: 'closed', label: 'Closed' }
+  { value: 'Open', label: 'Open' },
+  { value: 'In Progress', label: 'In Progress' },
+  { value: 'Waiting for Customer', label: 'Waiting for Customer' },
+  { value: 'Resolved', label: 'Resolved' },
+  { value: 'Closed', label: 'Closed' }
 ]
 
 const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'urgent', label: 'Urgent' }
+  { value: 'Low', label: 'Low' },
+  { value: 'Medium', label: 'Medium' },
+  { value: 'High', label: 'High' }
 ]
 
 export default function TicketDetail() {
@@ -88,7 +86,7 @@ export default function TicketDetail() {
   }
 
   async function updateStatus(newStatus) {
-    if (newStatus === 'closed' && !isAdmin && !isManager) {
+    if (newStatus === 'Closed' && !isAdmin && !isManager) {
       toast.warning('Only Admins or Managers can finalize and Close tickets.')
       return
     }
@@ -122,7 +120,7 @@ export default function TicketDetail() {
     const solution = `Problem: ${problem}\nSolution: ${method}\nPrevention: ${prevention}`
     
     try {
-      await supportApi.update(id, { status: 'resolved', solution })
+      await supportApi.update(id, { status: 'Resolved', solution })
       toast.success('Ticket marked as Resolved')
       loadData()
     } catch {
@@ -153,13 +151,13 @@ export default function TicketDetail() {
   const isAccountant = user?.role === 'Accountant'
   const isAgent = isEmployee || user?.role === 'Support'
 
-  const canReply = ticket.status !== 'closed' && !isHR && !isAccountant
-  const canResolve = (isAdmin || isManager || isAgent) && (ticket.status !== 'resolved' && ticket.status !== 'closed')
-  const canClose = (isAdmin || isManager) || (isCustomer && ticket.status === 'resolved')
+  const canReply = ticket.status !== 'Closed' && !isHR && !isAccountant
+  const canResolve = (isAdmin || isManager || isAgent) && (ticket.status !== 'Resolved' && ticket.status !== 'Closed')
+  const canClose = (isAdmin || isManager) || (isCustomer && ticket.status === 'Resolved')
   const canEscalate = !ticket.is_escalated && (isAdmin || isManager || isAgent)
   const canAssign = isAdmin || isManager
 
-  const isSLABreached = ticket.deadline && new Date(ticket.deadline) < new Date() && ticket.status !== 'closed' && ticket.status !== 'resolved'
+  const isSLABreached = ticket.deadline && new Date(ticket.deadline) < new Date() && ticket.status !== 'Closed' && ticket.status !== 'Resolved'
 
   return (
     <div className="ticket-detail-page" style={{ background: 'var(--bg)', minHeight: '100vh', padding: '32px' }}>
@@ -193,9 +191,9 @@ export default function TicketDetail() {
           )}
 
           {canClose && (
-            <button onClick={() => updateStatus(ticket.status === 'closed' ? 'open' : 'closed')} className="crm-btn-premium danger">
-              <Icon name={ticket.status === 'closed' ? 'activity' : 'check'} size={16} />
-              <span>{ticket.status === 'closed' ? 'Reopen Ticket' : 'Finalize & Close'}</span>
+            <button onClick={() => updateStatus(ticket.status === 'Closed' ? 'Open' : 'Closed')} className="crm-btn-premium danger">
+              <Icon name={ticket.status === 'Closed' ? 'activity' : 'check'} size={16} />
+              <span>{ticket.status === 'Closed' ? 'Reopen Ticket' : 'Finalize & Close'}</span>
             </button>
           )}
         </div>
@@ -311,12 +309,12 @@ export default function TicketDetail() {
               </div>
               <div className="cust-stats-grid">
                 <div className="cust-stat">
-                  <span className="label">Phone</span>
+                  <span className="label">Contact</span>
                   <span className="value">{ticket.customer_id?.phone || 'N/A'}</span>
                 </div>
                 <div className="cust-stat">
-                  <span className="label">Account Type</span>
-                  <span className="value">{ticket.customer_id?.customer_type || 'Standard'}</span>
+                  <span className="label">Company</span>
+                  <span className="value">{ticket.customer_id?.company_name || 'Individual'}</span>
                 </div>
               </div>
             </div>
@@ -421,9 +419,9 @@ export default function TicketDetail() {
                 <span>{new Date(ticket.created_at).toLocaleString()}</span>
               </div>
               <div className="date-item">
-                <label>SLA DEADLINE</label>
+                <label>EXPECTED RESOLUTION</label>
                 <span className={isSLABreached ? 'text-danger' : ''}>
-                  {ticket.deadline ? new Date(ticket.deadline).toLocaleString() : 'N/A'}
+                  {ticket.expected_resolution_date ? new Date(ticket.expected_resolution_date).toLocaleString() : 'N/A'}
                 </span>
               </div>
               {ticket.closed_at && (
@@ -535,12 +533,11 @@ export default function TicketDetail() {
 
   function getStatusColor(status) {
     switch (status) {
-      case 'open': return '#3b82f6';
-      case 'assigned': return '#8b5cf6';
-      case 'in-progress': return '#f59e0b';
-      case 'waiting': return '#ec4899';
-      case 'resolved': return '#10b981';
-      case 'closed': return '#64748b';
+      case 'Open': return '#3b82f6';
+      case 'In Progress': return '#f59e0b';
+      case 'Waiting for Customer': return '#ec4899';
+      case 'Resolved': return '#10b981';
+      case 'Closed': return '#64748b';
       default: return 'var(--primary)';
     }
   }

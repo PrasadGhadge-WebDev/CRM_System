@@ -39,7 +39,8 @@ export default function SupportList() {
     q: searchParams.get('q') || '',
     status: searchParams.get('status') || '',
     priority: searchParams.get('priority') || '',
-    category: searchParams.get('category') || (isAccountant ? 'Billing' : ''),
+    category: searchParams.get('category') || '',
+    department: searchParams.get('department') || '',
     is_escalated: searchParams.get('is_escalated') === 'true',
     customer_is_vip: searchParams.get('customer_is_vip') || '',
     sortField: searchParams.get('sortField') || 'created_at',
@@ -89,6 +90,7 @@ export default function SupportList() {
     if (filters.status) next.set('status', filters.status)
     if (filters.priority) next.set('priority', filters.priority)
     if (filters.category) next.set('category', filters.category)
+    if (filters.department) next.set('department', filters.department)
     if (filters.is_escalated) next.set('is_escalated', 'true')
     if (filters.customer_is_vip) next.set('customer_is_vip', filters.customer_is_vip)
     if (filters.sortField !== 'created_at') next.set('sortField', filters.sortField)
@@ -278,12 +280,18 @@ export default function SupportList() {
 
             <select className="crm-input filter-select" value={filters.status} onChange={(e) => handleFilterChange({ status: e.target.value })}>
               <option value="">All Statuses</option>
-              <option value="open">Open</option>
-              <option value="assigned">Assigned</option>
-              <option value="in-progress">In-Progress</option>
-              <option value="waiting">Waiting</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
+              <option value="Open">Open</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Waiting for Customer">Waiting</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed</option>
+            </select>
+
+            <select className="crm-input filter-select" value={filters.department} onChange={(e) => handleFilterChange({ department: e.target.value })}>
+              <option value="">All Depts</option>
+              <option value="Support">Support</option>
+              <option value="Sales">Sales</option>
+              <option value="Technical">Technical</option>
             </select>
 
             {(isAdmin || isManager) && (
@@ -411,12 +419,12 @@ export default function SupportList() {
                           <input type="checkbox" checked={selectedItems.length === items.length && items.length > 0} onChange={toggleSelectAll} />
                         </th>
                         <th style={{ color: 'var(--text-dimmed)' }}>TICKET ID</th>
-                        <th style={{ color: 'var(--text-dimmed)' }}>SUBJECT</th>
+                        <th style={{ color: 'var(--text-dimmed)', minWidth: '150px' }}>SUBJECT</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>CUSTOMER</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>CATEGORY</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>PRIORITY</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>STATUS</th>
-                        <th style={{ color: 'var(--text-dimmed)' }}>ASSIGNED TO</th>
-                        <th style={{ color: 'var(--text-dimmed)' }}>DEADLINE</th>
+                        <th style={{ color: 'var(--text-dimmed)' }}>ASSIGNED</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>CREATED</th>
                         <th style={{ color: 'var(--text-dimmed)' }}>UPDATED</th>
                         <th className="text-right" style={{ color: 'var(--text-dimmed)' }}>ACTIONS</th>
@@ -464,16 +472,19 @@ export default function SupportList() {
                           <td>
                             <div className="customer-info-compact">
                               <div className="customer-name-mini">{t.customer_id?.name || 'Unknown'}</div>
-                              <div className="customer-type-mini">{t.customer_id?.customer_type || 'Individual'}</div>
+                              <div className="customer-type-mini">{t.customer_id?.phone || '—'}</div>
                             </div>
+                          </td>
+                          <td>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-dimmed)' }}>{t.category || 'General'}</span>
                           </td>
                           <td onClick={stopRowNavigation}>
                             <StatusDropdown 
-                              status={t.priority || 'medium'} 
+                              status={t.priority || 'Medium'} 
                               options={[
-                                { name: 'high', color: '#dc2626' },
-                                { name: 'medium', color: '#d97706' },
-                                { name: 'low', color: '#059669' }
+                                { name: 'High', color: '#dc2626' },
+                                { name: 'Medium', color: '#d97706' },
+                                { name: 'Low', color: '#059669' }
                               ]} 
                               onChange={(newPriority) => onUpdatePriority(t.id || t._id, newPriority)}
                               disabled={!canManage}
@@ -486,12 +497,11 @@ export default function SupportList() {
                             <StatusDropdown 
                               status={t.status} 
                               options={[
-                                { name: 'open', color: '#3b82f6' },
-                                { name: 'assigned', color: '#8b5cf6' },
-                                { name: 'in-progress', color: '#f59e0b' },
-                                { name: 'waiting', color: '#ec4899' },
-                                { name: 'resolved', color: '#10b981' },
-                                { name: 'closed', color: '#64748b' }
+                                { name: 'Open', color: '#3b82f6' },
+                                { name: 'In Progress', color: '#f59e0b' },
+                                { name: 'Waiting for Customer', color: '#ec4899' },
+                                { name: 'Resolved', color: '#10b981' },
+                                { name: 'Closed', color: '#64748b' }
                               ]} 
                               onChange={(newStatus) => onUpdateStatus(t.id || t._id, newStatus)}
                               disabled={!canManage}
@@ -505,14 +515,7 @@ export default function SupportList() {
                               </div>
                               <div className="agent-info-stack">
                                 <span className="agent-name-text">{t.assigned_to?.name?.split(' ')[0] || 'Unassigned'}</span>
-                                <span className="agent-role-text">{t.assigned_to?.role || 'Agent'}</span>
                               </div>
-                            </div>
-                          </td>
-
-                          <td>
-                            <div className={`deadline-text ${overdueText ? 'text-danger' : ''}`}>
-                              {t.deadline ? formatTicketDate(t.deadline) : '—'}
                             </div>
                           </td>
 

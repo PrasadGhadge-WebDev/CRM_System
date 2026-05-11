@@ -133,20 +133,26 @@ export default function CustomerDetail() {
           <span>Back to List</span>
         </Link>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="crm-btn-premium" onClick={() => setIsFollowupOpen(true)} style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
+          <button className="crm-btn-premium secondary" onClick={() => setIsFollowupOpen(true)}>
             <Icon name="phone" />
-            <span>Log Follow-up</span>
+            <span>Log Call</span>
           </button>
-          {!isReadOnly && (
-            <button className="crm-btn-premium" onClick={() => setIsDealModalOpen(true)} style={{ background: 'var(--success)', color: '#ffffff', border: 'none', padding: '8px 16px', fontSize: '0.85rem', boxShadow: 'var(--shadow-sm)', borderRadius: '8px' }}>
-              <Icon name="plus" />
-              <span>New Deal</span>
-            </button>
-          )}
+          <button className="crm-btn-premium secondary" onClick={() => setIsFollowupOpen(true)}>
+            <Icon name="calendar" />
+            <span>Schedule Meeting</span>
+          </button>
+          <button className="crm-btn-premium success" onClick={() => setIsDealModalOpen(true)}>
+            <Icon name="plus" />
+            <span>Add Deal</span>
+          </button>
+          <button className="crm-btn-premium warning" onClick={() => navigate('/tickets/new', { state: { customerId: id } })}>
+            <Icon name="alert" />
+            <span>Open Ticket</span>
+          </button>
           {isManagement && (
-            <Link className="crm-btn-premium" to={`/customers/${id}/edit`} style={{ background: 'var(--primary)', color: '#ffffff', padding: '8px 24px', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}>
+            <Link className="crm-btn-premium primary" to={`/customers/${id}/edit`}>
               <Icon name="edit" />
-              <span>Edit Customer</span>
+              <span>Edit Profile</span>
             </Link>
           )}
         </div>
@@ -166,6 +172,18 @@ export default function CustomerDetail() {
               <span className={`crm-status-pill-modern status-${(customer.status || 'Active').toLowerCase().replace(/\s+/g, '')}`}>
                 <div className="status-dot" />
                 <span>{customer.status || 'Active'}</span>
+              </span>
+              <span style={{ 
+                background: 'var(--primary-soft)', 
+                color: 'var(--primary)', 
+                padding: '4px 12px', 
+                borderRadius: '8px', 
+                fontSize: '0.65rem', 
+                fontWeight: 800, 
+                textTransform: 'uppercase',
+                border: '1px solid var(--primary-soft)'
+              }}>
+                {customer.customer_type || 'Regular'} Client
               </span>
             </div>
 
@@ -221,8 +239,16 @@ export default function CustomerDetail() {
                 <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(customer.name)}</div>
               </div>
               <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Gender</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(customer.gender)}</div>
+              </div>
+              <div>
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Company</label>
                 <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(customer.company_name)}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Industry</label>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{displayValue(customer.industry_type)}</div>
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Source</label>
@@ -232,18 +258,14 @@ export default function CustomerDetail() {
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>GST Number</label>
                 <div style={{ color: 'var(--text)', fontWeight: 600, letterSpacing: '0.02em' }}>{displayValue(customer.gst_number)}</div>
               </div>
-              <div>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Payment Status</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: financials.paymentStatus === 'Paid' ? 'var(--success)' : financials.paymentStatus === 'Partial' ? 'var(--warning)' : 'var(--danger)', fontWeight: 700 }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: financials.paymentStatus === 'Paid' ? 'var(--success)' : financials.paymentStatus === 'Partial' ? 'var(--warning)' : 'var(--danger)' }} />
-                  {financials.paymentStatus}
-                </div>
-              </div>
             </div>
             {customer.address && (
               <div style={{ marginTop: '20px' }}>
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-dimmed)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Office Address</label>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>{stripHtml(customer.address)}</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>
+                  {stripHtml(customer.address)}<br/>
+                  {customer.city}{customer.state ? `, ${customer.state}` : ''} {customer.pincode}
+                </div>
               </div>
             )}
           </div>
@@ -299,10 +321,11 @@ export default function CustomerDetail() {
         {[
           { id: 'summary', label: 'Summary', icon: 'dashboard', roles: ['Admin', 'Manager', 'Employee', 'Accountant', 'HR'] },
           { id: 'deals', label: 'Deals', icon: 'deals', roles: ['Admin', 'Manager', 'Employee', 'Accountant'] },
-          { id: 'invoices', label: 'Invoices', icon: 'reports', roles: ['Admin', 'Manager', 'Accountant'] },
+          { id: 'followups', label: 'Follow-ups', icon: 'clock', roles: ['Admin', 'Manager', 'Employee'] },
+          { id: 'tickets', label: 'Tickets', icon: 'alert', roles: ['Admin', 'Manager', 'Employee'] },
           { id: 'payments', label: 'Payments', icon: 'reports', roles: ['Admin', 'Manager', 'Employee', 'Accountant'] },
           { id: 'notes', label: 'Notes', icon: 'notes', roles: ['Admin', 'Manager', 'Employee'] },
-          { id: 'activity', label: 'Activity History', icon: 'reports', roles: ['Admin', 'Manager', 'Employee', 'Accountant'] }
+          { id: 'activity', label: 'History', icon: 'reports', roles: ['Admin', 'Manager', 'Employee', 'Accountant'] }
         ].filter(tab => !tab.roles || tab.roles.includes(user?.role)).map(tab => (
           <button
             key={tab.id}
@@ -481,6 +504,34 @@ export default function CustomerDetail() {
               ))}
             </div>
           </div>
+        )}
+
+        {activeTab === 'followups' && (
+          <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Follow-up History</h3>
+            </div>
+            <div style={{ padding: '24px' }}>
+               <Timeline relatedId={id} relatedType="Customer" filters={{ activity_type: ['Call', 'Meeting', 'Follow-up'] }} defaultView="table" />
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'tickets' && (
+          <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Support Tickets</h3>
+            </div>
+            <div style={{ padding: '24px' }}>
+               {/* Simplified Ticket List or Link */}
+               <div className="muted center padding40">
+                  <p>Client support requests are managed in the Support module.</p>
+                  <button className="crm-btn-premium mt-12" onClick={() => navigate('/tickets', { state: { q: customer.name } })}>
+                     View All Client Tickets
+                  </button>
+               </div>
+            </div>
+          </section>
         )}
 
         {activeTab === 'activity' && (

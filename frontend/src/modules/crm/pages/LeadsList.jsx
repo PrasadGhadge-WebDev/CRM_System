@@ -515,14 +515,18 @@ export default function LeadsList() {
                           onChange={(e) => handleSelectAll(e.target.checked)}
                         />
                       </th>
-                      {!isEmployee && <th style={{ width: '80px' }}>ID</th>}
+                      <th style={{ width: '80px' }}>ID</th>
                       <th style={{ minWidth: '180px' }}>LEAD NAME</th>
                       <th style={{ minWidth: '160px' }}>CONTACT</th>
                       <th style={{ minWidth: '180px' }}>EMAIL</th>
-                      <th style={{ width: '140px' }}>STATUS</th>
-                      <th style={{ minWidth: '160px' }}>NEXT FOLLOW-UP</th>
+                      <th style={{ minWidth: '140px' }}>COMPANY</th>
+                      <th style={{ width: '120px' }}>SOURCE</th>
+                      <th style={{ width: '120px' }}>STATUS</th>
+                      <th style={{ width: '100px' }}>PRIORITY</th>
+                      <th style={{ width: '120px' }}>ASSIGNED</th>
+                      <th style={{ minWidth: '140px' }}>NEXT FOLLOW-UP</th>
                       <th style={{ minWidth: '140px' }}>LAST INTERACTION</th>
-                      <th className="text-right" style={{ width: '140px' }}>ACTIONS</th>
+                      <th className="text-right" style={{ width: '120px' }}>ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -551,16 +555,12 @@ export default function LeadsList() {
                             </td>
 
 
-                            {!isEmployee && (
-                              <td>
-                                <span className="id-badge">{lead.readable_id || lead.leadId || '—'}</span>
-                              </td>
-                            )}
+                            <td>
+                              <span className="id-badge">{lead.readable_id || lead.leadId || '—'}</span>
+                            </td>
                             <td>
                               <div className="leadsPrimaryText">{lead.name || '—'}</div>
-                              <div className="leadsSecondaryText" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '10px' }}>{lead.source || 'Other'}</div>
                             </td>
-
                             <td>
                               <div className="leadsContactCell">
                                 <div className="contactMain" style={{ fontSize: '13px', fontWeight: 700 }}>{lead.phone || '—'}</div>
@@ -570,9 +570,31 @@ export default function LeadsList() {
                                 </div>
                               </div>
                             </td>
-
                             <td>
                               <div className="text-xs muted">{lead.email || '—'}</div>
+                            </td>
+                            <td>
+                               <div className="text-xs font-bold" style={{ color: 'var(--text)' }}>{lead.company || '—'}</div>
+                            </td>
+                            <td>
+                               <div className="badge-modern info" style={{ fontSize: '10px', padding: '2px 8px' }}>{lead.source || 'Other'}</div>
+                            </td>
+                            <td>
+                                <StatusDropdown 
+                                  status={lead.status} 
+                                  options={LEAD_STATUS_FINAL.map(s => ({ name: s.label, color: s.color }))} 
+                                  onChange={(newStatus) => onUpdateStatus(id, newStatus)}
+                                  bypassRules={isAdmin}
+                                  disabled={lead.status === 'Converted' && !isAdmin}
+                                />
+                            </td>
+                            <td>
+                               <div style={{ fontSize: '12px', fontWeight: 700 }}>
+                                  {lead.priority === 'High' ? '🔴 High' : lead.priority === 'Medium' ? '🟡 Medium' : '🟢 Low'}
+                               </div>
+                            </td>
+                            <td>
+                               <div className="text-xs muted">{lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '—'}</div>
                             </td>
 
 

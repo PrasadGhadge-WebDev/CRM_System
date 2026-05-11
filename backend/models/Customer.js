@@ -7,7 +7,9 @@ const CustomerSchema = new mongoose.Schema(
     company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', index: true },
     customer_id: { type: String, trim: true, index: true },
     name: { type: String, required: true, trim: true },
+    gender: { type: String, enum: ['Male', 'Female', 'Other', ''], default: '' },
     company_name: { type: String, trim: true },
+    industry_type: { type: String, trim: true },
     gst_number: { type: String, trim: true },
     
     // Financial Tracking (Step 4 & 5)
@@ -27,10 +29,13 @@ const CustomerSchema = new mongoose.Schema(
     alternate_phone: { type: String, trim: true },
     address: { type: String, trim: true },
     city: { type: String, trim: true },
+    state: { type: String, trim: true },
     postal_code: { type: String, trim: true },
+    pincode: { type: String, trim: true }, // Alias or explicit
     
     // Lifecycle & Engagement (Step 6 & 8)
-    status: { type: String, enum: ['Active', 'Inactive', 'Lead', 'Prospect', 'Lost'], default: 'Active', index: true },
+    status: { type: String, enum: ['Active', 'Inactive'], default: 'Active', index: true },
+    customer_type: { type: String, enum: ['New', 'Regular', 'VIP'], default: 'New', index: true },
     last_interaction_date: { type: Date },
     next_followup_date: { type: Date },
     

@@ -211,7 +211,18 @@ function serializeUser(user, permissions = []) {
     settings: {
       emailNotifications: user.settings?.emailNotifications ?? true,
       weeklyDigest: user.settings?.weeklyDigest ?? false,
+      language: user.settings?.language || 'English',
     },
+    city: user.city || '',
+    state: user.state || '',
+    pincode: user.pincode || '',
+    permanent_address: user.permanent_address || '',
+    work_location: user.work_location || '',
+    date_of_birth: user.date_of_birth || null,
+    joining_date: user.joining_date || null,
+    department: user.department || '',
+    designation: user.designation || '',
+    manager_id: user.manager_id || null,
     is_trial: user.is_trial ?? false,
     is_demo: user.is_demo ?? false,
     trial_ends_at: user.trial_ends_at || null,
@@ -776,6 +787,73 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
   await user.save();
 
   res.ok({ user: serializeUser(user) }, 'Password reset successful');
+});
+
+// @desc    Get employee profile insight (stats + history)
+// @route   GET /api/auth/profile-insight
+// @access  Private
+exports.getProfileInsight = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const companyId = req.user.company_id;
+
+  const Lead = require('../models/Lead');
+  const Customer = require('../models/Customer');
+  const Deal = require('../models/Deal');
+  const Ticket = require('../models/Ticket');
+  const Attendance = require('../models/Attendance');
+  const LeaveRequest = require('../models/LeaveRequest');
+  const Activity = require('../models/Activity');
+
+  // Dates for current month
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [
+    leadsCount,
+    customersCount,
+    dealsWonCount,
+    ticketsResolvedCount,
+    attendanceLogs,
+    leaves,
+    recentActivities
+  ] = await Promise.all([
+    Lead.countDocuments({ company_id: companyId, assigned_to: userId }),
+    Customer.countDocuments({ company_id: companyId, assigned_to: userId }),
+    Deal.countDocuments({ company_id: companyId, assigned_to: userId, stage: 'Won' }),
+    Ticket.countDocuments({ company_id: companyId, assigned_to: userId, status: 'Resolved' }),
+    Attendance.find({ company_id: companyId, employee_id: userId, date: { $gte: startOfMonth } }),
+    LeaveRequest.find({ company_id: companyId, employee_id: userId }),
+    Activity.find({ company_id: companyId, performed_by: userId }).sort({ created_at: -1 }).limit(10)
+  ]);
+
+  // Attendance aggregates
+  const attendanceSummary = {
+    present: attendanceLogs.filter(a => a.status === 'Present').length,
+    absent: attendanceLogs.filter(a => a.status === 'Absent').length,
+    late: attendanceLogs.filter(a => a.is_late).length,
+    overtime: attendanceLogs.reduce((acc, a) => acc + (a.overtime_hours || 0), 0)
+  };
+
+  // Leave aggregates
+  const leaveSummary = {
+    totalAllowed: 24, // Standard
+    used: leaves.filter(l => l.status === 'Approved').length,
+    pending: leaves.filter(l => l.status === 'Pending').length,
+    remaining: 24 - leaves.filter(l => l.status === 'Approved').length
+  };
+
+  res.ok({
+    performance: {
+      leadsHandled: leadsCount,
+      customersManaged: customersCount,
+      dealsClosed: dealsWonCount,
+      ticketsResolved: ticketsResolvedCount,
+      score: 85 // Mock or calculate based on targets
+    },
+    attendance: attendanceSummary,
+    leaves: leaveSummary,
+    activities: recentActivities
+  });
 });
 
 // @desc    Log user out / clear cookie

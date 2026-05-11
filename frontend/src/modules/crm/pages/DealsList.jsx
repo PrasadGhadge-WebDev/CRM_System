@@ -21,10 +21,10 @@ import LeadNoteModal from '../components/LeadNoteModal.jsx'
 
 const STAGE_OPTIONS = [
   { name: 'New Deal', color: '#6366f1' },
-  { name: 'Proposal Sent', color: '#f59e0b' },
-  { name: 'Negotiation', color: '#f97316' },
-  { name: 'Follow-up', color: '#8b5cf6' },
-  { name: 'Won', color: '#10b981' },
+  { name: 'Proposal Sent', color: '#3b82f6' },
+  { name: 'Negotiation', color: '#eab308' },
+  { name: 'Follow-up', color: '#a855f7' },
+  { name: 'Won', color: '#22c55e' },
   { name: 'Lost', color: '#ef4444' }
 ]
 
@@ -418,26 +418,26 @@ export default function DealsList() {
                         <table className="crm-table">
                           <thead>
                             <tr>
-                              {!isEmployee && <th style={{ width: '80px' }}>ID</th>}
+                              <th style={{ width: '80px' }}>ID</th>
                               <th style={{ minWidth: '200px' }}>DEAL NAME</th>
                               <th style={{ minWidth: '180px' }}>CUSTOMER</th>
                               <th style={{ minWidth: '120px' }}>VALUE</th>
                               <th style={{ minWidth: '120px' }}>STAGE</th>
-                              {!isEmployee && <th style={{ minWidth: '100px' }}>PRIORITY</th>}
-                              {!isEmployee && <th style={{ minWidth: '140px' }}>ASSIGNED TO</th>}
+                              <th style={{ minWidth: '100px' }}>PRIORITY</th>
+                              <th style={{ minWidth: '140px' }}>ASSIGNED TO</th>
                               <th style={{ minWidth: '130px' }}>EXPECTED CLOSE</th>
                               <th style={{ minWidth: '130px' }}>LAST FOLLOW-UP</th>
-                              {!isEmployee && <th style={{ minWidth: '130px' }}>NEXT FOLLOW-UP</th>}
+                              <th style={{ minWidth: '130px' }}>NEXT FOLLOW-UP</th>
                               <th style={{ width: '120px', textAlign: 'right' }}>ACTIONS</th>
                             </tr>
                           </thead>
                           <tbody>
                             {items.map((item) => (
                               <tr key={item.id} className="crm-table-row" onClick={() => navigate(`/deals/${item.id}`)}>
-                                {!isEmployee && <td><span className="id-badge">{item.readable_id}</span></td>}
+                                <td><span className="id-badge">{item.readable_id}</span></td>
                                 <td>
                                   <div className="usersPrimaryText">{item.name}</div>
-                                  {!isEmployee && item.customer_id?.company_name && <div className="usersEmailText">{item.customer_id.company_name}</div>}
+                                  {item.customer_id?.company_name && <div className="usersEmailText">{item.customer_id.company_name}</div>}
                                 </td>
                                 <td>
                                   <div className="usersPrimaryText">{item.customer_id?.name || 'No Customer'}</div>
@@ -452,28 +452,22 @@ export default function DealsList() {
                                     disabled={!canAssign}
                                   />
                                 </td>
-                                {!isEmployee && (
-                                  <td>
-                                    <span className={`priority-badge ${item.priority?.toLowerCase() || 'medium'}`}>
-                                      {item.priority || 'Medium'}
-                                    </span>
-                                  </td>
-                                )}
-                                {!isEmployee && (
-                                  <td>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <div className="tableAvatarFallback" style={{ width: '24px', height: '24px', fontSize: '0.65rem' }}>
-                                        {(item.assigned_to?.name || 'U').charAt(0)}
-                                      </div>
-                                      <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{item.assigned_to?.name || 'Unassigned'}</span>
+                                <td>
+                                  <div style={{ fontSize: '12px', fontWeight: 700 }}>
+                                    {item.priority === 'High' ? '🔴 High' : item.priority === 'Medium' ? '🟡 Medium' : '🟢 Low'}
+                                  </div>
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div className="tableAvatarFallback" style={{ width: '24px', height: '24px', fontSize: '0.65rem' }}>
+                                      {(item.assigned_to?.name || 'U').charAt(0)}
                                     </div>
-                                  </td>
-                                )}
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{item.assigned_to?.name || 'Unassigned'}</span>
+                                  </div>
+                                </td>
                                 <td><span style={{ fontSize: '0.85rem' }}>{item.expected_close_date ? new Date(item.expected_close_date).toLocaleDateString() : '-'}</span></td>
                                 <td><span style={{ fontSize: '0.85rem' }}>{item.last_followup_date ? new Date(item.last_followup_date).toLocaleDateString() : 'No activity'}</span></td>
-                                {!isEmployee && (
-                                  <td><span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 700 }}>{item.next_followup_date ? new Date(item.next_followup_date).toLocaleDateString() : '-'}</span></td>
-                                )}
+                                <td><span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 700 }}>{item.next_followup_date ? new Date(item.next_followup_date).toLocaleDateString() : '-'}</span></td>
                                 <td onClick={stopRowNavigation}>
                                   <div className="crm-action-group">
                                     {isEmployee && item.customer_id?.phone && (
@@ -488,16 +482,32 @@ export default function DealsList() {
                                     <button className="modern-action-btn" onClick={() => setFollowupModal({ open: true, deal: item })} title="Schedule Follow-up">
                                       <Icon name="calendar" size={14} />
                                     </button>
-                                    {isAccountant && (
-                                      <button className="modern-action-btn success" onClick={() => navigate(`/payments/new?customer_id=${item.customer_id?.id || item.customer_id?._id}&deal_id=${item.id}`)} title="Add Payment">
-                                        <Icon name="wallet" size={14} />
-                                      </button>
-                                    )}
-                                    {canDelete && (
-                                      <button className="modern-action-btn danger" onClick={() => handleDeleteDeal(item)} title="Delete Deal">
-                                        <Icon name="trash" size={14} />
-                                      </button>
-                                    )}
+
+                                    <details className="crm-actions-overflow">
+                                      <summary className="modern-action-btn" title="More Actions">
+                                        <Icon name="more-vertical" size={14} />
+                                      </summary>
+                                      <div className="overflow-menu-content shadow-soft">
+                                        <button className="overflow-item" onClick={() => navigate(`/deals/${item.id}`)}>
+                                          <Icon name="activity" size={14} />
+                                          <span>View Timeline</span>
+                                        </button>
+                                        <button className="overflow-item" onClick={() => setNoteModal({ open: true, deal: item })}>
+                                          <Icon name="edit" size={14} />
+                                          <span>Add Quick Note</span>
+                                        </button>
+                                        <button className="overflow-item primary" onClick={() => navigate(`/customers/${item.customer_id?._id || item.customer_id?.id}`)}>
+                                          <Icon name="user" size={14} />
+                                          <span>Customer Profile</span>
+                                        </button>
+                                        {canDelete && (
+                                          <button className="overflow-item danger" onClick={() => handleDeleteDeal(item)}>
+                                            <Icon name="trash" size={14} />
+                                            <span>Delete Deal</span>
+                                          </button>
+                                        )}
+                                      </div>
+                                    </details>
                                   </div>
                                 </td>
                               </tr>
@@ -547,22 +557,18 @@ export default function DealsList() {
                                   <span className="stat-label">Value</span>
                                   <span className="stat-value">₹{item.value?.toLocaleString('en-IN') || '0'}</span>
                                 </div>
-                                {!isEmployee && (
-                                  <>
-                                    <div className="card-stat">
-                                      <span className="stat-label">Assigned To</span>
-                                      <div className="stat-value" style={{ fontSize: '0.8rem', fontWeight: 700, textAlign: 'right' }}>
-                                        {item.assigned_to?.name || 'Unassigned'}
-                                      </div>
-                                    </div>
-                                    <div className="card-stat">
-                                      <span className="stat-label">Priority</span>
-                                      <span className={`priority-badge ${item.priority?.toLowerCase() || 'medium'}`} style={{ transform: 'scale(0.8)', transformOrigin: 'right' }}>
-                                        {item.priority || 'Medium'}
-                                      </span>
-                                    </div>
-                                  </>
-                                )}
+                                <div className="card-stat">
+                                  <span className="stat-label">Priority</span>
+                                  <div className="stat-value" style={{ fontWeight: 800 }}>
+                                    {item.priority === 'High' ? '🔴' : item.priority === 'Medium' ? '🟡' : '🟢'}
+                                  </div>
+                                </div>
+                                <div className="card-stat">
+                                  <span className="stat-label">Owner</span>
+                                  <div className="stat-value" style={{ fontSize: '0.8rem', fontWeight: 700, textAlign: 'right' }}>
+                                    {item.assigned_to?.name || 'Unassigned'}
+                                  </div>
+                                </div>
                               </>
                             )}
                           </div>

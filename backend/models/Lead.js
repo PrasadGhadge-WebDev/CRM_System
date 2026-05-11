@@ -29,6 +29,8 @@ const LeadSchema = new mongoose.Schema(
       enum: ['Below 10k', '10k-50k', '50k-1L', '1L-5L', '5L+', ''],
       default: '' 
     },
+    budget: { type: Number, default: 0 },
+    requirement: { type: String, trim: true },
     dealAmount: { type: Number, default: 0 },
     currency: { type: String, default: 'INR' },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, refPath: 'assignedToModel', required: true, index: true },

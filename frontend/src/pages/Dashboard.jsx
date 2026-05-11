@@ -157,10 +157,10 @@ export default function Dashboard() {
   if (isEmployee && metrics?.employee) {
     const { employee } = metrics
     const empStats = [
-      { label: 'Assigned Leads', value: employee.leads.total, sub: `${employee.leads.new} New`, icon: <FiTarget />, bgClass: 'stat-blue', iconColor: 'var(--primary)' },
-      { label: 'Active Deals', value: employee.deals.active, sub: `${employee.deals.won} Won`, icon: <FiBriefcase />, bgClass: 'stat-purple', iconColor: '#8b5cf6' },
-      { label: 'Pending Payments', value: employee.payments.pending, sub: 'Follow-up needed', icon: <FiCreditCard />, bgClass: 'stat-red', iconColor: 'var(--danger)' },
-      { label: 'Open Tickets', value: employee.tickets.open, sub: 'Support tasks', icon: <FiAlertCircle />, bgClass: 'stat-orange', iconColor: '#f97316' },
+      { label: 'Assigned Leads', value: employee.leads.total, sub: `${employee.leads.new} New Today`, icon: <FiTarget />, bgClass: 'stat-blue', iconColor: 'var(--primary)' },
+      { label: 'Today Follow-ups', value: employee.followupsToday || 0, sub: 'Critical Actions', icon: <FiClock />, bgClass: 'stat-orange', iconColor: '#f97316' },
+      { label: 'Active Deals', value: employee.deals.active, sub: `₹${(employee.deals.activeValue || 0).toLocaleString()}`, icon: <FiBriefcase />, bgClass: 'stat-purple', iconColor: '#8b5cf6' },
+      { label: 'Monthly Target', value: `${employee.performance.targetProgress || 0}%`, sub: 'Sales Efficiency', icon: <FiTrendingUp />, bgClass: 'stat-green', iconColor: 'var(--success)' },
     ]
 
     return (
@@ -227,46 +227,45 @@ export default function Dashboard() {
               </div>
            </div>
 
-           {/* PAYMENT FOLLOW-UP */}
-           <div className="section-card-v3">
-              <div className="crm-flex-between mb-16">
-                <h3>💰 Payment Follow-up</h3>
-                <button className="btn-text-only text-xs" onClick={() => navigate('/payments')}>View All</button>
-              </div>
-              <div className="v3-list">
-                {employee.payments.recent?.length > 0 ? employee.payments.recent.map((pay, i) => (
-                  <div key={i} className="v3-list-item clickable" onClick={() => navigate(`/payments/${pay._id}`)}>
-                    <div className="item-main">
-                      <div className="item-title">{pay.customer_id?.name || 'Customer'}</div>
-                      <div className="item-sub">{pay.status}</div>
-                    </div>
-                    <div className="item-side text-right">
-                       <div className="text-xs font-bold text-danger">₹{pay.total_amount?.toLocaleString()}</div>
-                       <div className="text-xs muted">Due: {pay.payment_date ? new Date(pay.payment_date).toLocaleDateString() : 'N/A'}</div>
-                    </div>
-                  </div>
-                )) : <div className="muted center padding20">No pending payments</div>}
-              </div>
-           </div>
+           {/* TODAY'S FOLLOW-UPS */}
+            <div className="section-card-v3">
+               <div className="crm-flex-between mb-16">
+                 <h3>📞 Today's Follow-ups</h3>
+                 <button className="btn-text-only text-xs" onClick={() => navigate('/followups')}>View Schedule</button>
+               </div>
+               <div className="v3-list">
+                 {employee.followupsRecent?.length > 0 ? employee.followupsRecent.map((item, i) => (
+                   <div key={i} className="v3-list-item clickable" onClick={() => navigate(`/leads/${item.lead_id}`)}>
+                     <div className="item-main">
+                       <div className="item-title">{item.lead_name || 'Prospect'}</div>
+                       <div className="item-sub">{item.activity_type} • {item.time || 'Today'}</div>
+                     </div>
+                     <div className="item-side">
+                        <span className={`status-pill-modern ${item.priority === 'High' ? 'danger' : 'warning'}`} style={{ fontSize: '0.65rem' }}>{item.priority}</span>
+                     </div>
+                   </div>
+                 )) : <div className="muted center padding20">No follow-ups for today</div>}
+               </div>
+            </div>
         </div>
 
         {/* 3. BOTTOM SECTION: TASKS, TICKETS, PERFORMANCE */}
         <div className="dashboard-three-col-v3">
-           {/* TODAY'S TASKS */}
-           <div className="section-card-v3">
-              <h3>📅 Today's Tasks</h3>
-              <div className="v3-list mt-12">
-                {employee.tasks.today?.length > 0 ? employee.tasks.today.map((task, i) => (
-                  <div key={i} className="v3-list-item">
-                    <div className="alert-icon-v3 alert-green"><FiCheckCircle size={14} /></div>
-                    <div className="item-main ml-12">
-                      <div className="item-title">{task.description || task.activity_type}</div>
-                      <div className="item-sub">{task.activity_date ? new Date(task.activity_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today'}</div>
-                    </div>
-                  </div>
-                )) : <div className="muted center padding20">No tasks for today</div>}
-              </div>
-           </div>
+           {/* UPCOMING MEETINGS */}
+            <div className="section-card-v3">
+               <h3>🗓️ Upcoming Meetings</h3>
+               <div className="v3-list mt-12">
+                 {employee.meetings?.length > 0 ? employee.meetings.map((meeting, i) => (
+                   <div key={i} className="v3-list-item">
+                     <div className="alert-icon-v3 alert-purple"><FiClock size={14} /></div>
+                     <div className="item-main ml-12">
+                       <div className="item-title">{meeting.title}</div>
+                       <div className="item-sub">{new Date(meeting.start_time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                     </div>
+                   </div>
+                 )) : <div className="muted center padding20">No scheduled meetings</div>}
+               </div>
+            </div>
 
            {/* RECENT TICKETS */}
            <div className="section-card-v3">

@@ -8,8 +8,8 @@ const STAGES = ['New Deal', 'Proposal Sent', 'Negotiation', 'Follow-up', 'Won', 
 
 const STAGE_COLORS = {
   'New Deal': 'info',
-  'Proposal Sent': 'warning',
-  'Negotiation': 'orange',
+  'Proposal Sent': 'info',
+  'Negotiation': 'warning',
   'Follow-up': 'purple',
   'Won': 'success',
   'Lost': 'danger'

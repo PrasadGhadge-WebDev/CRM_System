@@ -7,7 +7,7 @@ import NotificationDropdown from "../components/NotificationDropdown.jsx"
 import GlobalSearch from "../components/GlobalSearch.jsx"
 import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 import menuData from "../assets/menu-animation.json"
-import { FiClock, FiZap, FiMenu } from "react-icons/fi"
+import { FiClock, FiZap, FiMenu, FiPlusCircle } from "react-icons/fi"
 
 export default function Topbar({
   title,
@@ -67,6 +67,32 @@ export default function Topbar({
             <span className="trial-badge-text">
               {trialDaysLeft === 0 ? 'Last Day' : `${trialDaysLeft} Days Trial`}
             </span>
+          </div>
+        )}
+
+        {/* QUICK ACTIONS */}
+        {(user?.role === 'Employee' || user?.role === 'Admin') && (
+          <div className="profileMenu" style={{ marginRight: '10px' }}>
+            <button className="btn-premium primary" style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }} onClick={() => setCreateOpen(!createOpen)}>
+              <FiPlusCircle />
+              <span className="hide-tablet">Quick Action</span>
+            </button>
+            {createOpen && (
+              <div className="profileDropdown" style={{ right: 0, width: '220px' }}>
+                <div className="dropdownItem" onClick={() => { navigate('/leads/new'); setCreateOpen(false); }}>
+                  <Icon name="activity" />
+                  Add Lead
+                </div>
+                <div className="dropdownItem" onClick={() => { navigate('/activities?add=true'); setCreateOpen(false); }}>
+                  <Icon name="calendar" />
+                  Schedule Follow-up
+                </div>
+                <div className="dropdownItem" onClick={() => { navigate('/deals'); setCreateOpen(false); }}>
+                  <Icon name="deals" />
+                  Update Deal Stage
+                </div>
+              </div>
+            )}
           </div>
         )}
 

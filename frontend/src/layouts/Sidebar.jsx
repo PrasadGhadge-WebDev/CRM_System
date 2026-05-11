@@ -205,15 +205,19 @@ export default function Sidebar({ isOpen, onClose }) {
     { id: 'hr-exit', title: 'Exit Management', icon: 'logout', path: '/hr/exit', permission: 'exitmgmt' },
     { id: 'hr-activities', title: 'Activities', icon: 'activity', path: '/activities', permission: 'activities' },
   ] : user?.role === 'Employee' ? [
-    { type: 'section', title: '📊 Workspace' },
     { id: 'dashboard', title: 'Dashboard', icon: 'dashboard', path: '/dashboard' },
+    
+    { type: 'section', title: '🔥 TOP PRIORITY' },
     { id: 'leads', title: 'Leads', icon: 'activity', path: '/leads', createPath: '/leads/new', permission: 'leads' },
     { id: 'deals', title: 'Deals', icon: 'deals', path: '/deals', createPath: '/deals/new', permission: 'deals' },
+    
+    { type: 'section', title: '🚀 DAILY WORK' },
     { id: 'customers', title: 'Customers', icon: 'user', path: '/customers', createPath: '/customers/new', permission: 'customers' },
-    { type: 'section', title: '💰 Payment' },
-    { id: 'payments-list', title: 'Payment', icon: 'wallet', path: '/payments', permission: 'payments' },
     { id: 'support', title: 'Tickets', icon: 'help', path: '/tickets', createPath: '/tickets/new', permission: 'tickets' },
-    { id: 'activities', title: 'Activities', icon: 'calendar', path: '/activities', permission: 'activities' }
+
+    { type: 'section', title: '👤 PERSONAL' },
+    { id: 'attendance', title: 'Attendance', icon: 'clock', path: '/hr/attendance', permission: 'attendance' },
+    { id: 'leaves', title: 'Leaves', icon: 'calendar', path: '/hr/leaves', permission: 'leaves' }
   ] : [
     { type: 'section', title: '📊 Core CRM' },
     { id: 'dashboard', title: 'Dashboard', icon: 'dashboard', path: '/dashboard' },
@@ -328,7 +332,7 @@ export default function Sidebar({ isOpen, onClose }) {
       </div>
 
       <div className="sidebarBottom">
-        <div className="userCard" onClick={() => go('/profile')} role="button">
+        <div className="userCard">
           <div className="avatar">{user?.name?.charAt(0) || 'U'}</div>
           <div className="userMeta">
             <div className="userName">{user?.name || 'User'}</div>
@@ -344,3 +348,4 @@ export default function Sidebar({ isOpen, onClose }) {
     </aside>
   )
 }
+

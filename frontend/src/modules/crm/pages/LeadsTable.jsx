@@ -203,10 +203,12 @@ export default function LeadsTable({
               <th className="lt-w-cb">
                 <input type="checkbox" checked={selectedIds.length === leads.length && leads.length > 0} onChange={toggleAll} />
               </th>
-              {userRole !== 'Employee' && <th style={{ width: '80px' }}>ID</th>}
+              <th style={{ width: '80px' }}>ID</th>
               <th className="lt-sortable" onClick={() => handleSort('name')}>Lead</th>
+              <th className="lt-sortable lt-hide-tablet">Company</th>
               <th className="lt-sortable" onClick={() => handleSort('status')}>Status</th>
-              {userRole !== 'Employee' && <th className="lt-sortable lt-hide-tablet" onClick={() => handleSort('assignedTo')}>Owner</th>}
+              <th className="lt-sortable">Priority</th>
+              <th className="lt-sortable lt-hide-tablet" onClick={() => handleSort('created_at')}>Assigned</th>
               <th className="lt-sortable lt-hide-tablet" onClick={() => handleSort('nextFollowupDate')}>Next Follow-up</th>
               <th className="lt-text-right">Actions</th>
             </tr>
@@ -228,9 +230,7 @@ export default function LeadsTable({
                     onChange={(e) => { e.stopPropagation(); toggleSelect(l.id || l._id); }} 
                   />
                 </td>
-                {userRole !== 'Employee' && (
-                  <td><span className="id-badge">{l.readable_id || l.leadId || '—'}</span></td>
-                )}
+                <td><span className="id-badge">{l.readable_id || l.leadId || '—'}</span></td>
                 <td>
                   <div className="lt-lead-cell">
                     <div className="lt-lead-av" style={{ background: `${getStatusColor(l.status)}15`, color: getStatusColor(l.status), borderColor: `${getStatusColor(l.status)}30` }}>
@@ -239,15 +239,26 @@ export default function LeadsTable({
                     <div className="lt-lead-info">
                       <div className="lt-lead-name">{l.name}</div>
                       <div className="lt-lead-sub">{l.phone || l.email || 'No contact info'}</div>
-                      <div className="lt-lead-sub" style={{ color: 'var(--primary)', fontSize: '10px', marginTop: '2px', fontWeight: 700 }}>{l.source || 'Other'}</div>
                     </div>
                   </div>
+                </td>
+                <td className="lt-hide-tablet">
+                   <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text)' }}>{l.company || '—'}</div>
+                   <div style={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 800 }}>{l.source}</div>
                 </td>
                 <td>
                   <StatusBadge 
                     status={l.status} 
                     color={getStatusColor(l.status)} 
                   />
+                </td>
+                <td>
+                   <div style={{ fontSize: '12px', fontWeight: 700 }}>
+                      {l.priority === 'High' ? '🔴 High' : l.priority === 'Medium' ? '🟡 Medium' : '🟢 Low'}
+                   </div>
+                </td>
+                <td className="lt-hide-tablet">
+                   <div style={{ fontSize: '12px', color: 'var(--text-dimmed)' }}>{l.created_at ? new Date(l.created_at).toLocaleDateString() : '—'}</div>
                 </td>
 
                 {userRole !== 'Employee' && (

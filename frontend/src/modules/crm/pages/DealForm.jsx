@@ -33,7 +33,9 @@ const INITIAL_DEAL = {
   status: 'Open',
   assigned_to: '',
   description: '',
+  deal_type: 'Project',
   product_service: '',
+  requirement: '',
   quantity: 1,
   price: 0,
   discount_percent: 0,
@@ -111,7 +113,9 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
           contact_number: data.customer_id?.phone || '',
           company_name: data.customer_id?.company || '',
           email: data.customer_id?.email || '',
-          priority: data.priority || 'Medium'
+          priority: data.priority || 'Medium',
+          deal_type: data.deal_type || 'Project',
+          requirement: data.requirement || data.product_service || ''
         }
         setModel(normalized)
         setInitialModel(normalized)
@@ -232,6 +236,18 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
                       onChange={e => isEmployee && setModel({ ...model, value: Number(e.target.value) })}
                       placeholder="0.00"
                     />
+                  </div>
+                </div>
+                <div className="sheet-field">
+                  <label>Deal Type</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiLayers /></div>
+                    <select value={model.deal_type} onChange={e => setModel({ ...model, deal_type: e.target.value })}>
+                      <option value="Project">Project</option>
+                      <option value="Service">Service</option>
+                      <option value="Product">Product</option>
+                      <option value="Subscription">Subscription</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -399,9 +415,21 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
             <section className="form-sheet-section no-border">
               <div className="form-sheet-section-header">
                 <FiInfo />
-                <span>Next Step & Notes</span>
+                <span>Opportunity Details</span>
               </div>
               <div className="form-sheet-grid">
+                <div className="sheet-field full-width">
+                  <label>Project Requirement</label>
+                  <div className="crm-input-group">
+                    <div className="input-icon-box"><FiActivity /></div>
+                    <textarea 
+                      style={{ minHeight: '80px' }} 
+                      value={model.requirement} 
+                      onChange={e => setModel({ ...model, requirement: e.target.value })} 
+                      placeholder="Describe what the customer needs..." 
+                    />
+                  </div>
+                </div>
                 <div className="sheet-field">
                   <label>Next Follow-up Date</label>
                   <div className="crm-input-group">
@@ -425,17 +453,6 @@ export default function DealForm({ mode, dealId, onSuccess, onCancel }) {
                 )}
               </div>
               
-              <div className="sheet-field full-width" style={{ marginTop: '24px' }}>
-                <label>Description / Public Details</label>
-                <div style={{ marginTop: '8px' }}>
-                  <RichTextEditor
-                    value={model.description}
-                    onChange={val => setModel(prev => ({ ...prev, description: val }))}
-                    height="150px"
-                  />
-                </div>
-              </div>
-
               <div className="sheet-field full-width" style={{ marginTop: '24px' }}>
                 <label>Internal Notes (Private)</label>
                 <div className="crm-input-group" style={{ marginTop: '8px' }}>

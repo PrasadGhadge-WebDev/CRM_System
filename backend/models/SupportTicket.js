@@ -10,11 +10,14 @@ const SupportTicketSchema = new mongoose.Schema(
     user_customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, index: true }, // If the customer is a system user
     subject: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
-    status: { type: String, default: 'open', enum: ['new', 'open', 'assigned', 'in-progress', 'waiting', 'resolved', 'closed'], index: true },
-    priority: { type: String, default: 'medium', index: true }, // low, medium, high, urgent
+    status: { type: String, default: 'Open', enum: ['Open', 'In Progress', 'Waiting for Customer', 'Resolved', 'Closed'], index: true },
+    priority: { type: String, default: 'Medium', enum: ['Low', 'Medium', 'High'], index: true }, 
     assigned_to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     category: { type: String, trim: true },
+    sub_category: { type: String, trim: true },
+    department: { type: String, enum: ['Support', 'Sales', 'Technical'], default: 'Support' },
     deadline: { type: Date },
+    expected_resolution_date: { type: Date },
     closed_at: { type: Date },
     is_escalated: { type: Boolean, default: false },
     escalation_reason: { type: String, trim: true },

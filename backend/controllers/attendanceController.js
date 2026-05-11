@@ -24,11 +24,17 @@ exports.checkIn = async (req, res) => {
     const hours = now.getHours();
     const minutes = now.getMinutes();
     const isLate = hours > 9 || (hours === 9 && minutes > 30);
-    const status = isLate ? 'Late' : 'Present';
+    const status = 'Present'; // Keep status as Present, use late_mark for flagging
+    const late_mark = isLate;
 
     if (attendance) {
       attendance.check_in = now;
       attendance.status = status;
+      attendance.late_mark = late_mark;
+      attendance.location_info = {
+        ip_address: req.ip,
+        office: 'Main Office'
+      };
       await attendance.save();
     } else {
       attendance = await Attendance.create({
@@ -36,7 +42,12 @@ exports.checkIn = async (req, res) => {
         employee_id: req.user._id,
         date: today,
         check_in: now,
-        status: status
+        status: status,
+        late_mark: late_mark,
+        location_info: {
+          ip_address: req.ip,
+          office: 'Main Office'
+        }
       });
     }
 
@@ -71,7 +82,13 @@ exports.checkOut = async (req, res) => {
     
     // Calculate working hours
     const durationMs = attendance.check_out - attendance.check_in;
-    attendance.working_hours = parseFloat((durationMs / (1000 * 60 * 60)).toFixed(2));
+    const hoursWorked = parseFloat((durationMs / (1000 * 60 * 60)).toFixed(2));
+    attendance.working_hours = hoursWorked;
+
+    // Overtime calculation (Hours > 9)
+    if (hoursWorked > 9) {
+      attendance.overtime_hours = parseFloat((hoursWorked - 9).toFixed(2));
+    }
 
     await attendance.save();
     res.status(200).json(attendance);
@@ -143,6 +160,38 @@ exports.getAttendanceReport = async (req, res) => {
     });
 
     res.status(200).json(Object.values(report));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get my personal attendance history
+// @route   GET /api/attendance/my-history
+// @access  Private
+exports.getMyAttendance = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const y = parseInt(year) || new Date().getFullYear();
+    const m = parseInt(month) || new Date().getMonth() + 1;
+    
+    const start = new Date(y, m - 1, 1);
+    const end = new Date(y, m, 0, 23, 59, 59);
+
+    const records = await Attendance.find({
+      employee_id: req.user._id,
+      date: { $gte: start, $lte: end }
+    }).sort({ date: -1 });
+
+    const stats = {
+      present: records.filter(r => r.status === 'Present').length,
+      absent: records.filter(r => r.status === 'Absent').length,
+      half_day: records.filter(r => r.status === 'Half Day').length,
+      leaves: records.filter(r => r.status === 'On Leave').length,
+      late: records.filter(r => r.late_mark).length,
+      overtime: records.reduce((sum, r) => sum + (r.overtime_hours || 0), 0)
+    };
+
+    res.status(200).json({ records, stats });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

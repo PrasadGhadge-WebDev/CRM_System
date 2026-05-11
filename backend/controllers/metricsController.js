@@ -33,9 +33,9 @@ exports.getMetrics = asyncHandler(async (req, res) => {
   };
 
   const userObjectId = req.user?._id ? new mongoose.Types.ObjectId(req.user._id) : null;
-  const employeeLeadFilter = isEmployee && userObjectId ? { ...leadFilter, assigned_to: userObjectId } : null;
+  const employeeLeadFilter = isEmployee && userObjectId ? { ...leadFilter, assignedTo: userObjectId } : null;
   const employeeDealFilter = isEmployee && userObjectId ? { ...dealFilter, assigned_to: userObjectId } : null;
-  const employeeActivityFilter = isEmployee && userObjectId ? { ...companyFilter, created_by: userObjectId } : null;
+  const employeeActivityFilter = isEmployee && userObjectId ? { ...companyFilter, createdBy: userObjectId } : null;
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
@@ -109,7 +109,12 @@ exports.getMetrics = asyncHandler(async (req, res) => {
       tasks: { today: empTasksToday, planned: empTasksToday.length },
       leadsRecent: empLeadsRecent,
       dealsRecent: empDealsRecent,
-      performance: { conversions: empDealsWon, closedDeals: empDealsWon, followupCount: empLeadsFollowup }
+      performance: { 
+        conversions: empDealsWon, 
+        closedDeals: empDealsWon, 
+        followupCount: empLeadsFollowup,
+        targetProgress: Math.min(100, Math.round((empDealsWon / 10) * 100)) // Mock target of 10 deals
+      }
     } : undefined
   });
 });

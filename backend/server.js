@@ -62,6 +62,7 @@ app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/accountant-dashboard', require('./routes/accountantDashboard'));
 app.use('/api/hr-dashboard', require('./routes/hrDashboard'));
 app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/reports', require('./routes/reports'));
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

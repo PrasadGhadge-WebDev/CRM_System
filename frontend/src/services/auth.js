@@ -25,4 +25,8 @@ export const authApi = {
     const response = await api.post('/api/auth/onboarding/complete', payload)
     return response
   },
+  getProfileInsight: async () => {
+    const response = await api.get('/api/auth/profile-insight')
+    return response
+  }
 }

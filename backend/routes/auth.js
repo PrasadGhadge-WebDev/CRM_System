@@ -12,6 +12,7 @@ const {
   verifyOnboarding,
   completeOnboarding,
   resetPassword,
+  getProfileInsight,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const { preventDemoSettings, preventDemoEdit } = require('../middleware/demoGuard');
@@ -29,6 +30,7 @@ router.put('/me', protect, updateMe);
 router.put('/password', protect, preventDemoEdit, updatePassword);
 router.put('/settings', protect, preventDemoSettings, updateSettings);
 router.put('/resetpassword/:token', resetPassword);
+router.get('/profile-insight', protect, getProfileInsight);
 router.get('/logout', protect, logout);
 
 module.exports = router;
